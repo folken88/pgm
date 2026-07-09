@@ -43,39 +43,64 @@ function generateRoom(roll = Math.random) {
   };
 }
 
+function instantiate(t) {
+  return {
+    key: t.key, baseName: t.name, xp: t.xp || 100,
+    hp: t.hp, maxHp: t.hp, ac: t.ac, attack: t.attack,
+    initBonus: t.initBonus || 0, dmg: t.dmg, flavor: t.flavor,
+    stealth: t.stealth != null ? t.stealth : 10, sneaky: !!t.sneaky,
+  };
+}
+const CHEAPEST_XP = Math.min.apply(null, CREATURES.map(c => c.xp || 100));
+
+// PF1-style XP budget for an APL-1 encounter, by difficulty tier (total XP for a
+// standard 4-person party). We scale this by party size, APL, and depth.
+const BASE_XP = { easy: 200, average: 400, hard: 600 };
+
+function pickTier(depth, roll) {
+  const hardBias = Math.min(0.22, depth * 0.03);   // rooms get a little nastier deeper
+  const r = roll();
+  if (r < 0.40 - hardBias) return 'easy';
+  if (r < 0.85 - hardBias) return 'average';
+  return 'hard';
+}
+
 /**
- * Party encounter: scales the number of foes to the party (roughly one per two
- * heroes, 1-4), draws each from the VETTED roster, and disambiguates duplicate
- * names with a letter suffix. Returns { flavor, enemies:[instances], reward }.
+ * Party encounter, built to a CR/XP budget so a level-1 party isn't wiped in
+ * room 1. Budget = tier base × (partySize/4) × APL × depth-ramp. Foes are drawn
+ * from the VETTED roster until the budget is spent (a foe may exceed the
+ * remaining budget by ≤25%). Returns { flavor, enemies, reward, tier }.
  */
-function generatePartyRoom(partySize, roll = Math.random) {
-  const count = Math.max(1, Math.min(4, Math.ceil((partySize || 1) / 2)));
+function generatePartyRoom(partySize, apl, depth, roll = Math.random) {
+  partySize = Math.max(1, partySize || 1); apl = Math.max(1, apl || 1); depth = depth || 0;
+  const tier = pickTier(depth, roll);
+  const budget = Math.max(CHEAPEST_XP, Math.round(
+    BASE_XP[tier] * (partySize / 4) * apl * (1 + depth * 0.08)));
+
   const enemies = [];
-  const nameTally = {};
-  for (let i = 0; i < count; i++) {
-    const t = pick(CREATURES, roll);
-    nameTally[t.key] = (nameTally[t.key] || 0) + 1;
-    enemies.push({
-      key: t.key, baseName: t.name,
-      hp: t.hp, maxHp: t.hp, ac: t.ac, attack: t.attack,
-      initBonus: t.initBonus || 0, dmg: t.dmg, flavor: t.flavor,
-      stealth: t.stealth != null ? t.stealth : 10, sneaky: !!t.sneaky,
-    });
+  let remaining = budget, guard = 0;
+  while (guard++ < 12 && enemies.length < 6) {
+    const affordable = CREATURES.filter(c => (c.xp || 100) <= remaining * 1.25);
+    if (!affordable.length) break;
+    const t = pick(affordable, roll);
+    enemies.push(instantiate(t));
+    remaining -= (t.xp || 100);
+    if (remaining < CHEAPEST_XP * 0.6) break;      // budget effectively spent
   }
-  // Suffix duplicates: "goblin A", "goblin B" (only when >1 of a kind).
+  if (!enemies.length) enemies.push(instantiate(CREATURES.reduce((a, b) => ((a.xp || 100) <= (b.xp || 100) ? a : b))));
+
+  // Suffix duplicates: "goblin A", "goblin B".
   const totals = {};
   enemies.forEach(e => { totals[e.key] = (totals[e.key] || 0) + 1; });
   const seen = {};
   enemies.forEach(e => {
-    if (totals[e.key] > 1) {
-      seen[e.key] = (seen[e.key] || 0) + 1;
-      e.name = e.baseName + ' ' + String.fromCharCode(64 + seen[e.key]); // A, B, ...
-    } else {
-      e.name = e.baseName;
-    }
+    if (totals[e.key] > 1) { seen[e.key] = (seen[e.key] || 0) + 1; e.name = e.baseName + ' ' + String.fromCharCode(64 + seen[e.key]); }
+    else e.name = e.baseName;
   });
-  const gp = rollDice(count + 1, 6, roll) + count * 2;
-  return { flavor: pick(ROOM_FLAVORS, roll), enemies, reward: { gp } };
+
+  const spent = enemies.reduce((s, e) => s + (e.xp || 100), 0);
+  const gp = Math.round(spent / 12) + rollDice(2, 6, roll);   // reward tracks the challenge
+  return { flavor: pick(ROOM_FLAVORS, roll), enemies, reward: { gp }, tier, budget };
 }
 
 module.exports = { generateRoom, generatePartyRoom, ROOM_FLAVORS };

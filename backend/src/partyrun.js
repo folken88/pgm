@@ -64,7 +64,8 @@ function enemyCombatant(e, i) {
 }
 
 function spawnRoom(run, roll) {
-  const room = generatePartyRoom(run.heroes.length, roll);
+  const apl = Math.round(run.heroes.reduce((s, h) => s + (h.character.derived.level || 1), 0) / run.heroes.length);
+  const room = generatePartyRoom(run.heroes.length, apl, run.roomsCleared, roll);
   run.room = { flavor: room.flavor, reward: room.reward };
   const enemies = room.enemies.map(enemyCombatant);
 
