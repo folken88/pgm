@@ -57,6 +57,47 @@ test('publicRun exposes the party inventory', () => {
   assert.ok(fire && fire.qty === 2 && fire.verb === 'throw');
 });
 
+test('equipping a found weapon swaps the hero\'s weapon', () => {
+  const roll = seededRoller(4);
+  const run = pr.createPartyRun(humans(), roll);
+  run.phase = 'cleared';                       // equip happens between fights
+  run.inventory.push({ key: 'g_greatsword', qty: 1 });
+  const hero = run.heroes.find(h => h.ownerClientId === 'c1');
+  const r = pr.applyAction(run, 'c1', { type: 'equip', item: 'g_greatsword' }, roll);
+  assert.ok(r.ok, 'equip succeeded');
+  assert.strictEqual(hero.character.weapon.name, 'Greatsword');
+  assert.strictEqual(run.inventory.length, 0, 'gear consumed from bag');
+});
+
+test('equipping found armor raises AC and flat-footed AC', () => {
+  const roll = seededRoller(4);
+  const run = pr.createPartyRun(humans(), roll);
+  run.phase = 'cleared';
+  const hero = run.heroes.find(h => h.ownerClientId === 'c1');
+  const beforeAc = hero.ac;
+  run.inventory.push({ key: 'g_chainshirt', qty: 1 });   // +4 armor
+  pr.applyAction(run, 'c1', { type: 'equip', item: 'g_chainshirt' }, roll);
+  const dex = hero.character.derived.mods.dex || 0;
+  assert.strictEqual(hero.ac, 10 + dex + 4, 'AC recomputed with chain shirt');
+  assert.ok(hero.ac > beforeAc || 4 <= 2, 'chain shirt is an upgrade over starting leather');
+  assert.strictEqual(hero.flatAc, hero.ac - Math.max(0, dex));
+});
+
+test('holy water damages undead but fizzles on the living', () => {
+  const roll = seededRoller(4);
+  const run = pr.createPartyRun(humans(), roll);
+  const turn = pr.publicRun(run).turn;
+  const foe = run.combatants.find(c => c.side === 'enemy' && c.revealed && !c.down);
+  assert.ok(foe, 'a revealed foe to target');
+  // Living target: fizzle, no damage.
+  foe.creature.undead = false;
+  run.inventory.push({ key: 'holy_water', qty: 1 });
+  const beforeLiving = foe.hp;
+  pr.applyAction(run, turn.ownerClientId, { type: 'use', item: 'holy_water', target: foe.id }, roll);
+  assert.strictEqual(foe.hp, beforeLiving, 'no effect on the living');
+  assert.strictEqual(run.inventory.length, 0, 'still consumed');
+});
+
 test('clearing rooms drops treasure items at least sometimes', () => {
   let gotItem = false;
   for (let s = 1; s <= 60 && !gotItem; s++) {

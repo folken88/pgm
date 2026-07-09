@@ -50,13 +50,13 @@ const CREATURES = [
   // --- More early-encounter foes (vetted 2026-07-09; basic attack only, special
   // riders like poison/trip/blood-drain simplified away for now). ---
   {
-    key: 'skeleton', name: 'skeleton', cr: '1/3', xp: 135,
+    key: 'skeleton', name: 'skeleton', cr: '1/3', xp: 135, undead: true,
     hp: 4, ac: 16, attack: 2, initBonus: 5, stealth: 6,
     dmg: { count: 1, sides: 4, bonus: 2 }, dmgType: 'S',   // claws / scimitar
     weaponName: 'claw', flavor: 'a clattering skeleton, empty sockets glowing faintly',
   },
   {
-    key: 'zombie', name: 'zombie', cr: '1/2', xp: 200,
+    key: 'zombie', name: 'zombie', cr: '1/2', xp: 200, undead: true,
     hp: 12, ac: 12, attack: 4, initBonus: -1, stealth: 4,
     dmg: { count: 1, sides: 6, bonus: 4 }, dmgType: 'B',   // slam
     weaponName: 'slam', flavor: 'a shambling corpse, reeking and relentless',

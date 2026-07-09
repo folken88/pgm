@@ -309,15 +309,20 @@
 
   function renderGameChoices(run, myTurn) {
     var choices = [];
+    var spectating = state.role === 'spectator';
+    if (spectating) { state.choices = []; el('choices').innerHTML = ''; return; }
     if (run.phase === 'combat' && myTurn) {
       (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
-      (run.inventory || []).forEach(function (i) {
-        var verb = i.verb === 'drink' ? 'Drink ' : (i.verb === 'throw' ? 'Throw ' : 'Use ');
-        choices.push({ id: 'use', item: i.key, label: verb + (i.short || i.name) });
+      (run.inventory || []).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
+        choices.push({ id: 'use', item: i.key, label: (i.verb === 'drink' ? 'Drink ' : 'Throw ') + (i.short || i.name) });
       });
       choices.push({ id: 'pass', label: 'Hold action' });
-    } else if (run.phase === 'cleared') { choices.push({ id: 'descend', label: 'Descend deeper' }); }
-    else if (run.phase === 'defeated') { choices.push({ id: 'leave', label: 'Return to start' }); }
+    } else if (run.phase === 'cleared') {
+      (run.inventory || []).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
+        choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
+      });
+      choices.push({ id: 'descend', label: 'Descend deeper' });
+    } else if (run.phase === 'defeated') { choices.push({ id: 'leave', label: 'Return to start' }); }
     state.choices = choices;
     var nav = el('choices'); nav.innerHTML = '';
     choices.forEach(function (c, i) {
@@ -384,6 +389,13 @@
     var NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
     var mk = t.match(/^#choice (\d)$/); if (mk) return selectGameIndex(parseInt(mk[1], 10) - 1);
     var w = t.match(/\b(one|two|three|four|five|six|seven|eight|nine)\b/); if (w) return selectGameIndex(NUM[w[1]] - 1);
+    if (/\b(equip|wield|wear|don)\b/.test(t)) {
+      var eqs = state.choices.filter(function (c) { return c.id === 'equip'; });
+      if (!eqs.length) return BM.speak('Nothing to equip right now.', 'urgent');
+      var gname = t.replace(/\b(equip|wield|wear|don|the|a|an)\b/g, '').trim();
+      var eq = gname && eqs.find(function (c) { return c.label.toLowerCase().indexOf(gname) >= 0; });
+      return doGameAction(eq || eqs[0]);
+    }
     if (/\b(descend|deeper|continue|next|onward)\b/.test(t)) return chooseById('descend');
     if (/\b(pass|hold|wait|skip)\b/.test(t)) return chooseById('pass');
     if (/\b(leave|return|quit|exit)\b/.test(t)) return chooseById('leave');

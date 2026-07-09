@@ -72,6 +72,7 @@ function createCharacter({ name, race = 'human', cls = 'fighter', skills = null 
     derived,                 // full pf1core derivation (bab, mods, saves, hp, ...)
     maxHp: derived.hp,
     ac,
+    armorBonus: STARTING_ARMOR_BONUS,
     skillPoints: points,
     skills: selected,        // chosen skill keys (1 rank each at level 1)
     skillSheet,              // full display sheet

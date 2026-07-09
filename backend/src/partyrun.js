@@ -12,6 +12,7 @@
  */
 const combat = require('./combat');
 const items = require('./items');
+const pf1 = require('./pf1core');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
@@ -166,6 +167,11 @@ function applyAction(run, clientId, action, roll = Math.random) {
     spawnRoom(run, roll);
     return { ok: true };
   }
+  if (run.phase === 'cleared' && type === 'equip') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    return equipItem(run, hero, action.item);
+  }
   if (run.phase !== 'combat') return { ok: false, error: 'no action available now' };
 
   const cb = current(run);
@@ -215,6 +221,10 @@ function useItem(run, user, itemKey, targetId, roll) {
   if (e.kind === 'throw') {
     const target = pickTarget(run, targetId);
     if (!target) { addItem(run, itemKey); return { ok: false, error: 'no visible target' }; }
+    if (e.vsUndead && !(target.creature && target.creature.undead)) {
+      logEvent(run, `${user.name} throws ${item.name} at ${target.name}, but it splashes harmlessly — no effect on the living.`, 'event');
+      return { ok: true };
+    }
     const amt = items.rollAmount(item, roll);
     target.hp -= amt;
     logEvent(run, `${user.name} throws ${item.name} at ${target.name} for ${amt} ${e.dtype} damage. (${Math.max(0, target.hp)} HP left.)`, 'event');
@@ -237,6 +247,27 @@ function heroAttack(run, hero, target, roll) {
   const crit = res.crit ? 'Critical! ' : '';
   logEvent(run, `${crit}${hero.name} hits ${target.name} for ${res.damage}. (${Math.max(0, target.hp)} HP left.)`, 'event');
   if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is slain!`, 'urgent'); }
+}
+
+/** Equip a found weapon/armor onto a hero (between fights). Returns {ok}. */
+function equipItem(run, hero, itemKey) {
+  const item = items.ITEM_BY_KEY[itemKey];
+  if (!item || item.type !== 'gear') return { ok: false, error: 'not equippable' };
+  if (!takeItem(run, itemKey)) return { ok: false, error: 'the party does not have that' };
+  const c = hero.character;
+  if (item.gearType === 'weapon') {
+    const w = pf1.weapons.WEAPON_BY_NAME[item.weaponName];
+    if (!w) { addItem(run, itemKey); return { ok: false, error: 'unknown weapon' }; }
+    c.weapon = w; c.weaponName = item.short || item.name;
+    logEvent(run, `${hero.name} equips the ${item.name}.`, 'event');
+  } else {                                    // armor
+    const dex = c.derived.mods.dex || 0;
+    c.armorBonus = item.acBonus;
+    c.ac = 10 + dex + item.acBonus;
+    hero.ac = c.ac; hero.flatAc = c.ac - Math.max(0, dex);
+    logEvent(run, `${hero.name} dons the ${item.name}. (AC ${c.ac}.)`, 'event');
+  }
+  return { ok: true };
 }
 
 function clearRoom(run, roll = Math.random) {
@@ -283,7 +314,11 @@ function publicRun(run) {
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),
     inventory: run.inventory.map(s => {
       const it = items.ITEM_BY_KEY[s.key];
-      return { key: s.key, name: it.name, short: it.short, icon: it.icon, verb: it.verb, kind: it.effect.kind, qty: s.qty };
+      return {
+        key: s.key, name: it.name, short: it.short, icon: it.icon,
+        type: it.type, verb: it.verb || 'equip', gearType: it.gearType || null,
+        kind: it.effect ? it.effect.kind : null, qty: s.qty,
+      };
     }),
     turn,
     log: run.log.slice(-40),

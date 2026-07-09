@@ -48,7 +48,7 @@ function instantiate(t) {
     key: t.key, baseName: t.name, xp: t.xp || 100,
     hp: t.hp, maxHp: t.hp, ac: t.ac, attack: t.attack,
     initBonus: t.initBonus || 0, dmg: t.dmg, flavor: t.flavor,
-    stealth: t.stealth != null ? t.stealth : 10, sneaky: !!t.sneaky,
+    stealth: t.stealth != null ? t.stealth : 10, sneaky: !!t.sneaky, undead: !!t.undead,
   };
 }
 const CHEAPEST_XP = Math.min.apply(null, CREATURES.map(c => c.xp || 100));

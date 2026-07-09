@@ -71,8 +71,23 @@ When promoting, note *what mechanism* vetted it (e.g. "v0 combat resolver",
   | Potion of Cure Moderate Wounds | potion | heal 2d8+3 to an ally |
   | Alchemist's Fire | alchemical | 1d6 fire to a foe |
   | Acid Flask | alchemical | 1d6 acid to a foe |
-  _Simplifications to revisit: thrown alchemicals auto-hit (no touch-attack roll
-  yet); splash damage not modeled._
+  | Liquid Ice | alchemical | 1d6 cold to a foe |
+  | Bottled Lightning | alchemical | 1d6 electricity to a foe |
+  | Holy Water | alchemical | 2d4 to **undead** (fizzles on the living) |
+  _Simplifications to revisit: thrown items auto-hit (no touch-attack roll yet);
+  splash damage not modeled._
+
+- **Found weapons & armor (equippable gear)** — VETTED 2026-07-09. Mechanism:
+  gear drops into the party bag and a hero **equips** it between fights (in the
+  cleared phase) — a weapon swaps their attack (via pf1core `WEAPON_BY_NAME` +
+  `attackProfile`), armor recomputes AC + flat-footed AC. Vetted gear:
+  | Item | Type | Effect |
+  |---|---|---|
+  | Longsword / Battle Axe / Morningstar / Greatsword | weapon | swap to that PF1 weapon |
+  | Studded Leather (+3) / Scale Mail (+5) / Chain Shirt (+4) | armor | set armor bonus, recompute AC |
+  _Simplifications to revisit: no enhancement bonuses (+1 etc.) yet; swapped-out
+  gear is discarded (no re-storing/trading between members yet); no proficiency
+  penalties applied._
 
 _Not yet: magic/enhancement properties (need the +N + special-ability layer),
 found/equippable weapons & armor as loot, ranged weapons, scrolls/wands (need a
