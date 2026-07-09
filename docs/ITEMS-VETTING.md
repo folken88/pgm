@@ -50,12 +50,18 @@ When promoting, note *what mechanism* vetted it (e.g. "v0 combat resolver",
 
 ## VETTED
 
-_None yet — PGM v0 is not built. First expected promotions, once the v0 combat
-loop resolves a wielded weapon:_
-- _basic melee weapons (data already in pf1core `weapons.js`; effect = attack via
-  `character.attackProfile`)._
+- **Coins (gp)** — VETTED 2026-07-09. Mechanism: room reward + run gold total
+  (`roomgen.js` drops gp on a clear; tracked in run state / HUD). cp/sp/pp are
+  representable the same way; add when a room actually grants them.
+- **Basic melee weapons** — VETTED 2026-07-09. Mechanism: v0 combat resolver
+  wields a pf1core weapon (`WEAPON_BY_NAME`) via `character.attackProfile` for
+  real to-hit/damage/crit math. Confirmed in play: longsword, greataxe, dagger,
+  quarterstaff, morningstar, short sword, rapier, scimitar (the class starting
+  weapons in `content.js`). Any standard pf1core melee weapon resolves through
+  the same path.
 
-_(Move items here with a dated line + enabling mechanism as they qualify.)_
+_Not yet: magic/enhancement properties (need the +N + special-ability layer),
+ranged weapons (need ranged handling in the resolver), and everything below._
 
 ---
 

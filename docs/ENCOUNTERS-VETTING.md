@@ -47,11 +47,16 @@ Promote a creature only when all hold, recording the enabling mechanism:
 
 ## VETTED
 
-_None yet — PGM v0 is not built. First expected promotion: the single low-CR
-creature chosen for the v0 room (e.g. a CR ⅓–1 humanoid/animal whose only need is
-a basic melee attack), vetted by the v0 combat resolver._
+Mechanism: **v0 app-layer combat resolver** (basic melee attack — stat block
+resolves, creature attacks the hero each round, combat resolves to a terminal
+state). Stats in `backend/src/content.js`.
 
-_(Move creatures here with a dated line + enabling mechanism as they qualify.)_
+- **goblin** (CR 1/3) — VETTED 2026-07-09 (v0 combat)
+- **dire rat** (CR 1/3) — VETTED 2026-07-09 (v0 combat)
+- **kobold** (CR 1/4) — VETTED 2026-07-09 (v0 combat)
+
+_These three cover the CR ⅛–1 band enough for v0. Next: fill CR 1–4 as play
+scales, and give creatures more than a basic attack as those mechanisms land._
 
 ---
 
