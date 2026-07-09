@@ -279,6 +279,7 @@
 
     renderStrip('party-strip', run.combatants.filter(function (c) { return c.side === 'hero'; }));
     renderStrip('enemy-strip', run.combatants.filter(function (c) { return c.side === 'enemy'; }));
+    renderInventory(run.inventory);
 
     (run.log || []).forEach(function (e) {
       if (e.seq > state.lastSeq) { state.lastSeq = e.seq; appendLog(e.text, e.priority); BM.speak(e.text, e.priority);
@@ -298,10 +299,22 @@
       ul.appendChild(li);
     });
   }
+  function renderInventory(inv) {
+    var box = el('inventory');
+    if (!inv || !inv.length) { box.textContent = ''; return; }
+    box.innerHTML = '<span class="bag">Party bag:</span> ' + inv.map(function (i) {
+      return (i.icon || '') + ' ' + esc(i.short || i.name) + ' ×' + i.qty;
+    }).join('  ·  ');
+  }
+
   function renderGameChoices(run, myTurn) {
     var choices = [];
     if (run.phase === 'combat' && myTurn) {
       (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
+      (run.inventory || []).forEach(function (i) {
+        var verb = i.verb === 'drink' ? 'Drink ' : (i.verb === 'throw' ? 'Throw ' : 'Use ');
+        choices.push({ id: 'use', item: i.key, label: verb + (i.short || i.name) });
+      });
       choices.push({ id: 'pass', label: 'Hold action' });
     } else if (run.phase === 'cleared') { choices.push({ id: 'descend', label: 'Descend deeper' }); }
     else if (run.phase === 'defeated') { choices.push({ id: 'leave', label: 'Return to start' }); }
@@ -328,6 +341,7 @@
     if (choice.id === 'leave') { location.reload(); return; }
     var body = { clientId: state.clientId, action: choice.id };
     if (choice.target) body.target = choice.target;
+    if (choice.item) body.item = choice.item;
     api('/api/session/action', body).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot do that.', 'urgent'); });
   }
 
@@ -373,6 +387,13 @@
     if (/\b(descend|deeper|continue|next|onward)\b/.test(t)) return chooseById('descend');
     if (/\b(pass|hold|wait|skip)\b/.test(t)) return chooseById('pass');
     if (/\b(leave|return|quit|exit)\b/.test(t)) return chooseById('leave');
+    if (/\b(use|drink|throw|quaff)\b/.test(t)) {
+      var uses = state.choices.filter(function (c) { return c.id === 'use'; });
+      if (!uses.length) return BM.speak('You have nothing to use.', 'urgent');
+      var name = t.replace(/\b(use|drink|throw|quaff|the|a|an|potion|of)\b/g, '').trim();
+      var byName = name && uses.find(function (c) { return c.label.toLowerCase().indexOf(name) >= 0; });
+      return doGameAction(byName || uses[0]);
+    }
     if (/\b(attack|hit|strike|kill|fight)\b/.test(t)) {
       var atk = state.choices.filter(function (c) { return c.id === 'attack'; });
       if (!atk.length) return BM.speak('You cannot attack right now.', 'urgent');

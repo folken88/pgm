@@ -47,6 +47,56 @@ const CREATURES = [
     weaponName: 'bite', sneaky: true,
     flavor: 'a hunched, hairy spider the size of a dog, motionless in the shadows',
   },
+  // --- More early-encounter foes (vetted 2026-07-09; basic attack only, special
+  // riders like poison/trip/blood-drain simplified away for now). ---
+  {
+    key: 'skeleton', name: 'skeleton', cr: '1/3', xp: 135,
+    hp: 4, ac: 16, attack: 2, initBonus: 5, stealth: 6,
+    dmg: { count: 1, sides: 4, bonus: 2 }, dmgType: 'S',   // claws / scimitar
+    weaponName: 'claw', flavor: 'a clattering skeleton, empty sockets glowing faintly',
+  },
+  {
+    key: 'zombie', name: 'zombie', cr: '1/2', xp: 200,
+    hp: 12, ac: 12, attack: 4, initBonus: -1, stealth: 4,
+    dmg: { count: 1, sides: 6, bonus: 4 }, dmgType: 'B',   // slam
+    weaponName: 'slam', flavor: 'a shambling corpse, reeking and relentless',
+  },
+  {
+    key: 'giant_centipede', name: 'giant centipede', cr: '1/2', xp: 200,
+    hp: 5, ac: 14, attack: 2, initBonus: 6, stealth: 14,
+    dmg: { count: 1, sides: 6, bonus: -1 }, dmgType: 'P',  // bite (poison ignored)
+    weaponName: 'bite', flavor: 'a foot-long centipede skittering along the wall',
+  },
+  {
+    key: 'giant_ant', name: 'giant ant', cr: '1/2', xp: 200,
+    hp: 9, ac: 15, attack: 2, initBonus: 0, stealth: 8,
+    dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
+    weaponName: 'bite', flavor: 'a dog-sized ant, mandibles clicking hungrily',
+  },
+  {
+    key: 'wolf', name: 'wolf', cr: '1', xp: 400,
+    hp: 13, ac: 14, attack: 2, initBonus: 2, stealth: 12,
+    dmg: { count: 1, sides: 6, bonus: 1 }, dmgType: 'P',   // bite (trip ignored)
+    weaponName: 'bite', flavor: 'a lean grey wolf, hackles raised and growling low',
+  },
+  {
+    key: 'giant_frog', name: 'giant frog', cr: '1', xp: 400,
+    hp: 15, ac: 12, attack: 3, initBonus: 2, stealth: 14,
+    dmg: { count: 1, sides: 6, bonus: 3 }, dmgType: 'B',   // bite (pull ignored)
+    weaponName: 'bite', flavor: 'a bloated frog the size of a hound, tongue flicking',
+  },
+  {
+    key: 'goblin_dog', name: 'goblin dog', cr: '1', xp: 400,
+    hp: 9, ac: 13, attack: 2, initBonus: 2, stealth: 10,
+    dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
+    weaponName: 'bite', flavor: 'a hairless, warty hound bred by goblins',
+  },
+  {
+    key: 'stirge', name: 'stirge', cr: '1/2', xp: 200,
+    hp: 5, ac: 16, attack: 3, initBonus: 4, stealth: 13,
+    dmg: { count: 1, sides: 3, bonus: 0 }, dmgType: 'P',   // proboscis (blood drain ignored)
+    weaponName: 'proboscis', flavor: 'a mosquito-like horror the size of a cat, darting in',
+  },
 ];
 
 const CREATURE_BY_KEY = Object.fromEntries(CREATURES.map(c => [c.key, c]));

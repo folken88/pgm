@@ -51,12 +51,28 @@ Mechanism: **v0 app-layer combat resolver** (basic melee attack — stat block
 resolves, creature attacks the hero each round, combat resolves to a terminal
 state). Stats in `backend/src/content.js`.
 
-- **goblin** (CR 1/3) — VETTED 2026-07-09 (v0 combat)
-- **dire rat** (CR 1/3) — VETTED 2026-07-09 (v0 combat)
-- **kobold** (CR 1/4) — VETTED 2026-07-09 (v0 combat)
+| Creature | CR | Notes |
+|---|---|---|
+| kobold | 1/4 | spear |
+| goblin | 1/3 | short sword |
+| dire rat | 1/3 | bite |
+| skeleton | 1/3 | claw (undead) |
+| zombie | 1/2 | slam (undead, tough) |
+| giant centipede | 1/2 | bite — *poison rider not yet implemented* |
+| giant ant | 1/2 | bite |
+| stirge | 1/2 | proboscis — *blood-drain rider not yet implemented* |
+| wolf | 1 | bite — *trip rider not yet implemented* |
+| giant frog | 1 | bite — *pull rider not yet implemented* |
+| goblin dog | 1 | bite |
+| **giant spider** | 1 | bite — **SNEAKY (Stealth DC 19)**, exercises the perception/flat-footed system |
 
-_These three cover the CR ⅛–1 band enough for v0. Next: fill CR 1–4 as play
-scales, and give creatures more than a basic attack as those mechanisms land._
+All VETTED 2026-07-09. Mechanism: v0 party-combat resolver (basic attack +
+initiative + the perception/stealth-DC reveal). **Special riders** (poison, trip,
+blood drain, pull, etc.) are simplified to a basic attack for now — creatures are
+runnable; enrich riders as those subsystems land. Stats in `backend/src/content.js`.
+
+_These cover the CR ⅛–1 band well for early play. Next: CR 1–4, and implementing
+the special riders + more sneaky/ambush foes._
 
 ---
 

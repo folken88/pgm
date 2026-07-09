@@ -135,6 +135,11 @@ button { cursor: pointer; }
 .skill-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 #skill-begin { background: var(--accent); color: var(--accent-ink); border: none; font-weight: 700; padding: .7rem 1rem; }
 
+/* Inventory line */
+.inventory { margin: 0 0 .6rem; color: var(--muted); font-size: .9rem; }
+.inventory:empty { display: none; }
+.inventory .bag { color: var(--accent); font-weight: 700; }
+
 /* Combat view */
 .turn-banner {
   font-weight: 800; padding: .5rem .8rem; border-radius: 8px; margin: 0 0 .7rem;

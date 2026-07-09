@@ -11,14 +11,29 @@
  * hidden enemy reveals itself the moment it acts.
  */
 const combat = require('./combat');
+const items = require('./items');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
 function createPartyRun(party, roll = Math.random) {
   const run = { heroes: party.map(heroCombatant), combatants: [], room: null,
-    turnIndex: 0, round: 1, phase: 'combat', gold: 0, roomsCleared: 0, seq: 0, log: [] };
+    turnIndex: 0, round: 1, phase: 'combat', gold: 0, roomsCleared: 0,
+    inventory: [], seq: 0, log: [] };
   spawnRoom(run, roll);
   return run;
+}
+
+function addItem(run, key, qty) {
+  const slot = run.inventory.find(s => s.key === key);
+  if (slot) slot.qty += (qty || 1);
+  else run.inventory.push({ key, qty: qty || 1 });
+}
+function takeItem(run, key) {
+  const slot = run.inventory.find(s => s.key === key);
+  if (!slot || slot.qty <= 0) return false;
+  slot.qty -= 1;
+  if (slot.qty <= 0) run.inventory = run.inventory.filter(s => s.qty > 0);
+  return true;
 }
 
 function perceptionMod(character) {
@@ -95,7 +110,7 @@ function nextTurn(run) {
 function runUntilHeroTurn(run, roll) {
   let guard = 0;
   while (run.phase === 'combat' && guard++ < 2000) {
-    if (living(run, 'enemy').length === 0) return clearRoom(run);
+    if (living(run, 'enemy').length === 0) return clearRoom(run, roll);
     if (living(run, 'hero').length === 0) return defeat(run);
     const cb = current(run);
     if (!cb || cb.down) { nextTurn(run); continue; }
@@ -107,6 +122,11 @@ function runUntilHeroTurn(run, roll) {
 }
 
 function aiHeroTurn(run, hero, roll) {
+  // If the party holds a healing item and an ally is badly hurt, use it.
+  const healSlot = run.inventory.find(s => { const it = items.ITEM_BY_KEY[s.key]; return it && it.effect.kind === 'heal' && s.qty > 0; });
+  const badlyHurt = run.combatants.some(c => c.side === 'hero' && !c.down && c.hp <= c.maxHp / 3);
+  if (healSlot && badlyHurt && useItem(run, hero, healSlot.key, null, roll).ok) return;
+
   const foes = livingRevealedEnemies(run);
   if (!foes.length) { logEvent(run, `${hero.name} scans the room, weapon ready.`, 'event'); return; }
   const target = foes.slice().sort((a, b) => a.hp - b.hp)[0];
@@ -155,6 +175,9 @@ function applyAction(run, clientId, action, roll = Math.random) {
     const target = pickTarget(run, action.target);
     if (!target) return { ok: false, error: 'no visible target' };
     heroAttack(run, cb, target, roll);
+  } else if (type === 'use') {
+    const r = useItem(run, cb, action.item, action.target, roll);
+    if (!r.ok) return r;                 // invalid use doesn't burn the turn
   } else if (type === 'pass') {
     logEvent(run, `${cb.name} holds their action.`, 'event');
   } else {
@@ -163,6 +186,41 @@ function applyAction(run, clientId, action, roll = Math.random) {
   nextTurn(run);
   runUntilHeroTurn(run, roll);
   return { ok: true };
+}
+
+function healTarget(run, targetId) {
+  const heroes = run.combatants.filter(c => c.side === 'hero');
+  if (targetId) return heroes.find(h => h.id === targetId) || null;
+  const hurt = heroes.filter(h => h.hp < h.maxHp || h.down);
+  if (!hurt.length) return heroes[0] || null;
+  return hurt.slice().sort((a, b) => ((a.down ? 0 : 1) - (b.down ? 0 : 1)) || (a.hp - b.hp))[0];
+}
+
+/** Use a party item (heal an ally / throw at a foe). Returns {ok}. */
+function useItem(run, user, itemKey, targetId, roll) {
+  const item = items.ITEM_BY_KEY[itemKey];
+  if (!item) return { ok: false, error: 'no such item' };
+  if (!takeItem(run, itemKey)) return { ok: false, error: 'the party has none of that' };
+  const e = item.effect;
+  if (e.kind === 'heal') {
+    const target = healTarget(run, targetId);
+    if (!target) { addItem(run, itemKey); return { ok: false, error: 'no ally to heal' }; }
+    const before = target.hp;
+    target.hp = Math.min(target.maxHp, target.hp + items.rollAmount(item, roll));
+    if (target.hp > 0) target.down = false;
+    logEvent(run, `${user.name} uses ${item.name} on ${target.name}, healing ${target.hp - before}. (${target.hp}/${target.maxHp} HP.)`, 'event');
+    return { ok: true };
+  }
+  if (e.kind === 'throw') {
+    const target = pickTarget(run, targetId);
+    if (!target) { addItem(run, itemKey); return { ok: false, error: 'no visible target' }; }
+    const amt = items.rollAmount(item, roll);
+    target.hp -= amt;
+    logEvent(run, `${user.name} throws ${item.name} at ${target.name} for ${amt} ${e.dtype} damage. (${Math.max(0, target.hp)} HP left.)`, 'event');
+    if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is destroyed!`, 'urgent'); }
+    return { ok: true };
+  }
+  return { ok: false, error: 'unusable' };
 }
 
 function pickTarget(run, targetId) {
@@ -180,7 +238,7 @@ function heroAttack(run, hero, target, roll) {
   if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is slain!`, 'urgent'); }
 }
 
-function clearRoom(run) {
+function clearRoom(run, roll = Math.random) {
   run.phase = 'cleared';
   run.gold += run.room.reward.gp;
   run.roomsCleared += 1;
@@ -189,7 +247,14 @@ function clearRoom(run) {
     if (h.hp < half) h.hp = half;
     h.down = false;
   });
-  logEvent(run, `The room is cleared! The party finds ${run.room.reward.gp} gold and catches its breath. Descend deeper?`, 'urgent');
+  // Treasure: gold, plus ~60% of the time an item from the early-treasure table.
+  let found = `${run.room.reward.gp} gold`;
+  if (rollDie(100, roll) <= 60) {
+    const key = items.rollTreasureItem(roll);
+    addItem(run, key, 1);
+    found += ` and ${items.ITEM_BY_KEY[key].name}`;
+  }
+  logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 
 function defeat(run) { run.phase = 'defeated'; logEvent(run, 'The party has fallen. The dungeon claims you.', 'urgent'); }
@@ -215,6 +280,10 @@ function publicRun(run) {
       current: cb ? c.id === cb.id : false,
     })),
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),
+    inventory: run.inventory.map(s => {
+      const it = items.ITEM_BY_KEY[s.key];
+      return { key: s.key, name: it.name, short: it.short, icon: it.icon, verb: it.verb, kind: it.effect.kind, qty: s.qty };
+    }),
     turn,
     log: run.log.slice(-40),
   };

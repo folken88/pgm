@@ -60,8 +60,23 @@ When promoting, note *what mechanism* vetted it (e.g. "v0 combat resolver",
   weapons in `content.js`). Any standard pf1core melee weapon resolves through
   the same path.
 
+- **Consumables (drink/throw)** — VETTED 2026-07-09. Mechanism: a party inventory
+  + weighted early-treasure drop table (`items.js`, ~60% of cleared rooms drop
+  one) + a combat **"use" action** (drink → heal an ally; throw → damage a foe),
+  usable by humans and by AI companions (who auto-drink a heal when a hero is
+  badly hurt). Vetted items:
+  | Item | Type | Effect |
+  |---|---|---|
+  | Potion of Cure Light Wounds | potion | heal 1d8+1 to an ally |
+  | Potion of Cure Moderate Wounds | potion | heal 2d8+3 to an ally |
+  | Alchemist's Fire | alchemical | 1d6 fire to a foe |
+  | Acid Flask | alchemical | 1d6 acid to a foe |
+  _Simplifications to revisit: thrown alchemicals auto-hit (no touch-attack roll
+  yet); splash damage not modeled._
+
 _Not yet: magic/enhancement properties (need the +N + special-ability layer),
-ranged weapons (need ranged handling in the resolver), and everything below._
+found/equippable weapons & armor as loot, ranged weapons, scrolls/wands (need a
+spell-cast-from-item path), and everything else below._
 
 ---
 
