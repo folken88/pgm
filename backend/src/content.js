@@ -18,21 +18,21 @@
 const CREATURES = [
   {
     key: 'goblin', name: 'goblin', cr: '1/3', xp: 135,
-    hp: 6, ac: 16, attack: 2,
+    hp: 6, ac: 16, attack: 2, initBonus: 6,
     dmg: { count: 1, sides: 4, bonus: 0 }, dmgType: 'S',   // short sword
     weaponName: 'short sword',
     flavor: 'a snarling little humanoid with a rusty blade and too many teeth',
   },
   {
     key: 'dire_rat', name: 'dire rat', cr: '1/3', xp: 135,
-    hp: 5, ac: 14, attack: 1,
+    hp: 5, ac: 14, attack: 1, initBonus: 4,
     dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
     weaponName: 'bite',
     flavor: 'a dog-sized rat, fur matted and eyes gleaming with hunger',
   },
   {
     key: 'kobold', name: 'kobold', cr: '1/4', xp: 100,
-    hp: 5, ac: 15, attack: 1,
+    hp: 5, ac: 15, attack: 1, initBonus: 2,
     dmg: { count: 1, sides: 6, bonus: -1 }, dmgType: 'P',  // spear
     weaponName: 'spear',
     flavor: 'a wiry scaled reptilian, hissing and brandishing a crude spear',

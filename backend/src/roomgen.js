@@ -43,4 +43,38 @@ function generateRoom(roll = Math.random) {
   };
 }
 
-module.exports = { generateRoom, ROOM_FLAVORS };
+/**
+ * Party encounter: scales the number of foes to the party (roughly one per two
+ * heroes, 1-4), draws each from the VETTED roster, and disambiguates duplicate
+ * names with a letter suffix. Returns { flavor, enemies:[instances], reward }.
+ */
+function generatePartyRoom(partySize, roll = Math.random) {
+  const count = Math.max(1, Math.min(4, Math.ceil((partySize || 1) / 2)));
+  const enemies = [];
+  const nameTally = {};
+  for (let i = 0; i < count; i++) {
+    const t = pick(CREATURES, roll);
+    nameTally[t.key] = (nameTally[t.key] || 0) + 1;
+    enemies.push({
+      key: t.key, baseName: t.name,
+      hp: t.hp, maxHp: t.hp, ac: t.ac, attack: t.attack,
+      initBonus: t.initBonus || 0, dmg: t.dmg, flavor: t.flavor,
+    });
+  }
+  // Suffix duplicates: "goblin A", "goblin B" (only when >1 of a kind).
+  const totals = {};
+  enemies.forEach(e => { totals[e.key] = (totals[e.key] || 0) + 1; });
+  const seen = {};
+  enemies.forEach(e => {
+    if (totals[e.key] > 1) {
+      seen[e.key] = (seen[e.key] || 0) + 1;
+      e.name = e.baseName + ' ' + String.fromCharCode(64 + seen[e.key]); // A, B, ...
+    } else {
+      e.name = e.baseName;
+    }
+  });
+  const gp = rollDice(count + 1, 6, roll) + count * 2;
+  return { flavor: pick(ROOM_FLAVORS, roll), enemies, reward: { gp } };
+}
+
+module.exports = { generateRoom, generatePartyRoom, ROOM_FLAVORS };

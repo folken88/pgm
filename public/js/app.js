@@ -18,8 +18,7 @@
     meta: null,
     session: null,            // latest server snapshot
     plan: null, selected: new Set(), charInput: null,
-    // run/combat state reserved for the combat increment
-    runId: null, choices: [],
+    choices: [], lastSeq: 0, lastAnnouncedTurn: null,
   };
 
   var el = function (id) { return document.getElementById(id); };
@@ -100,11 +99,11 @@
     var prev = state.session;
     state.session = snap;
     if (state.mode === 'landing') updateLandingOccupancy(snap);
-    if (state.mode === 'lobby') renderLobby(snap);
-    // Everyone jumps to the game when the host starts.
-    if (snap.phase === 'playing' && (state.mode === 'lobby')) enterGame(snap);
-    // Announce meaningful roster changes while in the lobby.
-    if (state.mode === 'lobby' && prev) announceRosterDelta(prev, snap);
+    if (state.mode === 'lobby') { renderLobby(snap); if (prev) announceRosterDelta(prev, snap); }
+    if (snap.phase === 'playing' && snap.run) {
+      if (state.mode !== 'game') enterGame();
+      renderGame(snap);
+    }
   }
 
   function updateLandingOccupancy(snap) {
@@ -246,19 +245,98 @@
     });
   }
 
-  // ---------- game (placeholder until the combat increment) ----------
-  function enterGame(snap) {
+  // ---------- game: shared turn-based combat ----------
+  function enterGame() {
     showScreen('game');
     el('log').innerHTML = '';
-    var party = snap.players.filter(function (p) { return p.ready; }).map(function (p) { return p.icon + ' ' + p.name; }).join(', ');
-    var line = 'The party descends together: ' + party + '. '
-      + (state.role === 'spectator' ? 'You watch from the shadows.' : 'Ready yourselves.')
-      + ' (Turn-based multiplayer combat is the next build.)';
-    var p = document.createElement('p'); p.className = 'urgent'; p.textContent = line; el('log').appendChild(p);
-    el('hud-hero').textContent = snap.name + ' — ' + snap.counts.players + ' adventurers';
-    el('hud-enemy').textContent = ''; el('hud-gold').textContent = 'Spectators: ' + snap.counts.spectators;
-    el('choices').innerHTML = '';
-    BM.speak(line, 'urgent');
+    state.lastSeq = 0; state.lastAnnouncedTurn = null;
+    BM.speak(state.role === 'spectator' ? 'The adventure begins. You are watching.' : 'The adventure begins!', 'urgent');
+  }
+
+  function renderGame(snap) {
+    var run = snap.run;
+    el('hud-hero').textContent = snap.name + ' — Room ' + (run.roomsCleared + 1);
+    el('hud-enemy').textContent = '';
+    el('hud-gold').textContent = 'Gold: ' + run.gold;
+
+    var myTurn = !!(run.turn && run.turn.ownerClientId === state.clientId);
+    var banner = el('turn-banner'); banner.className = 'turn-banner';
+    if (run.phase === 'combat') {
+      if (run.turn) {
+        if (myTurn) { banner.textContent = '▶ Your turn — act now!'; banner.classList.add('mine'); }
+        else banner.textContent = 'Waiting for ' + run.turn.name + '…';
+      } else banner.textContent = 'Resolving…';
+    } else if (run.phase === 'cleared') { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
+    else if (run.phase === 'defeated') { banner.textContent = '☠ The party has fallen.'; banner.classList.add('defeated'); }
+
+    renderStrip('party-strip', run.combatants.filter(function (c) { return c.side === 'hero'; }));
+    renderStrip('enemy-strip', run.combatants.filter(function (c) { return c.side === 'enemy'; }));
+
+    (run.log || []).forEach(function (e) {
+      if (e.seq > state.lastSeq) {
+        state.lastSeq = e.seq;
+        appendLog(e.text, e.priority, '');
+        BM.speak(e.text, e.priority);
+        if (e.priority === 'urgent') { var a = el('announce'); if (a) a.textContent = e.text; }
+      }
+    });
+
+    renderGameChoices(run, myTurn);
+  }
+
+  function renderStrip(id, list) {
+    var ul = el(id); ul.innerHTML = '';
+    list.forEach(function (c) {
+      var li = document.createElement('li');
+      if (c.current) li.classList.add('current');
+      if (c.down) li.classList.add('down');
+      if (!c.down && c.hp <= c.maxHp / 3) li.classList.add('hurt');
+      li.innerHTML = '<span>' + (c.icon || '') + '</span>' +
+        '<span class="cn">' + esc(c.name) + (c.ownerClientId === state.clientId ? ' (you)' : '') + '</span>' +
+        '<span class="hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp) + '</span>';
+      ul.appendChild(li);
+    });
+  }
+
+  function renderGameChoices(run, myTurn) {
+    var choices = [];
+    if (run.phase === 'combat' && myTurn) {
+      (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
+      choices.push({ id: 'pass', label: 'Hold action' });
+    } else if (run.phase === 'cleared') {
+      choices.push({ id: 'descend', label: 'Descend deeper' });
+    } else if (run.phase === 'defeated') {
+      choices.push({ id: 'leave', label: 'Return to start' });
+    }
+    state.choices = choices;
+    var nav = el('choices'); nav.innerHTML = '';
+    choices.forEach(function (c, i) {
+      var b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<span class="num">' + (i + 1) + '</span><span>' + esc(c.label) + '</span>';
+      b.addEventListener('click', function () { doGameAction(c); });
+      nav.appendChild(b);
+    });
+    // Announce my choices once, when the turn becomes mine.
+    if (myTurn && run.turn && run.turn.combatantId !== state.lastAnnouncedTurn) {
+      state.lastAnnouncedTurn = run.turn.combatantId;
+      BM.speak('Your turn. ' + choices.map(function (c, i) { return (i + 1) + ', ' + c.label; }).join('. ') + '.', 'event');
+    }
+  }
+
+  function appendLog(text, prio) {
+    var log = el('log');
+    var p = document.createElement('p');
+    p.textContent = text;
+    if (prio === 'urgent') p.classList.add('urgent');
+    log.appendChild(p); log.scrollTop = log.scrollHeight;
+  }
+
+  function doGameAction(choice) {
+    if (!choice) return BM.speak('Nothing to do right now.', 'urgent');
+    if (choice.id === 'leave') { location.reload(); return; }
+    var body = { clientId: state.clientId, action: choice.id };
+    if (choice.target) body.target = choice.target;
+    api('/api/session/action', body).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot do that.', 'urgent'); });
   }
 
   // ---------- command routing ----------
@@ -275,6 +353,7 @@
       return BM.speak('Say play or spectate, after entering your name.', 'urgent');
     }
     if (state.mode === 'skills') return skillsCommand(t);
+    if (state.mode === 'game') return gameCommand(t);
     if (state.mode === 'lobby') {
       if (/\b(start|begin|go|descend)\b/.test(t)) return startAdventure();
       return BM.speak('Waiting in the lobby. Say start to begin.', 'urgent');
@@ -303,6 +382,25 @@
         || s.find(function (x) { return name.indexOf(x.name.toLowerCase()) >= 0; });
   }
   function toggleByIndex(i) { var s = state.plan.skills[i]; if (s) toggleSkill(s.key); else BM.speak('No skill number ' + (i + 1) + '.', 'urgent'); }
+
+  function gameCommand(t) {
+    var NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+    var mk = t.match(/^#choice (\d)$/); if (mk) return selectGameIndex(parseInt(mk[1], 10) - 1);
+    var w = t.match(/\b(one|two|three|four|five|six|seven|eight|nine)\b/); if (w) return selectGameIndex(NUM[w[1]] - 1);
+    if (/\b(descend|deeper|continue|next|onward)\b/.test(t)) return chooseById('descend');
+    if (/\b(pass|hold|wait|skip)\b/.test(t)) return chooseById('pass');
+    if (/\b(leave|return|quit|exit)\b/.test(t)) return chooseById('leave');
+    if (/\b(attack|hit|strike|kill|fight)\b/.test(t)) {
+      var atk = state.choices.filter(function (c) { return c.id === 'attack'; });
+      if (!atk.length) return BM.speak('You cannot attack right now.', 'urgent');
+      var target = t.replace(/\b(attack|hit|strike|kill|fight|the)\b/g, '').trim();
+      var byName = target && atk.find(function (c) { return c.label.toLowerCase().indexOf(target) >= 0; });
+      return doGameAction(byName || atk[0]);
+    }
+    BM.speak('Say attack, pass, a number, or wait for your turn.', 'urgent');
+  }
+  function selectGameIndex(i) { var c = state.choices[i]; if (c) doGameAction(c); else BM.speak('No choice ' + (i + 1) + '.', 'urgent'); }
+  function chooseById(id) { var c = state.choices.find(function (x) { return x.id === id; }); if (c) doGameAction(c); else BM.speak('Not available right now.', 'urgent'); }
 
   // ---------- utils ----------
   function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }

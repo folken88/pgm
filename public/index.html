@@ -101,6 +101,19 @@
         <span id="hud-gold">Gold: 0</span>
       </div>
 
+      <p id="turn-banner" class="turn-banner" aria-live="polite"></p>
+
+      <div class="combat-grid">
+        <div class="combat-col">
+          <h3 id="party-h">Party</h3>
+          <ul id="party-strip" class="cstrip" aria-labelledby="party-h"></ul>
+        </div>
+        <div class="combat-col">
+          <h3 id="foes-h">Foes</h3>
+          <ul id="enemy-strip" class="cstrip" aria-labelledby="foes-h"></ul>
+        </div>
+      </div>
+
       <!-- The narration log: polite live region so a screen reader reads new lines -->
       <div id="log" class="log" role="log" aria-live="polite" aria-atomic="false"></div>
 

@@ -6,6 +6,7 @@
  * wired in the next increment — `run` stays null in the lobby foundation.
  */
 const characters = require('./characters');
+const partyrun = require('./partyrun');
 
 const MAX_PLAYERS = 8;
 const MAX_SPECTATORS = 10;
@@ -73,9 +74,15 @@ function startRun(clientId) {
   const ready = [...session.players.values()].filter(p => p.ready && p.character);
   if (ready.length < 1) return { ok: false, error: 'no ready characters yet' };
   session.phase = 'playing';
-  // Party run wired in the combat increment; placeholder marks the transition.
-  session.run = { started: true, party: ready.map(p => p.character.name) };
+  session.run = partyrun.createPartyRun(
+    ready.map(p => ({ clientId: p.clientId, icon: p.icon, character: p.character })));
   return { ok: true };
+}
+
+/** A player acts in the shared run (attack/pass/descend). Turn-gated in-engine. */
+function action(clientId, act) {
+  if (session.phase !== 'playing' || !session.run) return { ok: false, error: 'no run in progress' };
+  return partyrun.applyAction(session.run, clientId, act);
 }
 
 function snapshot() {
@@ -92,12 +99,12 @@ function snapshot() {
       race: p.character ? p.character.race : null,
     })),
     spectators: [...session.spectators.values()].map(s => ({ clientId: s.clientId, name: s.name, icon: s.icon })),
-    run: session.run,
+    run: session.run ? partyrun.publicRun(session.run) : null,
   };
 }
 
 module.exports = {
   ICONS, MAX_PLAYERS, MAX_SPECTATORS,
-  join, leave, setCharacter, setName, rename, startRun, snapshot,
+  join, leave, setCharacter, setName, rename, startRun, action, snapshot,
   _reset() { session = fresh(); seq = 0; },
 };
