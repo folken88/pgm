@@ -155,7 +155,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url === '/api/session/action' && req.method === 'POST') {
     const body = await readBody(req);
-    const act = { type: body.action, target: body.target, item: body.item };
+    const act = { type: body.action, target: body.target, item: body.item, spell: body.spell };
     const r = session.action(body.clientId, act);
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));

@@ -30,4 +30,5 @@ module.exports = {
   spellmath: require('./rules/spellmath'),
   protections: require('./rules/protections'),
   treasure: require('./rules/treasure'),
+  resolve: require('./rules/resolve'),
 };

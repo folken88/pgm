@@ -319,6 +319,9 @@
     if (spectating) { state.choices = []; el('choices').innerHTML = ''; return; }
     if (run.phase === 'combat' && myTurn) {
       (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
+      ((run.turn && run.turn.spells) || []).forEach(function (s) {
+        choices.push({ id: 'cast', spell: s.key, label: 'Cast ' + s.name + (s.uses != null ? ' (' + s.uses + ')' : '') });
+      });
       (run.inventory || []).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
         choices.push({ id: 'use', item: i.key, label: (i.verb === 'drink' ? 'Drink ' : 'Throw ') + (i.short || i.name) });
       });
@@ -353,6 +356,7 @@
     var body = { clientId: state.clientId, action: choice.id };
     if (choice.target) body.target = choice.target;
     if (choice.item) body.item = choice.item;
+    if (choice.spell) body.spell = choice.spell;
     api('/api/session/action', body).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot do that.', 'urgent'); });
   }
 
@@ -395,6 +399,13 @@
     var NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
     var mk = t.match(/^#choice (\d)$/); if (mk) return selectGameIndex(parseInt(mk[1], 10) - 1);
     var w = t.match(/\b(one|two|three|four|five|six|seven|eight|nine)\b/); if (w) return selectGameIndex(NUM[w[1]] - 1);
+    if (/\b(cast|spell)\b/.test(t)) {
+      var casts = state.choices.filter(function (c) { return c.id === 'cast'; });
+      if (!casts.length) return BM.speak('You have no spells to cast right now.', 'urgent');
+      var sname = t.replace(/\b(cast|spell|the|a|an|at|on)\b/g, '').trim();
+      var bySpell = sname && casts.find(function (c) { return c.label.toLowerCase().indexOf(sname) >= 0; });
+      return doGameAction(bySpell || casts[0]);
+    }
     if (/\b(equip|wield|wear|don)\b/.test(t)) {
       var eqs = state.choices.filter(function (c) { return c.id === 'equip'; });
       if (!eqs.length) return BM.speak('Nothing to equip right now.', 'urgent');

@@ -13,6 +13,7 @@
 const combat = require('./combat');
 const items = require('./items');
 const pf1 = require('./pf1core');
+const casting = require('./casting');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
@@ -45,7 +46,9 @@ function perceptionMod(character) {
 
 function heroCombatant(p) {
   const c = p.character;
-  const dex = c.derived.mods.dex || 0;
+  const d = c.derived;
+  const dex = d.mods.dex || 0;
+  const book = casting.spellbookFor(c.cls, d.level);
   return {
     id: 'h:' + p.clientId, side: 'hero', ownerClientId: p.ai ? null : p.clientId,
     ai: !!p.ai, name: c.name, icon: p.icon || '🛡️',
@@ -53,6 +56,10 @@ function heroCombatant(p) {
     perceptionMod: perceptionMod(c),
     character: c, down: false, initMod: dex,
     perceived: new Set(),          // enemy ids this hero noticed on entry
+    // Caster fields (read by pf1core resolvers — the shared combatant shape):
+    cls: c.cls, level: d.level, mods: d.mods, castingMod: d.castingMod || 0,
+    iteratives: d.iteratives || [0], buffs: {},
+    spellbook: book, slots: {}, roomUses: {},
   };
 }
 function enemyCombatant(e, i) {
@@ -61,6 +68,8 @@ function enemyCombatant(e, i) {
     hp: e.hp, maxHp: e.maxHp, ac: e.ac, creature: e, down: false,
     initMod: e.initBonus || 0, stealth: e.stealth, sneaky: !!e.sneaky,
     revealed: false,
+    // Fields the pf1core resolvers read directly off the combatant:
+    type: e.type || null, fort: e.fort || 0, reflex: e.reflex || 0,
   };
 }
 
@@ -79,6 +88,9 @@ function spawnRoom(run, roll) {
       if (check >= en.stealth) { h.perceived.add(en.id); en.revealed = true; }
     });
   });
+
+  // Per-room spell refresh (poker's per-room refill convention).
+  run.heroes.forEach(h => { const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses; });
 
   run.combatants = run.heroes.concat(enemies);
   run.combatants.forEach(cb => { cb.init = rollDie(20, roll) + cb.initMod; });
@@ -123,14 +135,62 @@ function runUntilHeroTurn(run, roll) {
   }
 }
 
+/** Cast a spell by key through the casting layer; converts events into the log. */
+function castSpell(run, hero, spellKey, targetId, roll) {
+  const book = hero.spellbook || { atwill: null, spells: [] };
+  const ab = (book.atwill && book.atwill.key === spellKey) ? book.atwill
+           : book.spells.find(s => s.key === spellKey);
+  if (!ab) return { ok: false, error: 'you do not know that spell' };
+  if (!casting.canCast(hero, ab)) return { ok: false, error: 'no uses of ' + ab.name + ' left this room' };
+  const foes = livingRevealedEnemies(run);
+  const target = targetId ? foes.find(f => f.id === targetId) : null;
+  const allies = run.combatants.filter(c => c.side === 'hero');
+  const r = casting.cast(hero, ab, {
+    enemies: foes, allies, target,
+    nextTarget: () => livingRevealedEnemies(run)[0] || null,
+  }, roll);
+  if (!r.ok) return r;
+  for (const e of r.events) logEvent(run, e.text, e.priority);
+  return { ok: true };
+}
+
 function aiHeroTurn(run, hero, roll) {
-  // If the party holds a healing item and an ally is badly hurt, use it.
-  const healSlot = run.inventory.find(s => { const it = items.ITEM_BY_KEY[s.key]; return it && it.effect.kind === 'heal' && s.qty > 0; });
-  const badlyHurt = run.combatants.some(c => c.side === 'hero' && !c.down && c.hp <= c.maxHp / 3);
-  if (healSlot && badlyHurt && useItem(run, hero, healSlot.key, null, roll).ok) return;
+  const allies = run.combatants.filter(c => c.side === 'hero');
+  const book = hero.spellbook || { atwill: null, spells: [] };
+  const badlyHurt = allies.some(c => !c.down && c.hp <= c.maxHp / 3) || allies.some(c => c.down);
+
+  // 1) Heal first: a castable heal (cure/channel) beats a potion; potion is the fallback.
+  if (badlyHurt) {
+    const healAb = book.spells.find(s => s.effect === 'heal' && casting.canCast(hero, s));
+    if (healAb) {
+      const r = casting.cast(hero, healAb, { enemies: livingRevealedEnemies(run), allies }, roll);
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+    }
+    const healSlot = run.inventory.find(s => { const it = items.ITEM_BY_KEY[s.key]; return it && it.effect && it.effect.kind === 'heal' && s.qty > 0; });
+    if (healSlot && useItem(run, hero, healSlot.key, null, roll).ok) return;
+  }
 
   const foes = livingRevealedEnemies(run);
   if (!foes.length) { logEvent(run, `${hero.name} scans the room, weapon ready.`, 'event'); return; }
+
+  // 2) Casters spend a leveled spell when it's worth it: AoE on a crowd, else a
+  //    single-target nuke on the beefiest foe; cantrip over a weak melee swing.
+  if (pf1.abilities.isCaster(hero.cls)) {
+    const worksOn = (ab, t) => pf1.protections.spellWorksOn(ab, { ...t.creature, hp: t.hp, name: t.name });
+    const aoe = book.spells.find(s => s.effect === 'aoe' && casting.canCast(hero, s));
+    const nuke = book.spells.find(s => ['missile', 'touch', 'bolt'].includes(s.effect) && casting.canCast(hero, s));
+    const pickAb = (foes.length >= 2 && aoe) ? aoe : (nuke && foes.some(f => worksOn(nuke, f)) ? nuke : null);
+    if (pickAb) {
+      const r = casting.cast(hero, pickAb, { enemies: foes, allies, nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+    }
+    if (book.atwill) {
+      const r = casting.cast(hero, book.atwill, { enemies: foes, allies, target: foes.slice().sort((a, b) => a.hp - b.hp)[0], nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+    }
+  }
+
+  // 3) Martials (and casters out of tricks) swing at the most-wounded foe.
   const target = foes.slice().sort((a, b) => a.hp - b.hp)[0];
   heroAttack(run, hero, target, roll);
 }
@@ -182,6 +242,9 @@ function applyAction(run, clientId, action, roll = Math.random) {
     const target = pickTarget(run, action.target);
     if (!target) return { ok: false, error: 'no visible target' };
     heroAttack(run, cb, target, roll);
+  } else if (type === 'cast') {
+    const r = castSpell(run, cb, action.spell, action.target, roll);
+    if (!r.ok) return r;                 // invalid cast doesn't burn the turn
   } else if (type === 'use') {
     const r = useItem(run, cb, action.item, action.target, roll);
     if (!r.ok) return r;                 // invalid use doesn't burn the turn
@@ -299,8 +362,17 @@ function logEvent(run, text, priority) {
 /** Client-facing view. Hidden (unrevealed) enemies are omitted entirely. */
 function publicRun(run) {
   const cb = current(run);
-  const turn = (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai)
-    ? { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name } : null;
+  let turn = null;
+  if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai) {
+    const book = cb.spellbook || { atwill: null, spells: [] };
+    const spells = [];
+    if (book.atwill) spells.push({ key: book.atwill.key, name: book.atwill.name, icon: book.atwill.icon, uses: null });
+    for (const s of book.spells) {
+      const uses = s.cost === 'slot' ? (cb.slots[s.slvl || 1] || 0) : (cb.roomUses[s.key] || 0);
+      if (uses > 0) spells.push({ key: s.key, name: s.name, icon: s.icon, uses });
+    }
+    turn = { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name, spells };
+  }
   const shown = run.combatants.filter(c => c.side === 'hero' || c.revealed);
   return {
     phase: run.phase, round: run.round, gold: run.gold, roomsCleared: run.roomsCleared,

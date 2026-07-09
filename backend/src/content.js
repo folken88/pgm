@@ -20,28 +20,28 @@
 // unwary party flat-footed in round 1.
 const CREATURES = [
   {
-    key: 'goblin', name: 'goblin', cr: '1/3', xp: 135,
+    key: 'goblin', type: 'humanoid', fort: 2, reflex: 2, name: 'goblin', cr: '1/3', xp: 135,
     hp: 6, ac: 16, attack: 2, initBonus: 6, stealth: 10,
     dmg: { count: 1, sides: 4, bonus: 0 }, dmgType: 'S',   // short sword
     weaponName: 'short sword',
     flavor: 'a snarling little humanoid with a rusty blade and too many teeth',
   },
   {
-    key: 'dire_rat', name: 'dire rat', cr: '1/3', xp: 135,
+    key: 'dire_rat', type: 'animal', fort: 3, reflex: 3, name: 'dire rat', cr: '1/3', xp: 135,
     hp: 5, ac: 14, attack: 1, initBonus: 4, stealth: 8,
     dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
     weaponName: 'bite',
     flavor: 'a dog-sized rat, fur matted and eyes gleaming with hunger',
   },
   {
-    key: 'kobold', name: 'kobold', cr: '1/4', xp: 100,
+    key: 'kobold', type: 'humanoid', fort: 2, reflex: 1, name: 'kobold', cr: '1/4', xp: 100,
     hp: 5, ac: 15, attack: 1, initBonus: 2, stealth: 12,
     dmg: { count: 1, sides: 6, bonus: -1 }, dmgType: 'P',  // spear
     weaponName: 'spear',
     flavor: 'a wiry scaled reptilian, hissing and brandishing a crude spear',
   },
   {
-    key: 'giant_spider', name: 'giant spider', cr: '1', xp: 400,
+    key: 'giant_spider', type: 'vermin', fort: 4, reflex: 1, name: 'giant spider', cr: '1', xp: 400,
     hp: 11, ac: 14, attack: 2, initBonus: 3, stealth: 19,   // SNEAKY — lurks in webs
     dmg: { count: 1, sides: 6, bonus: 0 }, dmgType: 'P',   // bite
     weaponName: 'bite', sneaky: true,
@@ -50,49 +50,49 @@ const CREATURES = [
   // --- More early-encounter foes (vetted 2026-07-09; basic attack only, special
   // riders like poison/trip/blood-drain simplified away for now). ---
   {
-    key: 'skeleton', name: 'skeleton', cr: '1/3', xp: 135, undead: true,
+    key: 'skeleton', type: 'undead', fort: 0, reflex: 0, name: 'skeleton', cr: '1/3', xp: 135, undead: true,
     hp: 4, ac: 16, attack: 2, initBonus: 5, stealth: 6,
     dmg: { count: 1, sides: 4, bonus: 2 }, dmgType: 'S',   // claws / scimitar
     weaponName: 'claw', flavor: 'a clattering skeleton, empty sockets glowing faintly',
   },
   {
-    key: 'zombie', name: 'zombie', cr: '1/2', xp: 200, undead: true,
+    key: 'zombie', type: 'undead', fort: 0, reflex: 0, name: 'zombie', cr: '1/2', xp: 200, undead: true,
     hp: 12, ac: 12, attack: 4, initBonus: -1, stealth: 4,
     dmg: { count: 1, sides: 6, bonus: 4 }, dmgType: 'B',   // slam
     weaponName: 'slam', flavor: 'a shambling corpse, reeking and relentless',
   },
   {
-    key: 'giant_centipede', name: 'giant centipede', cr: '1/2', xp: 200,
+    key: 'giant_centipede', type: 'vermin', fort: 2, reflex: 0, name: 'giant centipede', cr: '1/2', xp: 200,
     hp: 5, ac: 14, attack: 2, initBonus: 6, stealth: 14,
     dmg: { count: 1, sides: 6, bonus: -1 }, dmgType: 'P',  // bite (poison ignored)
     weaponName: 'bite', flavor: 'a foot-long centipede skittering along the wall',
   },
   {
-    key: 'giant_ant', name: 'giant ant', cr: '1/2', xp: 200,
+    key: 'giant_ant', type: 'vermin', fort: 4, reflex: 0, name: 'giant ant', cr: '1/2', xp: 200,
     hp: 9, ac: 15, attack: 2, initBonus: 0, stealth: 8,
     dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
     weaponName: 'bite', flavor: 'a dog-sized ant, mandibles clicking hungrily',
   },
   {
-    key: 'wolf', name: 'wolf', cr: '1', xp: 400,
+    key: 'wolf', type: 'animal', fort: 5, reflex: 4, name: 'wolf', cr: '1', xp: 400,
     hp: 13, ac: 14, attack: 2, initBonus: 2, stealth: 12,
     dmg: { count: 1, sides: 6, bonus: 1 }, dmgType: 'P',   // bite (trip ignored)
     weaponName: 'bite', flavor: 'a lean grey wolf, hackles raised and growling low',
   },
   {
-    key: 'giant_frog', name: 'giant frog', cr: '1', xp: 400,
+    key: 'giant_frog', type: 'animal', fort: 5, reflex: 4, name: 'giant frog', cr: '1', xp: 400,
     hp: 15, ac: 12, attack: 3, initBonus: 2, stealth: 14,
     dmg: { count: 1, sides: 6, bonus: 3 }, dmgType: 'B',   // bite (pull ignored)
     weaponName: 'bite', flavor: 'a bloated frog the size of a hound, tongue flicking',
   },
   {
-    key: 'goblin_dog', name: 'goblin dog', cr: '1', xp: 400,
+    key: 'goblin_dog', type: 'animal', fort: 4, reflex: 3, name: 'goblin dog', cr: '1', xp: 400,
     hp: 9, ac: 13, attack: 2, initBonus: 2, stealth: 10,
     dmg: { count: 1, sides: 4, bonus: 1 }, dmgType: 'P',   // bite
     weaponName: 'bite', flavor: 'a hairless, warty hound bred by goblins',
   },
   {
-    key: 'stirge', name: 'stirge', cr: '1/2', xp: 200,
+    key: 'stirge', type: 'magical beast', fort: 1, reflex: 6, name: 'stirge', cr: '1/2', xp: 200,
     hp: 5, ac: 16, attack: 3, initBonus: 4, stealth: 13,
     dmg: { count: 1, sides: 3, bonus: 0 }, dmgType: 'P',   // proboscis (blood drain ignored)
     weaponName: 'proboscis', flavor: 'a mosquito-like horror the size of a cat, darting in',
