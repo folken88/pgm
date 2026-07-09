@@ -31,4 +31,5 @@ module.exports = {
   protections: require('./rules/protections'),
   treasure: require('./rules/treasure'),
   resolve: require('./rules/resolve'),
+  tick: require('./rules/tick'),
 };

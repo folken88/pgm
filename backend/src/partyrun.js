@@ -120,6 +120,32 @@ function nextTurn(run) {
   if (run.turnIndex === 0) run.round += 1;   // wrapped to top of initiative = new round
 }
 
+/** Turn-start condition tick (pf1core engine): narrates events, returns acts. */
+function tickFor(run, cb, roll) {
+  const ctx = { roll };
+  if (cb.side === 'hero' && cb.character) ctx.willBonus = cb.character.derived.saves.will;
+  const t = pf1.tick.tickTurnStart(cb, ctx);
+  for (const e of t.events) {
+    switch (e.kind) {
+      case 'darkened': logEvent(run, `🌑 ${cb.name} is lost in magical darkness — does nothing${e.lifts ? ' (the shroud lifts!)' : ''}.`, 'event'); break;
+      case 'acid': logEvent(run, `🟢 Acid keeps sizzling on ${cb.name} — ${e.dealt} acid.${e.slain ? ` ☠️ ${cb.name} dissolves!` : ''}`, e.slain ? 'urgent' : 'event'); break;
+      case 'asleep': logEvent(run, `${cb.name} sleeps soundly — does nothing.`, 'event'); break;
+      case 'fascinated': logEvent(run, `${cb.name} stands fascinated — does nothing.`, 'event'); break;
+      case 'held': logEvent(run, `🖐️ ${cb.name} stays HELD — struggles in vain and loses its turn. [Will ${e.save.total} vs ${e.dc}]`, 'event'); break;
+      case 'held_end': logEvent(run, `🖐️ ${cb.name} ${e.bySave ? 'wrenches free of the hold — but the struggle cost its turn' : 'shakes off the fading hold'}!`, 'event'); break;
+      case 'paralyzed': logEvent(run, `🖐️ ${cb.name} is paralyzed — loses its turn.`, 'event'); break;
+      case 'grapple_released': logEvent(run, `${cb.name} wrenches loose — the grip releases.`, 'event'); break;
+      case 'grapple_escaped': logEvent(run, `${cb.name} tears free of the grapple — but the struggle cost its turn.`, 'event'); break;
+      case 'grapple_held': logEvent(run, `${cb.name} is held fast — helpless, loses its turn.`, 'event'); break;
+      case 'lose_turn': logEvent(run, `${cb.name} is off-balance — loses a turn.`, 'event'); break;
+      case 'nauseated': logEvent(run, `${cb.name} retches — nauseated, loses a turn.`, 'event'); break;
+      case 'bleed': logEvent(run, `🩸 ${cb.name} bleeds for ${e.dealt}.${e.slain ? ' ☠️' : ''}`, e.slain ? 'urgent' : 'event'); break;
+    }
+  }
+  if (cb.hp <= 0 && !cb.down) { cb.down = true; }
+  return t.acts;
+}
+
 /** Auto-resolve enemy + ai-companion turns; stop at a living HUMAN hero. */
 function runUntilHeroTurn(run, roll) {
   let guard = 0;
@@ -128,6 +154,7 @@ function runUntilHeroTurn(run, roll) {
     if (living(run, 'hero').length === 0) return defeat(run);
     const cb = current(run);
     if (!cb || cb.down) { nextTurn(run); continue; }
+    if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
     if (cb.side === 'hero' && !cb.ai) { logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
     if (cb.side === 'hero') aiHeroTurn(run, cb, roll);   // ai companion
     else enemyTurn(run, cb, roll);
@@ -206,7 +233,7 @@ function enemyTurn(run, enemy, roll) {
   // Flat-footed: round 1, target never perceived this attacker -> lose Dex to AC.
   const flat = run.round === 1 && !target.perceived.has(enemy.id);
   const targetAC = flat ? target.flatAc : target.ac;
-  const res = combat.creatureAttack(enemy.creature, targetAC, roll);
+  const res = combat.creatureAttack(enemy.creature, targetAC, roll, -pf1.tick.attackPenalty(enemy));
   const ff = flat ? ' (caught flat-footed!)' : '';
   if (res.hit) {
     target.hp -= res.damage;
@@ -304,7 +331,8 @@ function pickTarget(run, targetId) {
 }
 
 function heroAttack(run, hero, target, roll) {
-  const res = combat.heroAttack(hero.character.derived, hero.character.weapon, target.ac, roll);
+  const targetAC = pf1.spellmath.enemyAC(target);   // situational mods: prone/stunned/blinded/slowed/flat-footed
+  const res = combat.heroAttack(hero.character.derived, hero.character.weapon, targetAC, roll, -pf1.tick.attackPenalty(hero));
   if (!res.hit) { logEvent(run, `${hero.name} swings at ${target.name} and misses.`, 'event'); return; }
   target.hp -= res.damage;
   const crit = res.crit ? 'Critical! ' : '';

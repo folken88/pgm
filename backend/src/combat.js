@@ -31,10 +31,10 @@ function weaponDamage(weapon, dmgBonus, crit, roll) {
  * Resolve one hero melee attack vs a target AC.
  * Returns { d20, total, hit, crit, damage, threat }.
  */
-function heroAttack(derived, weapon, targetAC, roll = Math.random) {
+function heroAttack(derived, weapon, targetAC, roll = Math.random, atkMod = 0) {
   const ap = pf1.character.attackProfile(derived, weapon);
   const d20 = rollDie(20, roll);
-  const total = d20 + derived.bab + ap.toHitMod;
+  const total = d20 + derived.bab + ap.toHitMod + atkMod;
   const natural1 = d20 === 1;
   const natural20 = d20 === 20;
   const hit = !natural1 && (natural20 || total >= targetAC);
@@ -55,9 +55,9 @@ function heroAttack(derived, weapon, targetAC, roll = Math.random) {
  * numbers (from content.js) rather than pf1core derivation.
  * Returns { d20, total, hit, crit, damage }.
  */
-function creatureAttack(creature, targetAC, roll = Math.random) {
+function creatureAttack(creature, targetAC, roll = Math.random, atkMod = 0) {
   const d20 = rollDie(20, roll);
-  const total = d20 + (creature.attack || 0);
+  const total = d20 + (creature.attack || 0) + atkMod;
   const natural1 = d20 === 1;
   const natural20 = d20 === 20;
   const hit = !natural1 && (natural20 || total >= targetAC);
