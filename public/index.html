@@ -15,8 +15,27 @@
   </header>
 
   <main id="main">
+    <!-- Landing: join as player or spectator -->
+    <section id="landing" aria-labelledby="landing-h">
+      <h2 id="landing-h">Join the party</h2>
+      <div class="field">
+        <label for="handle">Your name</label>
+        <input id="handle" type="text" autocomplete="off" value="" placeholder="e.g. Kara" required />
+      </div>
+      <fieldset class="iconset">
+        <legend>Pick an icon</legend>
+        <div id="icon-picker" class="icon-picker" role="radiogroup" aria-label="Choose your icon"></div>
+      </fieldset>
+      <div id="session-here" class="muted-line" aria-live="polite"></div>
+      <div class="landing-actions">
+        <button type="button" id="join-play">⚔️ Play</button>
+        <button type="button" id="join-spectate">👁️ Spectate</button>
+      </div>
+      <p id="join-error" class="join-error" role="alert" aria-live="assertive"></p>
+    </section>
+
     <!-- Character creation -->
-    <section id="create" aria-labelledby="create-h">
+    <section id="create" hidden aria-labelledby="create-h">
       <h2 id="create-h">Create your character</h2>
       <form id="create-form">
         <div class="field">
@@ -46,7 +65,29 @@
       <div id="skill-list" class="skill-list" role="group" aria-label="Skills — activate to toggle a rank"></div>
       <div class="skill-actions">
         <button type="button" id="skill-auto">↺ Reset to suggested</button>
-        <button type="button" id="skill-begin">Begin the descent</button>
+        <button type="button" id="skill-begin">Confirm character →</button>
+      </div>
+    </section>
+
+    <!-- Lobby: live roster of players + spectators -->
+    <section id="lobby" hidden aria-labelledby="lobby-h">
+      <h2 id="lobby-h">Lobby — <span id="lobby-name">The Delve</span></h2>
+      <p id="lobby-you" class="muted-line" aria-live="polite"></p>
+
+      <div class="roster">
+        <div class="roster-col">
+          <h3 id="players-h">Adventurers (<span id="players-count">0</span>/8)</h3>
+          <ul id="players-list" class="roster-list" aria-labelledby="players-h"></ul>
+        </div>
+        <div class="roster-col">
+          <h3 id="spectators-h">Onlookers (<span id="spectators-count">0</span>/10)</h3>
+          <ul id="spectators-list" class="roster-list" aria-labelledby="spectators-h"></ul>
+        </div>
+      </div>
+
+      <div class="lobby-actions">
+        <button type="button" id="lobby-start" hidden>▶ Start the adventure</button>
+        <span id="lobby-wait" class="muted-line"></span>
       </div>
     </section>
 

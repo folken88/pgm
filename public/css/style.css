@@ -47,6 +47,36 @@ button { cursor: pointer; }
 }
 #begin-btn { width: 100%; padding: .8rem; font-size: 1.05rem; }
 
+/* Landing / icon picker */
+.iconset { border: 1px solid var(--line); border-radius: 10px; margin: .9rem 0; padding: .5rem .7rem; }
+.iconset legend { color: var(--muted); font-weight: 600; padding: 0 .3rem; }
+.icon-picker { display: flex; flex-wrap: wrap; gap: .4rem; }
+.icon-picker button {
+  font-size: 1.4rem; width: 2.6rem; height: 2.6rem; padding: 0; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; background: var(--panel);
+}
+.icon-picker button[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.landing-actions { display: flex; gap: .6rem; margin-top: .5rem; }
+.landing-actions button { flex: 1; padding: .8rem; font-weight: 700; font-size: 1.05rem; }
+#join-play { background: var(--accent); color: var(--accent-ink); border: none; }
+.join-error { color: var(--danger); font-weight: 600; min-height: 1.2rem; }
+
+/* Lobby / roster */
+.roster { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+@media (max-width: 560px) { .roster { grid-template-columns: 1fr; } }
+.roster-col h3 { font-size: 1rem; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+.roster-list { list-style: none; margin: .5rem 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.roster-list li {
+  display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+}
+.roster-list .ricon { font-size: 1.3rem; }
+.roster-list .rmeta { color: var(--muted); font-size: .85rem; margin-left: auto; }
+.roster-list .ready { color: var(--ok); }
+.roster-list .waiting { color: var(--accent); }
+.lobby-actions { display: flex; gap: .8rem; align-items: center; margin-top: .6rem; }
+#lobby-start { background: var(--ok); color: #08130a; border: none; font-weight: 800; padding: .8rem 1.2rem; font-size: 1.05rem; }
+
 /* Skill allocation */
 .muted-line { color: var(--muted); font-size: .95rem; margin: .2rem 0 .6rem; }
 .points {
