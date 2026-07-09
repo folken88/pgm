@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PGM — Personal Game Master</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to main</a>
+
+  <header>
+    <h1>Personal Game Master</h1>
+    <p class="tagline">A Pathfinder dungeon crawl — playable by ear.</p>
+  </header>
+
+  <main id="main">
+    <!-- Character creation -->
+    <section id="create" aria-labelledby="create-h">
+      <h2 id="create-h">Create your character</h2>
+      <form id="create-form">
+        <div class="field">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" autocomplete="off" value="Adventurer" required />
+        </div>
+        <div class="field">
+          <label for="race">Race</label>
+          <select id="race" name="race"></select>
+        </div>
+        <div class="field">
+          <label for="cls">Class</label>
+          <select id="cls" name="cls"></select>
+        </div>
+        <button type="submit" id="begin-btn">Begin the descent</button>
+      </form>
+    </section>
+
+    <!-- Game -->
+    <section id="game" hidden aria-labelledby="game-h">
+      <h2 id="game-h" class="visually-hidden">Adventure</h2>
+
+      <div class="hud" aria-label="Status">
+        <span id="hud-hero">—</span>
+        <span id="hud-enemy"></span>
+        <span id="hud-gold">Gold: 0</span>
+      </div>
+
+      <!-- The narration log: polite live region so a screen reader reads new lines -->
+      <div id="log" class="log" role="log" aria-live="polite" aria-atomic="false"></div>
+
+      <!-- Choices: numbered, keyboard + click + voice selectable -->
+      <nav id="choices" class="choices" aria-label="Choices"></nav>
+
+      <!-- Urgent announcements (victory/defeat) get an assertive region -->
+      <div id="announce" class="visually-hidden" role="alert" aria-live="assertive"></div>
+    </section>
+  </main>
+
+  <!-- Accessibility control bar -->
+  <footer class="a11y-bar" aria-label="Accessibility controls">
+    <button id="ptt" type="button" aria-pressed="false" title="Hold to speak (or hold Space)">🎤 Hold to speak</button>
+    <button id="repeat" type="button" title="Repeat last (H)">🔁 Repeat</button>
+    <button id="slower" type="button" title="Slower ( - )">🐢 Slower</button>
+    <button id="faster" type="button" title="Faster ( + )">🐇 Faster</button>
+    <button id="mute" type="button" aria-pressed="false" title="Toggle speech ( ` )">🔊 Speech: on</button>
+    <span id="status-line" class="status-line" aria-live="polite"></span>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/js/blindmode.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
