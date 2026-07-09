@@ -21,6 +21,7 @@ module.exports = {
   weapons: require('./pf1data/weapons'),
   xp: require('./pf1data/xp'),
   abilityScores: require('./pf1data/abilityScores'),
+  skills: require('./pf1data/skills'),
   loadouts: require('./pf1data/loadouts'),
   profiles: require('./pf1data/characterProfiles'),
   character: require('./game/character'),

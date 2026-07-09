@@ -39,10 +39,19 @@ function defeat(creature) {
 }
 
 function heroStatus(hero) {
-  const d = hero.character.derived;
-  return `${hero.character.name}, level 1 ${hero.character.cls}. `
-    + `Health ${hero.hp} of ${hero.character.maxHp}. Armor class ${hero.character.ac}. `
-    + `Attack bonus plus ${d.bab}. Wielding a ${hero.character.weaponName}.`;
+  const c = hero.character;
+  const d = c.derived;
+  let out = `${c.name}, level 1 ${c.cls}. `
+    + `Health ${hero.hp} of ${c.maxHp}. Armor class ${c.ac}. `
+    + `Attack bonus plus ${d.bab}. Wielding a ${c.weaponName}.`;
+  const trained = trainedSummary(c.skillSheet || []);
+  if (trained.length) out += ` Trained skills: ${trained.join(', ')}.`;
+  return out;
+}
+
+function trainedSummary(sheet) {
+  return sheet.filter(s => s.ranks > 0)
+    .map(s => `${s.name} ${s.modifier >= 0 ? '+' : ''}${s.modifier}`);
 }
 
 function lookAround(room) {

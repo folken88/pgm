@@ -31,8 +31,23 @@
           <label for="cls">Class</label>
           <select id="cls" name="cls"></select>
         </div>
-        <button type="submit" id="begin-btn">Begin the descent</button>
+        <button type="submit" id="begin-btn">Next: choose skills</button>
       </form>
+    </section>
+
+    <!-- Skill allocation -->
+    <section id="skills" hidden aria-labelledby="skills-h">
+      <h2 id="skills-h">Spend your skill points</h2>
+      <p id="skills-intro" class="muted-line">
+        Suggested skills are already selected. Press <strong>Begin the descent</strong> to accept,
+        or toggle skills below. Class skills are marked ★ (they gain a +3 bonus).
+      </p>
+      <p id="skill-points" class="points" aria-live="polite">Points remaining: 0</p>
+      <div id="skill-list" class="skill-list" role="group" aria-label="Skills — activate to toggle a rank"></div>
+      <div class="skill-actions">
+        <button type="button" id="skill-auto">↺ Reset to suggested</button>
+        <button type="button" id="skill-begin">Begin the descent</button>
+      </div>
     </section>
 
     <!-- Game -->

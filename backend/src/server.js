@@ -9,7 +9,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const game = require('./game');
-const { RACES, CLASSES } = require('./characters');
+const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
@@ -57,10 +57,17 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, { races: RACES, classes: CLASSES });
   }
 
+  if (url === '/api/character/plan' && req.method === 'POST') {
+    const body = await readBody(req);
+    const plan = planCharacter({ name: body.name, race: body.race, cls: body.cls || body.class });
+    return sendJSON(res, 200, plan);
+  }
+
   if (url === '/api/run/start' && req.method === 'POST') {
     const body = await readBody(req);
     const state = game.startRun({
       name: body.name, race: body.race, cls: body.cls || body.class,
+      skills: Array.isArray(body.skills) ? body.skills : null,
     });
     const id = String(nextId++);
     runs.set(id, state.run);

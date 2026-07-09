@@ -5,6 +5,7 @@
  */
 const pf1 = require('./pf1core');
 const { heroAC } = require('./combat');
+const skillAlloc = require('./skills');
 const { STARTING_WEAPON, DEFAULT_WEAPON, STARTING_ARMOR_BONUS } = require('./content');
 
 // Sensible level-1 array; assigned by class priority later. v0: fixed spread.
@@ -44,7 +45,7 @@ function validClass(cls) {
 /**
  * Build a playable character. Returns the persistable/serializable shape.
  */
-function createCharacter({ name, race = 'human', cls = 'fighter' }) {
+function createCharacter({ name, race = 'human', cls = 'fighter', skills = null }) {
   cls = validClass(cls);
   const baseScores = SCORES_BY_CLASS[cls] || DEFAULT_SCORES;
   const raceMods = RACE_MODS[race] || null;
@@ -58,6 +59,12 @@ function createCharacter({ name, race = 'human', cls = 'fighter' }) {
 
   const ac = heroAC(derived, STARTING_ARMOR_BONUS);
 
+  // Skills: use the provided selection, else fall back to the smart default.
+  const points = skillAlloc.pointsFor(cls, derived.mods.int || 0, race);
+  const selected = skillAlloc.normalizeSelection(
+    skills || skillAlloc.smartDefault(cls, points), points);
+  const skillSheet = skillAlloc.buildSheet(cls, derived.mods, selected);
+
   return {
     name: String(name || 'Adventurer').slice(0, 40),
     race, cls,
@@ -65,10 +72,22 @@ function createCharacter({ name, race = 'human', cls = 'fighter' }) {
     derived,                 // full pf1core derivation (bab, mods, saves, hp, ...)
     maxHp: derived.hp,
     ac,
+    skillPoints: points,
+    skills: selected,        // chosen skill keys (1 rank each at level 1)
+    skillSheet,              // full display sheet
   };
+}
+
+/** Preview a character's ability mods + skill plan without committing a run. */
+function planCharacter({ name, race = 'human', cls = 'fighter' }) {
+  cls = validClass(cls);
+  const baseScores = SCORES_BY_CLASS[cls] || DEFAULT_SCORES;
+  const raceMods = RACE_MODS[race] || null;
+  const derived = pf1.character.deriveCharacter({ cls, level: 1, baseScores, race, raceMods });
+  return skillAlloc.planFor(cls, derived.mods, race);
 }
 
 const RACES = Object.keys(RACE_MODS);
 const CLASSES = Object.keys(SCORES_BY_CLASS);
 
-module.exports = { createCharacter, RACES, CLASSES, validClass };
+module.exports = { createCharacter, planCharacter, RACES, CLASSES, validClass };
