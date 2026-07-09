@@ -1,0 +1,11 @@
+{
+  "name": "pgm",
+  "version": "0.1.0",
+  "description": "Personal Game Master — solo/multiplayer PF1 procedural dungeon crawl with blind-first accessibility.",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "sync-pf1core": "bash scripts/sync-pf1core.sh"
+  },
+  "license": "UNLICENSED"
+}
