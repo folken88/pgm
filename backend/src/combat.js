@@ -31,7 +31,7 @@ function weaponDamage(weapon, dmgBonus, crit, roll) {
  * Resolve one hero melee attack vs a target AC.
  * Returns { d20, total, hit, crit, damage, threat }.
  */
-function heroAttack(derived, weapon, targetAC, roll = Math.random, atkMod = 0) {
+function heroAttack(derived, weapon, targetAC, roll = Math.random, atkMod = 0, dmgMod = 0) {
   const ap = pf1.character.attackProfile(derived, weapon);
   const d20 = rollDie(20, roll);
   const total = d20 + derived.bab + ap.toHitMod + atkMod;
@@ -43,10 +43,10 @@ function heroAttack(derived, weapon, targetAC, roll = Math.random, atkMod = 0) {
   if (hit && (natural20 || d20 >= (weapon.crit || 20))) {
     threat = true;
     // Confirm: a second attack roll that also meets AC confirms the crit.
-    const confirm = rollDie(20, roll) + derived.bab + ap.toHitMod;
+    const confirm = rollDie(20, roll) + derived.bab + ap.toHitMod + atkMod;
     crit = confirm >= targetAC || natural20;
   }
-  const damage = hit ? weaponDamage(weapon, ap.dmgBonus, crit, roll) : 0;
+  const damage = hit ? weaponDamage(weapon, ap.dmgBonus + dmgMod, crit, roll) : 0;
   return { d20, total, hit, crit, threat, damage };
 }
 

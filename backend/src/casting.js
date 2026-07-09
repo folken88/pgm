@@ -12,16 +12,18 @@ const R = pf1.resolve;
 const P = pf1.protections;
 
 // Effect families with a working resolver TODAY. Grows as Phase B lands more.
-const SUPPORTED = new Set(['bolt', 'touch', 'aoe', 'missile', 'save_debuff', 'heal']);
+const SUPPORTED = new Set(['bolt', 'touch', 'aoe', 'missile', 'save_debuff', 'heal', 'buff']);
 
-/** The castable list for a class+level: kit abilities in supported families. */
+/** The castable list for a class+level: kit abilities in supported families.
+ *  Stance toggles + Rage are excluded until their models land (see buffs.js). */
 function spellbookFor(cls, level) {
   const kit = A.kitFor(cls);
   if (!kit) return { atwill: null, spells: [] };
   const atwill = kit.atwill && SUPPORTED.has(kit.atwill.effect) ? kit.atwill : null;
   const spells = (kit.abilities || []).filter(ab =>
     SUPPORTED.has(ab.effect) && (ab.minLevel || 1) <= level
-    && ['slot', 'room'].includes(ab.cost));
+    && ['slot', 'room', 'run'].includes(ab.cost)
+    && !ab.deadlyaim && !ab.powerattack && !ab.fightdefensively && ab.key !== 'rage');
   return { atwill, spells };
 }
 
@@ -41,11 +43,13 @@ function roomResources(hero) {
 function canCast(hero, ab) {
   if (ab.cost === 'slot') { const L = ab.slvl || 1; return (hero.slots[L] || 0) > 0; }
   if (ab.cost === 'room') return (hero.roomUses[ab.key] || 0) > 0;
+  if (ab.cost === 'run') return (hero.runUses[ab.key] || 0) > 0;
   return true;   // at-will
 }
 function spend(hero, ab) {
   if (ab.cost === 'slot') { const L = ab.slvl || 1; hero.slots[L] = Math.max(0, (hero.slots[L] || 0) - 1); }
   else if (ab.cost === 'room') hero.roomUses[ab.key] = Math.max(0, (hero.roomUses[ab.key] || 0) - 1);
+  else if (ab.cost === 'run') hero.runUses[ab.key] = Math.max(0, (hero.runUses[ab.key] || 0) - 1);
 }
 
 /** Cast `ab` from hero at target/context. Returns {ok, events[]} — events are
@@ -122,6 +126,17 @@ function cast(hero, ab, ctx, roll = Math.random) {
         const h = R.applyHeal(ally, amt);
         ev.push({ text: `${icon} ${m.name} casts ${ab.name} on ${ally.name}, healing ${h.healed}. (${ally.hp}/${ally.maxHp} HP.)${h.revived ? ` ${ally.name} is back on their feet!` : ''}`, priority: h.revived ? 'urgent' : 'event' });
       }
+      break;
+    }
+    case 'buff': {
+      const targets = ab.party ? allies.filter(a => !a.down)
+        : ab.target === 'ally' ? [ctx.ally || allies.filter(a => !a.down).sort((a, b) => a.hp - b.hp)[0] || m]
+        : [m];
+      const res = pf1.buffs.resolveBuff(m, ab, targets, enemies);
+      if (!res.applied.length && !res.enemyPenalty) return { ok: false, error: ab.name + ' is already active' };
+      const scaleTag = res.scale ? ` (+${res.scale})` : '';
+      const who = ab.party ? 'the party' : (targets[0] === m ? (m.name === m.name ? 'themself' : m.name) : targets[0].name);
+      ev.push({ text: `${icon} ${m.name} casts ${ab.name}${scaleTag} on ${who}${res.enemyPenalty ? ' — allies blessed, enemies cursed across the field' : ''}!`, priority: 'event' });
       break;
     }
     default: return { ok: false, error: 'unsupported spell' };

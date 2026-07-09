@@ -16,15 +16,17 @@ unresolvable spell can never be offered.
 | missile (auto-hit darts, Shield blocks) | `resolveMissile` | Magic Missile |
 | save_debuff (held w/ re-save DC, nauseated) | `resolveSaveDebuff` | Hold Person |
 | heal (cure single, channel party-heal / offensive sear) | `cureAmount`/`resolveChannelHeal`/`resolveChannelSear` | Cure Light Wounds, Channel Energy |
+| buff (room + run-long, deflection no-stack, Prayer's field curse, GMW/Inspire scaling, DR/fly/displace riders) | `resolveBuff` (+`buffAtkMods`/`buffAcMod` in the attack/AC math) | Bless (once/run), Shield of Faith, Divine Favor, Shield, Cat's Grace |
 
 Slots refresh per room (poker convention). Spell DCs/saves/SR/metamagic all run
 through pf1core `spellmath` — identical math to poker's dungeon.
 
 ## UNVETTED (next families, per the extraction plan Phase B)
-buff (Shield, Bless, Mage Armor, Divine Favor…), grease/control, sleep,
-charm/dominate, summon, dispel/cleanse, savedie, rays (Scorching Ray),
-disintegrate (resolver EXISTS — needs a class kit entry at level), spellstrike,
-invisibility/mirror-image defenses.
+grease/control, sleep, charm/dominate, summon, dispel/cleanse, savedie,
+rays (Scorching Ray), spellstrike, invisibility/mirror-image defenses,
+stance toggles (Power Attack/Deadly Aim/Fight Defensively) + Rage temp-HP,
+Mage Armor (cost 'run' auto-cast model). Conditions now TICK (pf1core rules/
+tick.js): held re-saves, nausea recovery, acid DoT, grapple escapes, bleed.
 
 ## IGNORED
 _None yet._

@@ -32,4 +32,5 @@ module.exports = {
   treasure: require('./rules/treasure'),
   resolve: require('./rules/resolve'),
   tick: require('./rules/tick'),
+  buffs: require('./rules/buffs'),
 };

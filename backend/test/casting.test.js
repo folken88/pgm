@@ -74,14 +74,15 @@ test('a cleric AI companion casts Cure on a badly hurt ally instead of swinging'
   const run = pr.createPartyRun(partyList, roll);
   const kara = run.heroes.find(h => h.name === 'Kara');
   kara.hp = 2;                                       // badly hurt
+  const HEAL = /Mira (casts Cure|channels positive energy — the party heals)/i;
   // Let the loop run a few of Kara's turns (passing) so Mira acts.
   let guard = 0;
-  while (guard++ < 6 && run.phase === 'combat' && !run.log.some(e => /Mira (casts|channels)/i.test(e.text))) {
+  while (guard++ < 8 && run.phase === 'combat' && !run.log.some(e => HEAL.test(e.text))) {
     const v = pr.publicRun(run);
     if (!v.turn) break;
     pr.applyAction(run, v.turn.ownerClientId, { type: 'pass' }, roll);
   }
-  assert.ok(run.log.some(e => /Mira (casts|channels)/i.test(e.text)), 'Mira healed via spell: ' + run.log.map(e => e.text).join(' | '));
+  assert.ok(run.log.some(e => HEAL.test(e.text)), 'Mira healed via spell: ' + run.log.map(e => e.text).join(' | '));
   assert.ok(kara.hp > 2, 'Kara got healed');
 });
 

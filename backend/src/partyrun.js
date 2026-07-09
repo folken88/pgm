@@ -58,8 +58,9 @@ function heroCombatant(p) {
     perceived: new Set(),          // enemy ids this hero noticed on entry
     // Caster fields (read by pf1core resolvers — the shared combatant shape):
     cls: c.cls, level: d.level, mods: d.mods, castingMod: d.castingMod || 0,
-    iteratives: d.iteratives || [0], buffs: {},
+    iteratives: d.iteratives || [0], buffs: pf1.buffs.ZERO(), buffApplied: {},
     spellbook: book, slots: {}, roomUses: {},
+    runUses: Object.fromEntries(book.spells.filter(s => s.cost === 'run').map(s => [s.key, 1])),
   };
 }
 function enemyCombatant(e, i) {
@@ -89,8 +90,12 @@ function spawnRoom(run, roll) {
     });
   });
 
-  // Per-room spell refresh (poker's per-room refill convention).
-  run.heroes.forEach(h => { const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses; });
+  // Per-room spell refresh (poker's per-room refill convention). Room buffs
+  // clear; run buffs (Bless/Inspire) persist.
+  run.heroes.forEach(h => {
+    const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses;
+    h.buffs = pf1.buffs.ZERO(); h.buffApplied = {}; h._aiBuffed = false;
+  });
 
   run.combatants = run.heroes.concat(enemies);
   run.combatants.forEach(cb => { cb.init = rollDie(20, roll) + cb.initMod; });
@@ -200,6 +205,16 @@ function aiHeroTurn(run, hero, roll) {
   const foes = livingRevealedEnemies(run);
   if (!foes.length) { logEvent(run, `${hero.name} scans the room, weapon ready.`, 'event'); return; }
 
+  // 1.5) One opening buff per room: Bless/Prayer/Divine Favor etc. before wading in.
+  if (!hero._aiBuffed) {
+    const buffAb = book.spells.find(s => s.effect === 'buff' && casting.canCast(hero, s));
+    if (buffAb) {
+      hero._aiBuffed = true;
+      const r = casting.cast(hero, buffAb, { enemies: foes, allies }, roll);
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+    } else hero._aiBuffed = true;
+  }
+
   // 2) Casters spend a leveled spell when it's worth it: AoE on a crowd, else a
   //    single-target nuke on the beefiest foe; cantrip over a weak melee swing.
   if (pf1.abilities.isCaster(hero.cls)) {
@@ -232,7 +247,7 @@ function enemyTurn(run, enemy, roll) {
   const target = targets.slice().sort((a, b) => a.hp - b.hp)[0];
   // Flat-footed: round 1, target never perceived this attacker -> lose Dex to AC.
   const flat = run.round === 1 && !target.perceived.has(enemy.id);
-  const targetAC = flat ? target.flatAc : target.ac;
+  const targetAC = (flat ? target.flatAc : target.ac) + pf1.buffs.buffAcMod(target);   // Shield/Shield of Faith...
   const res = combat.creatureAttack(enemy.creature, targetAC, roll, -pf1.tick.attackPenalty(enemy));
   const ff = flat ? ' (caught flat-footed!)' : '';
   if (res.hit) {
@@ -332,7 +347,9 @@ function pickTarget(run, targetId) {
 
 function heroAttack(run, hero, target, roll) {
   const targetAC = pf1.spellmath.enemyAC(target);   // situational mods: prone/stunned/blinded/slowed/flat-footed
-  const res = combat.heroAttack(hero.character.derived, hero.character.weapon, targetAC, roll, -pf1.tick.attackPenalty(hero));
+  const bm = pf1.buffs.buffAtkMods(hero);           // Bless/Divine Favor/Prayer/GMW...
+  const res = combat.heroAttack(hero.character.derived, hero.character.weapon, targetAC, roll,
+    bm.toHit - pf1.tick.attackPenalty(hero), bm.dmg);
   if (!res.hit) { logEvent(run, `${hero.name} swings at ${target.name} and misses.`, 'event'); return; }
   target.hp -= res.damage;
   const crit = res.crit ? 'Critical! ' : '';
@@ -396,7 +413,9 @@ function publicRun(run) {
     const spells = [];
     if (book.atwill) spells.push({ key: book.atwill.key, name: book.atwill.name, icon: book.atwill.icon, uses: null });
     for (const s of book.spells) {
-      const uses = s.cost === 'slot' ? (cb.slots[s.slvl || 1] || 0) : (cb.roomUses[s.key] || 0);
+      const uses = s.cost === 'slot' ? (cb.slots[s.slvl || 1] || 0)
+                 : s.cost === 'run' ? (cb.runUses[s.key] || 0)
+                 : (cb.roomUses[s.key] || 0);
       if (uses > 0) spells.push({ key: s.key, name: s.name, icon: s.icon, uses });
     }
     turn = { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name, spells };
