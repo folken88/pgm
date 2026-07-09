@@ -77,6 +77,36 @@ button { cursor: pointer; }
 .lobby-actions { display: flex; gap: .8rem; align-items: center; margin-top: .6rem; }
 #lobby-start { background: var(--ok); color: #08130a; border: none; font-weight: 800; padding: .8rem 1.2rem; font-size: 1.05rem; }
 
+/* Concurrent-delves side window */
+#side-window {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  padding: .7rem .8rem; margin: 0 auto 6rem; max-width: 760px;
+}
+#side-window h2 { font-size: 1rem; margin: 0 0 .5rem; color: var(--accent); border: 0; padding: 0; }
+.delve-list { display: flex; flex-direction: column; gap: .5rem; }
+.delve-empty { color: var(--muted); font-size: .88rem; }
+.delve-card { border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; background: var(--bg); }
+.delve-card .dtitle { font-weight: 700; display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.delve-card .dphase { font-size: .72rem; color: var(--muted); text-transform: uppercase; }
+.delve-card .dmeta { color: var(--muted); font-size: .82rem; margin: .15rem 0; font-variant-numeric: tabular-nums; }
+.delve-heroes { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0 0; }
+.delve-heroes .dh { font-size: .78rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .1rem .35rem; }
+.delve-heroes .dh.down { opacity: .5; text-decoration: line-through; }
+.delve-card .dactions { display: flex; gap: .4rem; margin-top: .4rem; }
+.delve-card .dactions button { padding: .3rem .55rem; font-size: .85rem; background: var(--panel); }
+
+@media (min-width: 1100px) {
+  #side-window {
+    position: fixed; top: .8rem; right: .8rem; width: 300px; max-width: 300px;
+    margin: 0; max-height: calc(100vh - 5.5rem); overflow-y: auto; z-index: 5;
+  }
+}
+
+/* Companion picker */
+#companions-area h3 { font-size: 1rem; color: var(--muted); margin: .8rem 0 .2rem; }
+.companion-picker { display: flex; flex-wrap: wrap; gap: .4rem; margin: .3rem 0; }
+.companion-picker button { padding: .45rem .6rem; font-size: .9rem; background: var(--panel); }
+
 /* Skill allocation */
 .muted-line { color: var(--muted); font-size: .95rem; margin: .2rem 0 .6rem; }
 .points {

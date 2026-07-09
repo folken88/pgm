@@ -18,12 +18,11 @@ const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 const runs = new Map();
 let nextId = 1;
 
-// ---- SSE: live broadcast of session state to every connected client ----
-const sseClients = new Set();
+// ---- SSE: push each client its own delve detail + all-delve summaries ----
+const sseClients = new Set();   // entries: { res, clientId|null }
 function broadcast() {
-  const data = JSON.stringify(session.snapshot());
-  for (const client of sseClients) {
-    try { client.write(`event: state\ndata: ${data}\n\n`); } catch (e) {}
+  for (const c of sseClients) {
+    try { c.res.write(`event: state\ndata: ${JSON.stringify(session.snapshotFor(c.clientId))}\n\n`); } catch (e) {}
   }
 }
 
@@ -64,59 +63,10 @@ const server = http.createServer(async (req, res) => {
 
   // ---- API ----
   if (url === '/api/meta' && req.method === 'GET') {
-    return sendJSON(res, 200, { races: RACES, classes: CLASSES, icons: session.ICONS });
-  }
-
-  // ---- Multiplayer session ----
-  if (url === '/api/session/stream' && req.method === 'GET') {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive', 'X-Accel-Buffering': 'no',
+    return sendJSON(res, 200, {
+      races: RACES, classes: CLASSES, icons: session.ICONS,
+      companions: session.COMPANIONS.map((c, i) => ({ index: i, name: c.name, race: c.race, cls: c.cls, icon: c.icon })),
     });
-    res.write(`event: state\ndata: ${JSON.stringify(session.snapshot())}\n\n`);
-    sseClients.add(res);
-    const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
-    req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
-    return;
-  }
-
-  if (url === '/api/session/join' && req.method === 'POST') {
-    const body = await readBody(req);
-    const r = session.join({ name: body.name, icon: body.icon, role: body.role });
-    if (r.ok) broadcast();
-    return sendJSON(res, r.ok ? 200 : 409, Object.assign({}, r, { snapshot: session.snapshot() }));
-  }
-
-  if (url === '/api/session/character' && req.method === 'POST') {
-    const body = await readBody(req);
-    const r = session.setCharacter(body.clientId, {
-      race: body.race, cls: body.cls || body.class,
-      skills: Array.isArray(body.skills) ? body.skills : null,
-    });
-    if (r.ok) broadcast();
-    return sendJSON(res, r.ok ? 200 : 400, Object.assign({}, r, { snapshot: session.snapshot() }));
-  }
-
-  if (url === '/api/session/start' && req.method === 'POST') {
-    const body = await readBody(req);
-    const r = session.startRun(body.clientId);
-    if (r.ok) broadcast();
-    return sendJSON(res, r.ok ? 200 : 400, Object.assign({}, r, { snapshot: session.snapshot() }));
-  }
-
-  if (url === '/api/session/action' && req.method === 'POST') {
-    const body = await readBody(req);
-    const act = body.target ? { type: body.action, target: body.target } : { type: body.action };
-    const r = session.action(body.clientId, act);
-    if (r.ok) broadcast();
-    return sendJSON(res, r.ok ? 200 : 400, Object.assign({}, r, { snapshot: session.snapshot() }));
-  }
-
-  if (url === '/api/session/leave' && req.method === 'POST') {
-    const body = await readBody(req);
-    session.leave(body.clientId);
-    broadcast();
-    return sendJSON(res, 200, { ok: true });
   }
 
   if (url === '/api/character/plan' && req.method === 'POST') {
@@ -125,25 +75,74 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, plan);
   }
 
-  if (url === '/api/run/start' && req.method === 'POST') {
-    const body = await readBody(req);
-    const state = game.startRun({
-      name: body.name, race: body.race, cls: body.cls || body.class,
-      skills: Array.isArray(body.skills) ? body.skills : null,
+  // ---- Concurrent delves (SSE per-client: your delve + all summaries) ----
+  if (url === '/api/session/stream' && req.method === 'GET') {
+    let clientId = null;
+    try { clientId = new URL(req.url, 'http://x').searchParams.get('clientId'); } catch (e) {}
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive', 'X-Accel-Buffering': 'no',
     });
-    const id = String(nextId++);
-    runs.set(id, state.run);
-    return sendJSON(res, 200, { runId: id, snapshot: game.snapshot(state.run), events: state.events });
+    const entry = { res, clientId: clientId || null };
+    res.write(`event: state\ndata: ${JSON.stringify(session.snapshotFor(entry.clientId))}\n\n`);
+    sseClients.add(entry);
+    const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
+    req.on('close', () => { clearInterval(ping); sseClients.delete(entry); });
+    return;
   }
 
-  const m = url.match(/^\/api\/run\/([^/]+)\/action$/);
-  if (m && req.method === 'POST') {
-    const run = runs.get(m[1]);
-    if (!run) return sendJSON(res, 404, { error: 'run not found' });
+  function sessionResult(r, clientId) {
+    return Object.assign({}, r, { snapshot: session.sessionSnapshotFor(r.clientId || clientId) });
+  }
+
+  if (url === '/api/session/create' && req.method === 'POST') {
     const body = await readBody(req);
-    const state = game.applyAction(run, String(body.action || ''));
-    if (state.status === 'dead' || state.status === 'fled') runs.delete(m[1]);
-    return sendJSON(res, 200, { snapshot: game.snapshot(run), events: state.events });
+    const r = session.createDelve({ name: body.name, icon: body.icon, delveName: body.delveName });
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r));
+  }
+
+  if (url === '/api/session/join' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.joinDelve(body.sessionId, { name: body.name, icon: body.icon, role: body.role });
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 409, sessionResult(r));
+  }
+
+  if (url === '/api/session/character' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.setCharacter(body.clientId, { race: body.race, cls: body.cls || body.class, skills: Array.isArray(body.skills) ? body.skills : null });
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
+  if (url === '/api/session/companion' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.addCompanion(body.clientId, body.index);
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
+  if (url === '/api/session/start' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.startRun(body.clientId);
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
+  if (url === '/api/session/action' && req.method === 'POST') {
+    const body = await readBody(req);
+    const act = body.target ? { type: body.action, target: body.target } : { type: body.action };
+    const r = session.action(body.clientId, act);
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
+  if (url === '/api/session/leave' && req.method === 'POST') {
+    const body = await readBody(req);
+    session.leave(body.clientId);
+    broadcast();
+    return sendJSON(res, 200, { ok: true });
   }
 
   if (url.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });

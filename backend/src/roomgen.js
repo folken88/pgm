@@ -59,6 +59,7 @@ function generatePartyRoom(partySize, roll = Math.random) {
       key: t.key, baseName: t.name,
       hp: t.hp, maxHp: t.hp, ac: t.ac, attack: t.attack,
       initBonus: t.initBonus || 0, dmg: t.dmg, flavor: t.flavor,
+      stealth: t.stealth != null ? t.stealth : 10, sneaky: !!t.sneaky,
     });
   }
   // Suffix duplicates: "goblin A", "goblin B" (only when >1 of a kind).

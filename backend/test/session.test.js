@@ -4,60 +4,79 @@ const session = require('../src/session');
 
 beforeEach(() => session._reset());
 
-test('players and spectators join and appear in the snapshot', () => {
-  const a = session.join({ name: 'Kara', icon: '⚔️', role: 'player' });
-  const b = session.join({ name: 'Watcher', icon: '👁️', role: 'spectator' });
-  assert.ok(a.ok && a.clientId);
-  assert.ok(b.ok);
-  const s = session.snapshot();
-  assert.strictEqual(s.counts.players, 1);
-  assert.strictEqual(s.counts.spectators, 1);
-  assert.strictEqual(s.players[0].name, 'Kara');
+test('creating a delve makes a host player and a session', () => {
+  const r = session.createDelve({ name: 'Josh', icon: '⚔️', delveName: 'Deep Dark' });
+  assert.ok(r.ok && r.clientId && r.sessionId);
+  const snap = session.sessionSnapshotFor(r.clientId);
+  assert.strictEqual(snap.name, 'Deep Dark');
+  assert.strictEqual(snap.youAreHost, true);
+  assert.strictEqual(snap.counts.party, 1);
 });
 
-test('player cap is 8; the 9th is refused and offered spectating', () => {
-  for (let i = 0; i < 8; i++) assert.ok(session.join({ name: 'P' + i, role: 'player' }).ok);
-  const overflow = session.join({ name: 'P9', role: 'player' });
-  assert.strictEqual(overflow.ok, false);
-  assert.strictEqual(overflow.canSpectate, true);
-  assert.match(overflow.error, /full/i);
+test('two delves run concurrently and independently', () => {
+  const a = session.createDelve({ name: 'Josh' });
+  const b = session.createDelve({ name: 'Tim' });
+  assert.notStrictEqual(a.sessionId, b.sessionId);
+  const sums = session.allSummaries();
+  assert.strictEqual(sums.length, 2);
 });
 
-test('spectator cap is 10', () => {
-  for (let i = 0; i < 10; i++) assert.ok(session.join({ name: 'S' + i, role: 'spectator' }).ok);
-  assert.strictEqual(session.join({ name: 'S11', role: 'spectator' }).ok, false);
+test('a player can join an existing delve; a stranger can spectate', () => {
+  const host = session.createDelve({ name: 'Tim' });
+  const joiner = session.joinDelve(host.sessionId, { name: 'Chris', role: 'player' });
+  assert.ok(joiner.ok);
+  assert.strictEqual(session.sessionSnapshotFor(host.clientId).counts.party, 2);
+  const watcher = session.joinDelve(host.sessionId, { name: 'Nosy', role: 'spectator' });
+  assert.ok(watcher.ok);
+  assert.strictEqual(session.sessionSnapshotFor(host.clientId).counts.spectators, 1);
 });
 
-test('setCharacter readies a player with a real derived character', () => {
-  const p = session.join({ name: 'Fen', icon: '🗡️', role: 'player' });
-  const r = session.setCharacter(p.clientId, { race: 'human', cls: 'rogue', skills: ['perception', 'stealth'] });
-  assert.ok(r.ok);
-  const me = session.snapshot().players[0];
-  assert.strictEqual(me.ready, true);
-  assert.strictEqual(me.cls, 'rogue');
+test('the host can add AI companions; they count toward the party', () => {
+  const host = session.createDelve({ name: 'Josh' });
+  session.setCharacter(host.clientId, { race: 'human', cls: 'fighter' });
+  assert.ok(session.addCompanion(host.clientId, 0).ok);
+  assert.ok(session.addCompanion(host.clientId, 1).ok);
+  assert.ok(session.addCompanion(host.clientId, 2).ok);
+  const snap = session.sessionSnapshotFor(host.clientId);
+  assert.strictEqual(snap.counts.party, 4, 'host + 3 companions');
+  assert.strictEqual(snap.members.filter(m => m.ai).length, 3);
 });
 
-test('startRun needs a ready player and flips phase to playing', () => {
-  const p = session.join({ name: 'Bron', role: 'player' });
-  assert.strictEqual(session.startRun(p.clientId).ok, false, 'no ready character yet');
-  session.setCharacter(p.clientId, { race: 'half-orc', cls: 'barbarian' });
-  assert.ok(session.startRun(p.clientId).ok);
-  assert.strictEqual(session.snapshot().phase, 'playing');
+test('a non-host cannot add companions', () => {
+  const host = session.createDelve({ name: 'Tim' });
+  const joiner = session.joinDelve(host.sessionId, { name: 'Chris', role: 'player' });
+  assert.strictEqual(session.addCompanion(joiner.clientId, 0).ok, false);
 });
 
-test('a spectator cannot start the run', () => {
-  const p = session.join({ name: 'Bron', role: 'player' });
-  session.setCharacter(p.clientId, { race: 'human', cls: 'fighter' });
-  const spec = session.join({ name: 'Nosy', role: 'spectator' });
-  assert.strictEqual(session.startRun(spec.clientId).ok, false);
+test('party cap of 8 (humans + AI) is enforced', () => {
+  const host = session.createDelve({ name: 'Josh' });
+  session.setCharacter(host.clientId, { race: 'human', cls: 'fighter' });
+  for (let i = 0; i < 7; i++) assert.ok(session.addCompanion(host.clientId, i).ok);   // 1 + 7 = 8
+  assert.strictEqual(session.addCompanion(host.clientId, 0).ok, false, '9th refused');
 });
 
-test('when everyone leaves, the session resets to a fresh lobby', () => {
-  const p = session.join({ name: 'Solo', role: 'player' });
-  session.setCharacter(p.clientId, { race: 'human', cls: 'fighter' });
-  session.startRun(p.clientId);
-  session.leave(p.clientId);
-  const s = session.snapshot();
-  assert.strictEqual(s.phase, 'lobby');
-  assert.strictEqual(s.counts.players, 0);
+test('starting a run flips the delve to playing with a party', () => {
+  const host = session.createDelve({ name: 'Josh' });
+  session.setCharacter(host.clientId, { race: 'half-orc', cls: 'barbarian' });
+  session.addCompanion(host.clientId, 0);
+  assert.ok(session.startRun(host.clientId).ok);
+  const snap = session.sessionSnapshotFor(host.clientId);
+  assert.strictEqual(snap.phase, 'playing');
+  assert.ok(snap.run && snap.run.combatants.length >= 2);
+});
+
+test('snapshotFor gives you your delve + summaries of all delves', () => {
+  const a = session.createDelve({ name: 'Josh' });
+  session.createDelve({ name: 'Tim' });
+  const payload = session.snapshotFor(a.clientId);
+  assert.ok(payload.you, 'your delve detail');
+  assert.strictEqual(payload.sessions.length, 2, 'all delves summarized');
+});
+
+test('a delve with no human members left is cleaned up', () => {
+  const host = session.createDelve({ name: 'Solo' });
+  session.setCharacter(host.clientId, { race: 'human', cls: 'fighter' });
+  session.addCompanion(host.clientId, 0);
+  session.leave(host.clientId);
+  assert.strictEqual(session.allSummaries().length, 0, 'abandoned delve removed');
 });

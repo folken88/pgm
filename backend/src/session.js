@@ -1,110 +1,166 @@
 /**
- * Multiplayer session (v0): ONE shared, nameable party that clients join as
- * players (up to 8) or spectators (up to 10). Server-authoritative; state is
- * pushed to every connected client via SSE (see server.js). This module owns the
- * roster + lobby lifecycle; the party RUN (shared dungeon + initiative combat) is
- * wired in the next increment — `run` stays null in the lobby foundation.
+ * Session registry — multiple concurrent delves at once. Each delve is an
+ * independent party (human players + AI companions) with its own lobby/run.
+ * Every SSE client receives its own delve's detail PLUS a compact summary of all
+ * delves (for the side window). One human may delve solo with AI companions;
+ * different groups delve separately in parallel.
  */
 const characters = require('./characters');
 const partyrun = require('./partyrun');
+const { COMPANIONS } = require('./content');
 
-const MAX_PLAYERS = 8;
+const MAX_PARTY = 8;        // humans + AI companions per delve
 const MAX_SPECTATORS = 10;
-
-// Pickable icons (emoji) for players + spectators.
 const ICONS = ['🧙','🧝','🛡️','⚔️','🏹','🗡️','🪓','🔮','🐉','🐺','🦅','💀','👑','🎭','🕯️','⚗️'];
 
-let session = fresh();
-let seq = 0;
+const sessions = new Map();   // sessionId -> delve
+const clients = new Map();    // clientId -> { sessionId, role }
+let seq = 0, sid = 0;
 
-function fresh() {
-  return { name: 'The Delve', phase: 'lobby', players: new Map(), spectators: new Map(), run: null };
-}
-
+function now() { return Date.now(); }
 function cleanName(n) { return String(n || '').trim().slice(0, 24) || 'Someone'; }
 function cleanIcon(i) { return ICONS.includes(i) ? i : ICONS[0]; }
+function newClientId() { return 'c' + (++seq); }
+function partySize(s) { return s.members.size; }
 
-/** Join as 'player' or 'spectator'. Returns {ok, clientId} or {ok:false, error, canSpectate}. */
-function join({ name, icon, role }) {
+function createDelve({ name, icon, delveName }) {
+  name = cleanName(name); icon = cleanIcon(icon);
+  const id = 's' + (++sid);
+  const s = { id, name: cleanName(delveName) !== 'Someone' && delveName ? cleanName(delveName) : name + "'s Delve",
+    phase: 'lobby', host: null, members: new Map(), spectators: new Map(),
+    run: null, createdAt: now(), startedAt: null };
+  const clientId = newClientId();
+  s.host = clientId;
+  s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
+  clients.set(clientId, { sessionId: id, role: 'player' });
+  sessions.set(id, s);
+  return { ok: true, clientId, sessionId: id };
+}
+
+function joinDelve(sessionId, { name, icon, role }) {
+  const s = sessions.get(sessionId);
+  if (!s) return { ok: false, error: 'That delve no longer exists.' };
   name = cleanName(name); icon = cleanIcon(icon);
   if (role === 'player') {
-    if (session.phase !== 'lobby') return { ok: false, error: 'The adventure has already started — join as a spectator.', canSpectate: true };
-    if (session.players.size >= MAX_PLAYERS) return { ok: false, error: 'The party is full (8 players).', canSpectate: true };
-  } else {
-    role = 'spectator';
-    if (session.spectators.size >= MAX_SPECTATORS) return { ok: false, error: 'The gallery is full (10 spectators).' };
+    if (s.phase !== 'lobby') return { ok: false, error: 'That delve has already set out — you can spectate.', canSpectate: true, sessionId };
+    if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'That party is full.', canSpectate: true, sessionId };
+    const clientId = newClientId();
+    s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
+    clients.set(clientId, { sessionId, role: 'player' });
+    return { ok: true, clientId, sessionId, role: 'player' };
   }
-  const clientId = 'c' + (++seq);
-  if (role === 'player') {
-    session.players.set(clientId, { clientId, name, icon, character: null, ready: false });
-  } else {
-    session.spectators.set(clientId, { clientId, name, icon });
-  }
-  return { ok: true, clientId, role };
+  if (s.spectators.size >= MAX_SPECTATORS) return { ok: false, error: 'That delve\'s gallery is full.' };
+  const clientId = newClientId();
+  s.spectators.set(clientId, { clientId, name, icon });
+  clients.set(clientId, { sessionId, role: 'spectator' });
+  return { ok: true, clientId, sessionId, role: 'spectator' };
+}
+
+function sessionOf(clientId) {
+  const c = clients.get(clientId);
+  return c ? sessions.get(c.sessionId) : null;
+}
+
+function setCharacter(clientId, charInput) {
+  const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
+  const m = s.members.get(clientId); if (!m) return { ok: false, error: 'not a player' };
+  if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
+  m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
+  m.ready = true;
+  return { ok: true };
+}
+
+function addCompanion(clientId, index) {
+  const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
+  if (s.host !== clientId) return { ok: false, error: 'only the host adds companions' };
+  if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
+  if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'party is full' };
+  const preset = COMPANIONS[((index | 0) % COMPANIONS.length + COMPANIONS.length) % COMPANIONS.length];
+  const aiId = 'ai' + (++seq);
+  const character = characters.createCharacter({ name: preset.name, race: preset.race, cls: preset.cls });
+  s.members.set(aiId, { memberId: aiId, clientId: null, name: preset.name, icon: preset.icon, character, ready: true, ai: true });
+  return { ok: true };
+}
+
+function removeCompanion(clientId, memberId) {
+  const s = sessionOf(clientId); if (!s || s.host !== clientId) return { ok: false };
+  const m = s.members.get(memberId);
+  if (m && m.ai) s.members.delete(memberId);
+  return { ok: true };
+}
+
+function startRun(clientId) {
+  const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
+  if (!s.members.has(clientId)) return { ok: false, error: 'only a player can start' };
+  const ready = [...s.members.values()].filter(m => m.ready && m.character);
+  if (ready.length < 1) return { ok: false, error: 'no ready characters yet' };
+  s.run = partyrun.createPartyRun(ready.map(m => ({ clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai })));
+  s.phase = 'playing';
+  s.startedAt = now();
+  return { ok: true };
+}
+
+function action(clientId, act) {
+  const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
+  return partyrun.applyAction(s.run, clientId, act);
 }
 
 function leave(clientId) {
-  session.players.delete(clientId);
-  session.spectators.delete(clientId);
-  // If everyone left, reset the session.
-  if (session.players.size === 0 && session.spectators.size === 0) session = fresh();
+  const s = sessionOf(clientId);
+  clients.delete(clientId);
+  if (!s) return;
+  s.members.delete(clientId);
+  s.spectators.delete(clientId);
+  // A delve with no human members left is abandoned.
+  const humans = [...s.members.values()].filter(m => !m.ai).length;
+  if (humans === 0 && s.spectators.size === 0) sessions.delete(s.id);
 }
 
-/** A player finalizes their character (race/class/skills) and readies up. */
-function setCharacter(clientId, charInput) {
-  const p = session.players.get(clientId);
-  if (!p) return { ok: false, error: 'not a player in this session' };
-  if (session.phase !== 'lobby') return { ok: false, error: 'adventure already started' };
-  const character = characters.createCharacter({ name: p.name, ...charInput });
-  p.character = character;
-  p.ready = true;
-  return { ok: true };
+function memberView(m, clientId) {
+  return { memberId: m.memberId, name: m.name, icon: m.icon, ready: m.ready, ai: m.ai,
+    cls: m.character ? m.character.cls : null, race: m.character ? m.character.race : null,
+    isYou: m.memberId === clientId };
 }
 
-function setName(clientId, name) {
-  const m = session.players.get(clientId) || session.spectators.get(clientId);
-  if (m) m.name = cleanName(name);
-}
-
-function rename(name) { session.name = cleanName(name); }
-
-/** Any player may start once at least one player is ready. */
-function startRun(clientId) {
-  if (!session.players.has(clientId)) return { ok: false, error: 'only a player can start' };
-  const ready = [...session.players.values()].filter(p => p.ready && p.character);
-  if (ready.length < 1) return { ok: false, error: 'no ready characters yet' };
-  session.phase = 'playing';
-  session.run = partyrun.createPartyRun(
-    ready.map(p => ({ clientId: p.clientId, icon: p.icon, character: p.character })));
-  return { ok: true };
-}
-
-/** A player acts in the shared run (attack/pass/descend). Turn-gated in-engine. */
-function action(clientId, act) {
-  if (session.phase !== 'playing' || !session.run) return { ok: false, error: 'no run in progress' };
-  return partyrun.applyAction(session.run, clientId, act);
-}
-
-function snapshot() {
+/** Detailed view of the client's own delve. */
+function sessionSnapshotFor(clientId) {
+  const c = clients.get(clientId); if (!c) return null;
+  const s = sessions.get(c.sessionId); if (!s) return null;
   return {
-    name: session.name,
-    phase: session.phase,
-    counts: {
-      players: session.players.size, maxPlayers: MAX_PLAYERS,
-      spectators: session.spectators.size, maxSpectators: MAX_SPECTATORS,
-    },
-    players: [...session.players.values()].map(p => ({
-      clientId: p.clientId, name: p.name, icon: p.icon, ready: p.ready,
-      cls: p.character ? p.character.cls : null,
-      race: p.character ? p.character.race : null,
-    })),
-    spectators: [...session.spectators.values()].map(s => ({ clientId: s.clientId, name: s.name, icon: s.icon })),
-    run: session.run ? partyrun.publicRun(session.run) : null,
+    id: s.id, name: s.name, phase: s.phase, role: c.role, youAreHost: s.host === clientId,
+    counts: { party: partySize(s), maxParty: MAX_PARTY, spectators: s.spectators.size, maxSpectators: MAX_SPECTATORS },
+    members: [...s.members.values()].map(m => memberView(m, clientId)),
+    spectators: [...s.spectators.values()].map(sp => ({ name: sp.name, icon: sp.icon, isYou: sp.clientId === clientId })),
+    run: s.run ? partyrun.publicRun(s.run) : null,
   };
 }
 
+/** Compact summaries of ALL delves for the side window. */
+function allSummaries() {
+  return [...sessions.values()].map(s => {
+    const elapsedSec = Math.floor((now() - (s.startedAt || s.createdAt)) / 1000);
+    let depth = 0, round = 0, heroes;
+    if (s.run) {
+      const sum = partyrun.summary(s.run);
+      depth = sum.depth; round = sum.round; heroes = sum.heroes;
+    } else {
+      heroes = [...s.members.values()].map(m => ({ icon: m.icon, name: m.name, ai: m.ai, hp: null, maxHp: null, down: false }));
+    }
+    return {
+      id: s.id, name: s.name, phase: s.phase, depth, round, elapsedSec,
+      partySize: partySize(s), spectators: s.spectators.size, heroes,
+    };
+  });
+}
+
+/** The per-client SSE payload: your delve + everyone's summaries. */
+function snapshotFor(clientId) {
+  return { you: clientId ? sessionSnapshotFor(clientId) : null, sessions: allSummaries() };
+}
+
 module.exports = {
-  ICONS, MAX_PLAYERS, MAX_SPECTATORS,
-  join, leave, setCharacter, setName, rename, startRun, action, snapshot,
-  _reset() { session = fresh(); seq = 0; },
+  ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
+  createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
+  startRun, action, leave, snapshotFor, sessionSnapshotFor, allSummaries,
+  _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
 };

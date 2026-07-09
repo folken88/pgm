@@ -15,22 +15,25 @@
   </header>
 
   <main id="main">
-    <!-- Landing: join as player or spectator -->
+    <!-- Landing: start a new delve, or join/watch an existing one (side window) -->
     <section id="landing" aria-labelledby="landing-h">
-      <h2 id="landing-h">Join the party</h2>
+      <h2 id="landing-h">Enter the dungeon</h2>
       <div class="field">
         <label for="handle">Your name</label>
-        <input id="handle" type="text" autocomplete="off" value="" placeholder="e.g. Kara" required />
+        <input id="handle" type="text" autocomplete="off" value="" placeholder="e.g. Josh" required />
       </div>
       <fieldset class="iconset">
         <legend>Pick an icon</legend>
         <div id="icon-picker" class="icon-picker" role="radiogroup" aria-label="Choose your icon"></div>
       </fieldset>
-      <div id="session-here" class="muted-line" aria-live="polite"></div>
-      <div class="landing-actions">
-        <button type="button" id="join-play">⚔️ Play</button>
-        <button type="button" id="join-spectate">👁️ Spectate</button>
+      <div class="field">
+        <label for="delve-name">Delve name (optional)</label>
+        <input id="delve-name" type="text" autocomplete="off" placeholder="e.g. The Swaginators" />
       </div>
+      <div class="landing-actions">
+        <button type="button" id="start-delve">⚔️ Start a new delve</button>
+      </div>
+      <p class="muted-line">…or join or watch an active delve from the panel on the right. →</p>
       <p id="join-error" class="join-error" role="alert" aria-live="assertive"></p>
     </section>
 
@@ -85,6 +88,11 @@
         </div>
       </div>
 
+      <div id="companions-area" hidden>
+        <h3 id="companions-h">Add AI companions (host)</h3>
+        <div id="companion-picker" class="companion-picker" aria-labelledby="companions-h"></div>
+      </div>
+
       <div class="lobby-actions">
         <button type="button" id="lobby-start" hidden>▶ Start the adventure</button>
         <span id="lobby-wait" class="muted-line"></span>
@@ -124,6 +132,12 @@
       <div id="announce" class="visually-hidden" role="alert" aria-live="assertive"></div>
     </section>
   </main>
+
+  <!-- Concurrent delves side window -->
+  <aside id="side-window" aria-labelledby="sw-h">
+    <h2 id="sw-h">Active delves</h2>
+    <div id="delve-list" class="delve-list" aria-live="polite"></div>
+  </aside>
 
   <!-- Accessibility control bar -->
   <footer class="a11y-bar" aria-label="Accessibility controls">
