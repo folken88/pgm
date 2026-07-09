@@ -19,10 +19,11 @@ fi
 
 echo "[sync-pf1core] vendoring into: $DEST"
 rm -rf "$DEST"
-mkdir -p "$DEST/pf1data" "$DEST/game"
+mkdir -p "$DEST/pf1data" "$DEST/game" "$DEST/rules"
 cp "$CACHE/index.js" "$DEST/index.js"
 cp "$CACHE"/pf1data/*.js "$DEST/pf1data/"
 cp "$CACHE"/game/*.js "$DEST/game/"
+cp "$CACHE"/rules/*.js "$DEST/rules/"
 
 REV="$(git -C "$CACHE" rev-parse --short HEAD)"
 echo "[sync-pf1core] vendored pf1core @ $REV"

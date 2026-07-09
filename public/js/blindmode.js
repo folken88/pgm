@@ -80,10 +80,33 @@
   function slower() { rate = clampRate(rate - 0.15); toast('Speech slower'); speak('Slower.', 'urgent'); }
   function toggleMute() {
     muted = !muted;
-    if (muted) { try { TTS && TTS.cancel(); } catch (e) {} queue = []; }
+    if (muted) { try { TTS && TTS.cancel(); } catch (e) {} queue = []; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} } }
     var btn = document.getElementById('mute');
     if (btn) { btn.setAttribute('aria-pressed', String(muted)); btn.textContent = muted ? '🔇 Speech: off' : '🔊 Speech: on'; }
     toast(muted ? 'Speech off' : 'Speech on');
+  }
+
+  // ---- GM voice (ElevenLabs "Ultron"); silent fallback to browser TTS ----
+  var gmVoiceOn = false, gmAudio = null;
+  function setGMVoice(on) { gmVoiceOn = !!on; blog('GM voice', gmVoiceOn ? 'ON (ElevenLabs)' : 'off (browser TTS)'); }
+  function speakGM(text) {
+    if (!text) return;
+    if (!gmVoiceOn || muted) return speak(text, 'urgent');   // fallback / respect mute
+    lastText = text; setStatus(text);
+    fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (muted) return;
+        if (d && d.ok && d.audio) {
+          try { if (TTS) TTS.cancel(); } catch (e) {}
+          speaking = false;
+          if (gmAudio) { try { gmAudio.pause(); } catch (e) {} }
+          gmAudio = new Audio('data:audio/mpeg;base64,' + d.audio);
+          gmAudio.onended = gmAudio.onerror = function () { pump(); };   // resume queued speech after the GM line
+          gmAudio.play().catch(function () { speak(text, 'urgent'); });
+        } else { speak(text, 'urgent'); }
+      })
+      .catch(function () { speak(text, 'urgent'); });
   }
 
   // ---- push-to-talk voice recognition ----
@@ -177,7 +200,8 @@
   function on(id, ev, fn) { var el = document.getElementById(id); if (el) el.addEventListener(ev, fn); }
 
   window.BlindMode = {
-    init: init, speak: speak, repeat: repeat, faster: faster, slower: slower,
+    init: init, speak: speak, speakGM: speakGM, setGMVoice: setGMVoice,
+    repeat: repeat, faster: faster, slower: slower,
     toggleMute: toggleMute, toast: toast, getLogs: function () { return logs.slice(); },
     setCommandHandler: function (fn) { commandHandler = fn; },
     caps: { tts: supportsTTS, sr: supportsSR },

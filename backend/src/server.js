@@ -8,8 +8,22 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+
+// Load a gitignored .env (KEY=VALUE) if present, BEFORE modules read process.env.
+(function loadEnv() {
+  try {
+    const envPath = path.join(__dirname, '..', '..', '.env');
+    if (!fs.existsSync(envPath)) return;
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch (e) {}
+})();
+
 const game = require('./game');
 const session = require('./session');
+const eleven = require('./elevenlabs');
 const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
@@ -66,7 +80,16 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, {
       races: RACES, classes: CLASSES, icons: session.ICONS,
       companions: session.COMPANIONS.map((c, i) => ({ index: i, name: c.name, race: c.race, cls: c.cls, icon: c.icon })),
+      voice: { enabled: eleven.enabled(), name: eleven.voiceName() },
     });
+  }
+
+  // GM-voice TTS: synthesize a narration line in the ElevenLabs GM voice.
+  // Returns { ok, audio: <base64 mp3> } or { ok:false } (client uses browser TTS).
+  if (url === '/api/tts' && req.method === 'POST') {
+    const body = await readBody(req);
+    const audio = await eleven.synthesize(String(body.text || ''));
+    return sendJSON(res, 200, audio ? { ok: true, audio } : { ok: false });
   }
 
   if (url === '/api/character/plan' && req.method === 'POST') {

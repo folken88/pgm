@@ -25,4 +25,9 @@ module.exports = {
   loadouts: require('./pf1data/loadouts'),
   profiles: require('./pf1data/characterProfiles'),
   character: require('./game/character'),
+  // Rules-resolution layer (PF1-engine extraction from poker dungeon, Phase A):
+  conditions: require('./rules/conditions'),
+  spellmath: require('./rules/spellmath'),
+  protections: require('./rules/protections'),
+  treasure: require('./rules/treasure'),
 };

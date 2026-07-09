@@ -37,6 +37,7 @@
       state.meta = meta;
       fill('race', meta.races); fill('cls', meta.classes);
       buildIconPicker(meta.icons);
+      if (meta.voice) BM.setGMVoice(meta.voice.enabled);   // ElevenLabs GM voice ("Ultron") when configured
     });
     el('start-delve').addEventListener('click', startDelve);
     el('create-form').addEventListener('submit', onCreate);
@@ -282,8 +283,13 @@
     renderInventory(run.inventory);
 
     (run.log || []).forEach(function (e) {
-      if (e.seq > state.lastSeq) { state.lastSeq = e.seq; appendLog(e.text, e.priority); BM.speak(e.text, e.priority);
-        if (e.priority === 'urgent') { var a = el('announce'); if (a) a.textContent = e.text; } }
+      if (e.seq > state.lastSeq) {
+        state.lastSeq = e.seq; appendLog(e.text, e.priority);
+        if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (falls back to browser TTS)
+          BM.speakGM(e.text);
+          var a = el('announce'); if (a) a.textContent = e.text;
+        } else { BM.speak(e.text, e.priority); }
+      }
     });
     renderGameChoices(run, myTurn);
   }
