@@ -1,8 +1,22 @@
 # Personal Game Master (PGM) — Primer for picking this project up
 
-Read this first in a new session — this project has NOT been built yet as of
-2026-07-09. This is the kickoff/handoff doc, not a "current state of a live
-app" doc like poker or birdquiz have.
+Read this first in a new session. **Status update 2026-07-09:** kickoff is done
+and the FOUNDATION is built — pf1core Phase 1 (rules data + `character.js`
+derivation) is extracted, tested, pushed, and vendored into PGM (PGM derives
+characters through it). The v0 app itself (server, character-creation UI, room,
+combat, narrator, blind-mode + push-to-talk) is the next build. Two design
+decisions changed the shape since this primer was first written — see the v0
+design spec `docs/superpowers/specs/2026-07-09-pgm-v0-design.md`:
+  1. **PGM is now real-time MULTIPLAYER** (humans + AI companions in shared runs,
+     named/persistent parties, PF1 treasure economy) — revises the old "solo"
+     framing throughout this primer and the original design spec.
+  2. **Content is vetting-gated with diversion** — PGM rolls on real PF1
+     encounter/treasure tables but diverts any unvetted creature/item to the
+     nearest vetted equivalent, so it never generates something it can't run.
+     Ledgers: `docs/ITEMS-VETTING.md`, `docs/ENCOUNTERS-VETTING.md` (maintained
+     continuously).
+The rest of this doc is still the map to reference material; treat its "solo"
+language as superseded by the multiplayer decision above.
 
 ## What this is
 
