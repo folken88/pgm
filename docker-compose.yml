@@ -1,0 +1,14 @@
+services:
+  pgm:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pgm
+    ports:
+      - "${WEB_PORT:-32097}:3000"
+    environment:
+      - PORT=3000
+      # ElevenLabs GM voice ("Ultron"); blank = silent fallback to browser TTS.
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - GM_VOICE=${GM_VOICE:-Ultron}
+    restart: unless-stopped
