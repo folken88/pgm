@@ -345,7 +345,8 @@
     run.combatants.forEach(function (c) {
       var d = document.createElement('div');
       d.className = 'unit' + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && c.hp <= c.maxHp / 3 ? ' hurt' : '');
-      d.innerHTML = '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>'
+      d.innerHTML = (c.art ? '<img class="u-art" src="' + c.art + '" alt="" loading="lazy" />'
+                          : '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>')
         + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.clientId ? ' ✦' : '') + '</div>'
         + '<div class="u-hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP') + '</div>'
         + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
@@ -367,7 +368,7 @@
       card.className = 'hero-card' + (c.current ? ' current' : '') + (c.down ? ' down' : '')
         + (pct <= 33 ? ' critical' : pct <= 66 ? ' hurt' : '');
       var slots = c.slots ? Object.entries(c.slots).map(function (kv) { return 'L' + kv[0] + '×' + kv[1]; }).join(' ') : '';
-      card.innerHTML = '<div class="hc-name">' + (c.icon || '') + ' ' + esc(c.name)
+      card.innerHTML = '<div class="hc-name">' + (c.art ? '<img class="hc-art" src="' + c.art + '" alt="" loading="lazy" />' : (c.icon || '')) + ' ' + esc(c.name)
         + (c.ownerClientId === state.clientId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
         + '<div class="hpbar"><div style="width:' + pct + '%"></div></div>'
         + '<div class="hc-meta">' + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'

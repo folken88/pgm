@@ -16,6 +16,7 @@ const pf1 = require('./pf1core');
 const casting = require('./casting');
 const SFX = require('./sounds');
 const { DungeonShim } = require('./pokerdungeon/shim');
+const { artFor } = require('./art');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
@@ -473,6 +474,7 @@ function publicRun(run) {
     room: run.room ? { flavor: run.room.flavor } : null,
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,
+      art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, ownerClientId: c.ownerClientId || null,
       current: cb ? c.id === cb.id : false,

@@ -187,6 +187,9 @@ button { cursor: pointer; }
 .unit.down { opacity: .45; filter: grayscale(1); }
 .unit.hurt .u-hp { color: var(--danger); }
 
+.u-art { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; display: block; margin: 0 auto .15rem; }
+.hc-art { width: 26px; height: 26px; object-fit: cover; border-radius: 50%; vertical-align: -7px; margin-right: .1rem; }
+
 /* Chat / PTT row */
 .chat-row { display: flex; gap: .5rem; margin-top: .7rem; }
 .chat-row input { flex: 1; }

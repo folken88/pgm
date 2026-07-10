@@ -35,3 +35,13 @@ Remaining failures (all 11) need exactly two Dungeon.js methods ported:
 - KNOWN GAPS: summons refuse (_makeEnemy + turnOrder splice need PGM
   adaptation); casting.js is now legacy (used only by its own tests);
   Sleep cast needs an eyes-on verify (likely fine — kobold saved).
+
+## Art (2026-07-10)
+- poker portraits (229, heroes+enemies) committed at public/portraits/;
+  backend/src/art.js resolves names -> files (slug variants + ALIAS map).
+  Units + party panel render portraits; icon fallback otherwise.
+- Server-side: poker's gitignored galleries (tokens/, assets/characters/)
+  copied into pgm public on deploy (untracked, mirrors poker's import policy).
+- TODO: player avatar PICKER from the tokens gallery manifest; the CROP
+  STATION port (non-destructive /api/croporig pattern — see crop-station
+  memory: never overwrite originals) so sighted players adjust custom art.

@@ -10,6 +10,7 @@ const { BUILDS } = require('./dungeon-port/characterBuilds');
 const { CHARACTER_VOICES } = require('./dungeon-port/character_voices');
 const characters = require('./characters');
 const pf1 = require('./pf1core');
+const { artFor } = require('./art');
 
 // Transplanted verbatim from poker persistence/db.js (data, not poker logic).
 const BOT_CLASSES = {
@@ -45,7 +46,7 @@ const CLASS_ICON = {
 const ROSTER = Object.keys(BOT_CLASSES).sort().map(name => {
   const cls = BOT_CLASSES[name];
   const b = BUILDS[name] || {};
-  return { name, cls, race: b.race || 'human', icon: CLASS_ICON[cls] || '🎭', voiceId: CHARACTER_VOICES[name] || null };
+  return { name, cls, race: b.race || 'human', icon: CLASS_ICON[cls] || '🎭', art: artFor(name), voiceId: CHARACTER_VOICES[name] || null };
 });
 const BY_NAME = Object.fromEntries(ROSTER.map(r => [r.name.toLowerCase(), r]));
 

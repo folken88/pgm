@@ -5,3 +5,8 @@ node_modules/
 .env
 .env.local
 data/
+# imported galleries (server-side, from the NAS/poker vault — not committed)
+public/tokens/*.webp
+public/tokens/*.png
+public/assets/characters/*.webp
+public/assets/characters/*.png
