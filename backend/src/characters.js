@@ -70,7 +70,7 @@ function createCharacter(opts) {
 
   return {
     name: String(name || 'Adventurer').slice(0, 40),
-    race, cls,
+    race, cls, baseScores, raceMods,          // stored for level-up re-derivation
     weaponName, weapon,
     derived,                 // full pf1core derivation (bab, mods, saves, hp, ...)
     maxHp: derived.hp,
@@ -94,4 +94,21 @@ function planCharacter({ name, race = 'human', cls = 'fighter' }) {
 const RACES = Object.keys(RACE_MODS);
 const CLASSES = Object.keys(SCORES_BY_CLASS);
 
-module.exports = { createCharacter, planCharacter, RACES, CLASSES, validClass };
+/** Re-derive a character at a new level (PF1: HP/BAB/saves/ASI/casting all
+ *  re-derive; skills keep their trained set — deeper training is a follow-up).
+ *  Returns { hpGain }. Mutates the character object. */
+function levelUp(character, newLevel) {
+  const c = character;
+  const nd = pf1.character.deriveCharacter({
+    cls: c.cls, level: newLevel, baseScores: c.baseScores, race: c.race,
+    raceMods: c.raceMods, weapon: c.weapon,
+  });
+  const hpGain = nd.hp - c.maxHp;
+  c.derived = nd;
+  c.maxHp = nd.hp;
+  c.ac = 10 + (nd.mods.dex || 0) + (c.armorBonus || 0);
+  c.skillSheet = skillAlloc.buildSheet(c.cls, nd.mods, c.skills || []);
+  return { hpGain };
+}
+
+module.exports = { createCharacter, planCharacter, levelUp, RACES, CLASSES, validClass };

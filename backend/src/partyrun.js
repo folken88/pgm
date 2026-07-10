@@ -14,6 +14,7 @@ const combat = require('./combat');
 const items = require('./items');
 const pf1 = require('./pf1core');
 const casting = require('./casting');
+const characters = require('./characters');
 const SFX = require('./sounds');
 const { DungeonShim } = require('./pokerdungeon/shim');
 const { artFor } = require('./art');
@@ -468,9 +469,54 @@ function equipItem(run, hero, itemKey) {
   return { ok: true };
 }
 
+/** PF1 XP: sum xpForCR over the room's REAL foes, split evenly across the
+ *  party (poker's model, Tobias-confirmed). Level-ups re-derive the hero. */
+function awardRoomXp(run) {
+  const foes = run.combatants.filter(c => c.side === 'enemy' && !c.summoned);
+  const roomXp = foes.reduce((s, e) => s + pf1.xp.xpForCR(e.crNum || (e.creature && e.creature.crNum) || 0.25), 0);
+  if (roomXp <= 0) return;
+  const recips = run.heroes.filter(h => !h.left);
+  const per = Math.floor(roomXp / Math.max(1, recips.length));
+  if (per <= 0) return;
+  logEvent(run, `✨ Foes vanquished — the party earns ${roomXp} XP (${per} each).`, 'event');
+  for (const h of recips) {
+    h.xp = (h.xp || 0) + per;
+    const nl = pf1.xp.levelFromXp(h.xp);
+    const from = h.level || 1;
+    if (nl > from) applyLevelUp(run, h, from, nl);
+  }
+}
+function applyLevelUp(run, hero, from, to) {
+  const c = hero.character;
+  const { hpGain } = characters.levelUp(c, to);
+  const d = c.derived;
+  // Refresh the combatant's engine-facing fields.
+  hero.level = to; hero.mods = d.mods; hero.castingMod = d.castingMod || 0;
+  hero.iteratives = d.iteratives || [0];
+  hero.maxHp = c.maxHp; if (hpGain > 0) hero.hp += hpGain;
+  hero.ac = c.ac; hero.flatAc = c.ac - Math.max(0, d.mods.dex || 0);
+  hero.abilityScores = d.scores;
+  const p = (c.skillSheet || []).find(sk => sk.key === 'perception');
+  hero.perceptionMod = p ? p.modifier : (d.mods.wis || 0);
+  // Gains summary (poker's _levelGains lite): BAB, HP, new spells, new slots.
+  const parts = [];
+  const babD = pf1.classes.babFor(c.cls, to) - pf1.classes.babFor(c.cls, from);
+  if (babD > 0) parts.push(`BAB +${babD}`);
+  if (hpGain > 0) parts.push(`+${hpGain} HP`);
+  const kd = pf1.abilities.kitFor(c.cls);
+  const newSpells = ((kd && kd.abilities) || []).filter(ab => (ab.minLevel || 1) > from && (ab.minLevel || 1) <= to).map(ab => ab.name);
+  const s0 = pf1.abilities.slotsFor(c.cls, from, hero.castingMod) || {};
+  const s1 = pf1.abilities.slotsFor(c.cls, to, hero.castingMod) || {};
+  const newSlots = Object.keys(s1).filter(L => !s0[L]).map(L => `${L}${({ 1: 'st', 2: 'nd', 3: 'rd' })[L] || 'th'}-level slots`);
+  if (newSlots.length) parts.push('new ' + newSlots.join(' & '));
+  if (newSpells.length) parts.push('spells: ' + newSpells.slice(0, 4).join(', '));
+  logEvent(run, `⭐ LEVEL UP! ${hero.name} reaches level ${to} (${c.cls})! ${parts.join(' · ') || 'steady growth'}`, 'urgent', '/audio/spell_channel_charge.mp3');
+}
+
 function clearRoom(run, roll = Math.random) {
   run.combatants.forEach(c => { if (c.summoned && !c.down) { c.down = true; } });
   run.phase = 'cleared';
+  awardRoomXp(run);
   run.gold += run.room.reward.gp;
   run.roomsCleared += 1;
   run.heroes.forEach(h => {           // short rest: revive downed + heal to half
@@ -522,6 +568,7 @@ function publicRun(run) {
       art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
+      level: c.level || null, xp: c.xp || 0,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
       conditions: condList(c),
