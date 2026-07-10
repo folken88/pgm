@@ -73,6 +73,7 @@ class DungeonShim {
   _spellWorksOn(ab, t) { return pf1.protections.spellWorksOn(ab, t); }
   _isHumanoid(t) { return pf1.protections.isHumanoid(t); }
   _physDR(target, dmg, weapon, pierce) { return [pf1.protections.applyDR(target, dmg, weapon, pierce), '']; }
+  _drDesc(dr) { return pf1.protections.drDesc(dr); }
   _partySaveMod(m, tags) {
     return (m.level || 1) + ((m.buffs && m.buffs.save) || 0) + fighterFeats(m.cls, m.level, this._isRanged(m)).save
       + this._hasteMod(m) + RACES.raceSaveBonus(m.race || (m.character && m.character.race), tags)
@@ -81,7 +82,7 @@ class DungeonShim {
   }
   _acPenalty(m) { return ((m.buffs && m.buffs.acPen) || 0) + (m.grappled ? 2 : 0); }
   _acBonus(m) { return pf1.buffs.buffAcMod(m); }
-  _acOf(m) { return { ac: (m.character ? m.character.ac : m.ac), physical: 4 }; }
+  _acOf(m) { const base = m.character ? m.character.ac : m.ac; return { ac: (m.flatFooted && m.flatAc != null) ? m.flatAc : base, physical: 4 }; }
   _heroCMD(m) { const d = m.character ? m.character.derived : { bab: 0, mods: {} }; return 10 + (d.bab || 0) + (d.mods.str || 0) + (d.mods.dex || 0); }
   _grantTempHp(m, n) { m.hp += n; m.tempHp = (m.tempHp || 0) + n; }
   _dmgToMember(m, dmg) { m.hp -= dmg; if (m.hp <= 0) { m.down = true; this._note(`${m.nickname || m.name} falls!`); } }
@@ -114,12 +115,12 @@ Object.assign(DungeonShim.prototype, {
   _makeEnemy(base) {
     const id = 'e:s' + (++_summonSeq);
     return {
+      ...base,                               // full MON block: special flags (healer/shout/sr/images/attacks...) ride along
       id, uid: id, side: 'enemy', name: base.name, glyph: base.glyph || '👹', icon: base.glyph || '👹',
-      hp: base.hp, maxHp: base.hp, ac: base.ac, toHit: base.toHit || 0,
+      hp: base.hp, maxHp: base.hp, ac: base.ac, toHit: base.toHit || 0, attacks: base.attacks || 1,
       dmgDie: base.dmgDie || 4, dmgBonus: base.dmgBonus || 0, dmgCount: base.dmgCount || 1,
-      fort: base.fort || 0, reflex: base.reflex || 0, dr: base.dr || null, resist: base.resist || null,
-      type: base.type || null, evil: !!base.evil, align: base.align || null,
-      down: false, revealed: true, initMod: 0,
+      art: null,                             // MON art points at poker's /dungeon tree; partyrun resolves via art.js
+      down: false, revealed: true, initMod: base.init || 0,
       creature: { baseName: base.name, undead: base.type === 'undead' },
     };
   },

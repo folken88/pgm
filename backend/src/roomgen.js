@@ -104,4 +104,30 @@ function generatePartyRoom(partySize, apl, depth, roll = Math.random) {
   return { flavor: pick(ROOM_FLAVORS, roll), enemies, reward: { gp }, tier, budget };
 }
 
-module.exports = { generateRoom, generatePartyRoom, ROOM_FLAVORS };
+/** MON-bestiary room: same CR/XP budget engine, drawing from poker's bestiary.
+ *  Returns { flavor, monKeys, reward, tier } — the caller builds combatants via
+ *  shim._makeEnemy. Vetted-by-provenance (the proven poker engine runs them). */
+const STEALTH_OVERRIDES = { giant_spider: 19, ghoul: 13, shadow: 18, wight: 13 };
+function generateMonRoom(partySize, apl, depth, MON, xpForCR, roll = Math.random) {
+  partySize = Math.max(1, partySize || 1); apl = Math.max(1, apl || 1); depth = depth || 0;
+  const maxCr = Math.max(1, apl + 1 + Math.floor(depth / 4));
+  const cands = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= maxCr && !MON[k].boss);
+  const tier = pickTier(depth, roll);
+  const budget = Math.max(50, Math.round(BASE_XP[tier] * (partySize / 4) * apl * (1 + depth * 0.08)));
+  const monKeys = [];
+  let remaining = budget, guard = 0;
+  while (guard++ < 12 && monKeys.length < 6) {
+    const afford = cands.filter(k => xpForCR(MON[k].crNum || 0.25) <= remaining * 1.25);
+    if (!afford.length) break;
+    const k = afford[Math.floor(roll() * afford.length)];
+    monKeys.push(k);
+    remaining -= xpForCR(MON[k].crNum || 0.25);
+    if (remaining < 40) break;
+  }
+  if (!monKeys.length) monKeys.push(cands.sort((a, b) => (MON[a].crNum || 9) - (MON[b].crNum || 9))[0] || 'goblin');
+  const spent = monKeys.reduce((s2, k) => s2 + xpForCR(MON[k].crNum || 0.25), 0);
+  const gp = Math.round(spent / 12) + rollDice(2, 6, roll);
+  return { flavor: pick(ROOM_FLAVORS, roll), monKeys, reward: { gp }, tier, budget };
+}
+
+module.exports = { generateRoom, generatePartyRoom, generateMonRoom, STEALTH_OVERRIDES, ROOM_FLAVORS };

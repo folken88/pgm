@@ -17,7 +17,7 @@ const casting = require('./casting');
 const SFX = require('./sounds');
 const { DungeonShim } = require('./pokerdungeon/shim');
 const { artFor } = require('./art');
-const { generatePartyRoom } = require('./roomgen');
+const { generatePartyRoom, generateMonRoom, STEALTH_OVERRIDES } = require('./roomgen');
 const { rollDie } = require('./dice');
 
 function createPartyRun(party, roll = Math.random) {
@@ -95,11 +95,32 @@ function enemyCombatant(e, i) {
 
 function spawnRoom(run, roll) {
   const apl = Math.round(run.heroes.reduce((s, h) => s + (h.character.derived.level || 1), 0) / run.heroes.length);
-  const room = generatePartyRoom(run.heroes.length, apl, run.roomsCleared, roll);
+  // POKER BESTIARY (155 MON stat blocks, vetted-by-provenance) behind PGM's
+  // CR/XP budget; special flags (healer/shout/sr/shaman casts...) drive
+  // _enemyAct. Stealth: default DC 10, sneaky lurkers overridden.
+  const { MON } = pf1.monsters;
+  const xpForCR = pf1.xp.xpForCR;
+  const room = generateMonRoom(run.heroes.length, apl, run.roomsCleared, MON, xpForCR, roll);
   run.room = { flavor: room.flavor, reward: room.reward };
-  const enemies = room.enemies.map(enemyCombatant);
+  const enemies = room.monKeys.map(k => {
+    const e = run.shim._makeEnemy(MON[k]);
+    e.key = k; e.revealed = false;
+    e.stealth = STEALTH_OVERRIDES[k] != null ? STEALTH_OVERRIDES[k] : 10;
+    e.art = artFor(e.name);
+    return e;
+  });
+  // Suffix duplicates: "Goblin A", "Goblin B".
+  const totals = {};
+  enemies.forEach(e => { totals[e.key] = (totals[e.key] || 0) + 1; });
+  const seen0 = {};
+  enemies.forEach(e => {
+    e.creature.baseName = e.creature.baseName || e.name;
+    if (totals[e.key] > 1) { seen0[e.key] = (seen0[e.key] || 0) + 1; e.name = e.creature.baseName + ' ' + String.fromCharCode(64 + seen0[e.key]); }
+  });
 
-  // Perception vs Stealth: each living hero rolls against each enemy.
+  // Perception vs Stealth: each living hero rolls against each enemy. A hero
+  // who failed to notice ANY present foe starts FLAT-FOOTED (denied Dex) until
+  // they first act — poker semantics + PGM's perception twist.
   run.heroes.forEach(h => { h.perceived = new Set(); });
   enemies.forEach(en => {
     run.heroes.forEach(h => {
@@ -108,6 +129,7 @@ function spawnRoom(run, roll) {
       if (check >= en.stealth) { h.perceived.add(en.id); en.revealed = true; }
     });
   });
+  run.heroes.forEach(h => { h.flatFooted = !h.down && enemies.some(en => !h.perceived.has(en.id)); });
 
   // Per-room spell refresh (poker's per-room refill convention). Room buffs
   // clear; run buffs (Bless/Inspire) persist.
@@ -287,13 +309,15 @@ function enemyTurn(run, enemy, roll) {
     enemy.revealed = true;
     logEvent(run, `${cap(enemy.name)} bursts from hiding!`, 'urgent');
   }
+  // THE POKER VILLAIN BRAIN: action economy, maneuvers, specials (heal/shout/
+  // shaman casts/hellfire...), fight-defensively. Falls back to a basic swing.
+  try { run.shim._enemyAct(enemy); return; } catch (e) {}
   const targets = living(run, 'hero');
   if (!targets.length) return;
   const target = targets.slice().sort((a, b) => a.hp - b.hp)[0];
-  // Flat-footed: round 1, target never perceived this attacker -> lose Dex to AC.
-  const flat = run.round === 1 && !target.perceived.has(enemy.id);
-  const targetAC = (flat ? target.flatAc : target.ac) + pf1.buffs.buffAcMod(target);   // Shield/Shield of Faith...
-  const res = combat.creatureAttack(enemy.creature, targetAC, roll, -pf1.tick.attackPenalty(enemy));
+  const flat = target.flatFooted;
+  const targetAC = (flat ? target.flatAc : target.ac) + pf1.buffs.buffAcMod(target);
+  const res = combat.creatureAttack({ attack: enemy.toHit || 0, dmg: { count: enemy.dmgCount || 1, sides: enemy.dmgDie || 4, bonus: enemy.dmgBonus || 0 } }, targetAC, roll, -pf1.tick.attackPenalty(enemy));
   const ff = flat ? ' (caught flat-footed!)' : '';
   if (res.hit) {
     target.hp -= res.damage;
@@ -403,6 +427,7 @@ function heroAttack(run, hero, target, roll) {
   // POKER ATTACK PIPELINE: iteratives -> _swingVsAC (crit confirm, sneak/smite/
   // bane dice, weapon arcana, Mirror Image/concealment, DR) — verbatim engine.
   const shim = run.shim;
+  hero.flatFooted = false;                    // acting ends flat-footed (PF1)
   const offs = (hero.character.derived.iteratives && hero.character.derived.iteratives.length)
     ? hero.character.derived.iteratives : [0];
   let t = target;

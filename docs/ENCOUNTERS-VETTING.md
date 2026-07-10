@@ -76,6 +76,14 @@ the special riders + more sneaky/ambush foes._
 
 ---
 
+## VETTED BY PROVENANCE (2026-07-10): THE POKER BESTIARY — all 155 MON stat
+blocks now spawn via the transplanted engine (shim._makeEnemy + _enemyAct
+villain brain: action economy, maneuvers, healer/shout/shaman-cast/hellfire
+specials, SR, DR). These ran for months in poker's live dungeon; PGM runs the
+same code. PGM's perception layer applies (default Stealth DC 10; sneaky
+lurkers overridden: giant_spider 19, shadow 18, ghoul/wight 13). Encounter
+selection stays behind PGM's CR/XP budget with APL+depth caps.
+
 ## UNVETTED — valid PF1, not yet runnable
 
 The backlog is effectively the **entire PF1 bestiary** (pf1core `monsters` +
