@@ -14,4 +14,9 @@ services:
       # ElevenLabs GM voice ("Ultron"); blank = silent fallback to browser TTS.
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - GM_VOICE=${GM_VOICE:-Ultron}
+      # LLM Game Master provider chain (Ollama primary -> OpenRouter -> OpenAI)
+      - OLLAMA_URL=${OLLAMA_URL:-http://192.168.1.202:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:14b-instruct}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     restart: unless-stopped
