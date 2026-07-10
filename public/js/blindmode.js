@@ -1,16 +1,27 @@
 /**
- * PGM blind-mode accessibility engine (independent PGM implementation, built on
- * the patterns proven in poker's blindMode.js for Josh):
- *   - 3-tier priority speech queue (urgent > event > ambient; higher cancels lower)
- *   - Push-to-talk voice control (Web Speech recognition) — hold the mic button
- *     or hold Space; release to dispatch the recognized command
- *   - Keyboard shortcuts (number keys pick choices; H repeat; +/- speed; ` mute)
- *   - Diagnostic logging ring buffer (window.BlindMode.getLogs()) for debugging a
- *     remote blind tester's session
- *   - Capability detection + graceful fallback (keyboard still works everywhere)
+ * PGM blind-mode engine — mirrors poker-dungeon's blindMode controls exactly
+ * where possible (same toggle, same keymap, same conventions), per Tobias:
  *
- * Public API (window.BlindMode): init, speak, repeat, faster, slower, toggleMute,
- * setCommandHandler, toast, getLogs.
+ *   `        toggle blind mode on/off (announced; sessionStorage, like poker)
+ *   ?        help / learn mode — keys are SPOKEN, not fired
+ *   A        attack (queued target if you picked one in E-mode, else first foe)
+ *   E        inspect-enemies mode: Tab cycles foes (name + HP), Enter marks the
+ *            target for your attacks, Escape closes
+ *   K        spellbook: Tab cycles castable spells, Enter casts (at the queued/
+ *            first target), Escape closes
+ *   C        character sheet (status readout)
+ *   H        health re-read (party HP summary) — poker's H re-read
+ *   X        progression (level + XP)
+ *   B        bail — arms a confirm; press B again to flee the dungeon
+ *   1-9      pick a numbered choice
+ *   Space    hold to talk (push-to-talk voice), release to send
+ *   + / -    speech faster / slower
+ *
+ * OFF by default (sighted players see a normal UI, no TTS). The 👁 button at
+ * top-left and the backtick both toggle. GM narration audio (Ultron) plays for
+ * EVERYONE — blind mode governs the access-tier TTS (menus, statuses, events).
+ *
+ * Diagnostics ring buffer: window.BlindMode.getLogs().
  */
 (function () {
   'use strict';
@@ -20,30 +31,24 @@
   var supportsTTS = !!TTS, supportsSR = !!SR;
 
   var PRIO = { ambient: 0, event: 1, urgent: 2 };
-  var queue = [];
-  var speaking = false;
-  var muted = false;
-  var rate = 1.35;                 // brisk default; screen-reader users go faster
-  var lastText = '';
-  var commandHandler = null;
-  var voice = null;
+  var on = false;                  // blind mode — OFF by default (poker convention)
+  var queue = [], speaking = false, muted = false, rate = 1.35, lastText = '';
+  var commandHandler = null, voice = null;
+  var info = {};                   // app-registered providers: foes(), spells(), status(), health(), progression(), attack(), cast(), flee()
+  var helpMode = false;            // '?' learn mode
+  var browse = null;               // {kind:'foes'|'spells', list, idx}
+  var bailArm = 0;
 
-  // ---- diagnostics ring buffer ----
   var logs = [];
-  function blog() {
-    var msg = '[BlindMode] ' + Array.prototype.join.call(arguments, ' ');
-    logs.push(msg); if (logs.length > 300) logs.shift();
-    try { console.log(msg); } catch (e) {}
-  }
+  function blog() { var m = '[BlindMode] ' + Array.prototype.join.call(arguments, ' '); logs.push(m); if (logs.length > 300) logs.shift(); try { console.log(m); } catch (e) {} }
 
-  // ---- speech ----
+  // ---- speech (3-tier priority queue) ----
   function pickVoice() {
     if (!supportsTTS) return;
     var vs = TTS.getVoices();
     voice = vs.find(function (v) { return /en[-_]/i.test(v.lang) && /female|zira|jenny|samantha/i.test(v.name); })
          || vs.find(function (v) { return /en[-_]/i.test(v.lang); }) || vs[0] || null;
   }
-
   function pump() {
     if (!supportsTTS || muted || speaking || queue.length === 0) return;
     var item = queue.shift();
@@ -51,33 +56,30 @@
     u.rate = rate; if (voice) u.voice = voice;
     u.onend = u.onerror = function () { speaking = false; pump(); };
     speaking = true;
-    try { TTS.speak(u); } catch (e) { blog('speak error', e && e.message); speaking = false; }
+    try { TTS.speak(u); } catch (e) { speaking = false; }
   }
-
-  function speak(text, prio) {
-    if (!text) return;
-    prio = prio || 'event';
-    lastText = text;
-    setStatus(text);
-    if (!supportsTTS) return;               // visible text + status line still update
+  function rawSpeak(text, prio) {   // internal: ignores the on/off gate (toggle announcements)
+    if (!supportsTTS || !text) return;
     var weight = PRIO[prio] != null ? PRIO[prio] : 1;
     if (weight >= PRIO.urgent) {
       queue = queue.filter(function (q) { return PRIO[q.prio] >= PRIO.urgent; });
       try { TTS.cancel(); } catch (e) {}
       speaking = false;
       queue.unshift({ text: text, prio: prio });
-    } else if (weight === PRIO.ambient && queue.length) {
-      return;                               // drop ambient if anything is queued
-    } else {
-      queue.push({ text: text, prio: prio });
-    }
+    } else if (weight === PRIO.ambient && queue.length) return;
+    else queue.push({ text: text, prio: prio });
     pump();
   }
-
+  function speak(text, prio) {
+    if (!text) return;
+    lastText = text; setStatus(text);
+    if (!on) return;                       // blind mode off: visible text only
+    rawSpeak(text, prio || 'event');
+  }
   function repeat() { if (lastText) speak(lastText, 'urgent'); }
   function clampRate(r) { return Math.max(0.6, Math.min(2.4, r)); }
-  function faster() { rate = clampRate(rate + 0.15); toast('Speech faster'); speak('Faster.', 'urgent'); }
-  function slower() { rate = clampRate(rate - 0.15); toast('Speech slower'); speak('Slower.', 'urgent'); }
+  function faster() { rate = clampRate(rate + 0.15); speak('Faster.', 'urgent'); }
+  function slower() { rate = clampRate(rate - 0.15); speak('Slower.', 'urgent'); }
   function toggleMute() {
     muted = !muted;
     if (muted) { try { TTS && TTS.cancel(); } catch (e) {} queue = []; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} } }
@@ -86,13 +88,30 @@
     toast(muted ? 'Speech off' : 'Speech on');
   }
 
-  // ---- GM voice (ElevenLabs "Ultron"); silent fallback to browser TTS ----
+  // ---- blind-mode toggle (poker: backtick, announced, sessionStorage) ----
+  function toggle() {
+    setOn(!on);
+  }
+  function setOn(next) {
+    on = !!next;
+    try { sessionStorage.setItem('blindMode', on ? '1' : '0'); } catch (e) {}
+    var btn = document.getElementById('blind-toggle');
+    if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '👁 Blind mode: ON' : '👁 Blind mode: off'; }
+    document.body.classList.toggle('blind-on', on);
+    rawSpeak(on
+      ? 'Blind mode on. A attack, E enemies, K spells, C character, H health, X progression, question mark for help. Hold space to talk.'
+      : 'Blind mode off.', 'urgent');
+    blog('blind mode', on ? 'ON' : 'off');
+  }
+
+  // ---- GM voice (ElevenLabs "Ultron") — plays for EVERYONE ----
   var gmVoiceOn = false, gmAudio = null;
-  function setGMVoice(on) { gmVoiceOn = !!on; blog('GM voice', gmVoiceOn ? 'ON (ElevenLabs)' : 'off (browser TTS)'); }
+  function setGMVoice(v) { gmVoiceOn = !!v; blog('GM voice', gmVoiceOn ? 'ON (ElevenLabs)' : 'off (browser TTS fallback)'); }
   function speakGM(text) {
     if (!text) return;
-    if (!gmVoiceOn || muted) return speak(text, 'urgent');   // fallback / respect mute
     lastText = text; setStatus(text);
+    if (muted) return;
+    if (!gmVoiceOn) { if (on) rawSpeak(text, 'urgent'); return; }
     fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) })
       .then(function (r) { return r.json(); })
       .then(function (d) {
@@ -102,14 +121,14 @@
           speaking = false;
           if (gmAudio) { try { gmAudio.pause(); } catch (e) {} }
           gmAudio = new Audio('data:audio/mpeg;base64,' + d.audio);
-          gmAudio.onended = gmAudio.onerror = function () { pump(); };   // resume queued speech after the GM line
-          gmAudio.play().catch(function () { speak(text, 'urgent'); });
-        } else { speak(text, 'urgent'); }
+          gmAudio.onended = gmAudio.onerror = function () { pump(); };
+          gmAudio.play().catch(function () { if (on) rawSpeak(text, 'urgent'); });
+        } else if (on) rawSpeak(text, 'urgent');
       })
-      .catch(function () { speak(text, 'urgent'); });
+      .catch(function () { if (on) rawSpeak(text, 'urgent'); });
   }
 
-  // ---- push-to-talk voice recognition ----
+  // ---- push-to-talk (blind mode only) ----
   var recog = null, listening = false;
   function buildRecog() {
     if (!supportsSR) return null;
@@ -118,33 +137,95 @@
     r.onresult = function (e) {
       var t = (e.results[0] && e.results[0][0] && e.results[0][0].transcript || '').trim();
       blog('heard:', JSON.stringify(t));
-      if (t && commandHandler) commandHandler(t.toLowerCase());
+      if (!t) return;
+      if (/^blind\s+off$/i.test(t)) return toggle();     // poker voice command
+      if (commandHandler) commandHandler(t.toLowerCase());
     };
-    r.onerror = function (e) { blog('SR error:', e.error); if (e.error === 'not-allowed') toast('Microphone blocked — use the keyboard/buttons.'); };
+    r.onerror = function (e) { blog('SR error:', e.error); if (e.error === 'not-allowed') toast('Microphone blocked — keyboard still works.'); };
     r.onend = function () { listening = false; setPTT(false); };
     return r;
   }
   function startListen() {
-    if (!supportsSR) { toast('Voice control not supported in this browser — keyboard still works.'); return; }
+    if (!on) return;
+    if (!supportsSR) { toast('Voice control needs Chrome/Edge — keyboard works everywhere.'); return; }
     if (listening) return;
     if (!recog) recog = buildRecog();
-    try { recog.start(); listening = true; setPTT(true); speak('Listening.', 'urgent'); blog('listening start'); }
-    catch (e) { blog('start failed', e && e.message); }
+    try { recog.start(); listening = true; setPTT(true); speak('Listening.', 'urgent'); } catch (e) {}
   }
-  function stopListen() {
-    if (recog && listening) { try { recog.stop(); } catch (e) {} }
-    listening = false; setPTT(false);
-  }
-  function setPTT(on) {
+  function stopListen() { if (recog && listening) { try { recog.stop(); } catch (e) {} } listening = false; setPTT(false); }
+  function setPTT(v) {
     var b = document.getElementById('ptt');
-    if (b) { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '🔴 Listening…' : '🎤 Hold to speak'; }
+    if (b) { b.setAttribute('aria-pressed', String(v)); b.textContent = v ? '🔴 Listening…' : '🎤 Hold to speak'; }
   }
+
+  // ---- browse modes (E foes / K spells — Tab cycles, Enter acts, Escape closes) ----
+  function openBrowse(kind) {
+    var list = (kind === 'foes' ? (info.foes && info.foes()) : (info.spells && info.spells())) || [];
+    if (!list.length) { speak(kind === 'foes' ? 'No visible enemies.' : 'No spells available.', 'urgent'); return; }
+    browse = { kind: kind, list: list, idx: 0 };
+    speakBrowse();
+  }
+  function speakBrowse() {
+    var it = browse.list[browse.idx];
+    var pos = (browse.idx + 1) + ' of ' + browse.list.length;
+    speak((browse.kind === 'foes' ? 'Enemy ' + pos + ': ' + it.label : 'Spell ' + pos + ': ' + it.label)
+      + '. Tab for next, Enter to ' + (browse.kind === 'foes' ? 'target' : 'cast') + ', Escape to close.', 'urgent');
+  }
+  function browseKeydown(e) {
+    if (e.key === 'Tab') { e.preventDefault(); browse.idx = (browse.idx + 1) % browse.list.length; speakBrowse(); return true; }
+    if (e.key === 'Enter' || e.code === 'NumpadEnter') {
+      e.preventDefault();
+      var it = browse.list[browse.idx]; var kind = browse.kind; browse = null;
+      if (kind === 'foes') { if (info.targetFoe) info.targetFoe(it.id); }
+      else if (info.castSpell) info.castSpell(it.key);
+      return true;
+    }
+    if (e.key === 'Escape') { e.preventDefault(); browse = null; speak((browse === null ? (e._k === 'e' ? 'Enemies' : 'Menu') : 'Menu') + ' closed.', 'urgent'); return true; }
+    return false;
+  }
+
+  // ---- the keymap (mirrors poker's dungeon blind keys) ----
+  var HELP = {
+    a: 'A. Attack your target.', e: 'E. Inspect enemies. Tab cycles, Enter targets.',
+    k: 'K. Spellbook. Tab cycles, Enter casts.', c: 'C. Character sheet.',
+    h: 'H. Health of the party.', x: 'X. Level and experience.',
+    b: 'B. Bail — press twice to flee the dungeon.', '?': 'Question mark. Toggles help mode.',
+  };
+  function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
+
+  function onKeydown(e) {
+    if (isTyping(document.activeElement)) return;
+    if (e.key === '`') { e.preventDefault(); toggle(); return; }   // toggle works even when off
+    if (/^[1-9]$/.test(e.key) && commandHandler) { commandHandler('#choice ' + e.key); return; }   // numbers work for everyone
+    if (!on) return;
+
+    if (browse && browseKeydown(e)) return;
+    var k = (e.key || '').toLowerCase();
+    if (helpMode && HELP[k]) { e.preventDefault(); speak(HELP[k], 'urgent'); return; }   // learn mode: speak, don't fire
+    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak('Help mode ' + (helpMode ? 'on — keys are described, not fired.' : 'off.'), 'urgent'); return; }
+    if (e.code === 'Space') { e.preventDefault(); startListen(); return; }
+    if (k === 'h') { e.preventDefault(); speak((info.health && info.health()) || lastText || 'Nothing yet.', 'urgent'); return; }
+    if (k === 'c') { e.preventDefault(); speak((info.status && info.status()) || 'No character yet.', 'urgent'); return; }
+    if (k === 'x') { e.preventDefault(); speak((info.progression && info.progression()) || 'No progression yet.', 'urgent'); return; }
+    if (k === 'e') { e.preventDefault(); openBrowse('foes'); return; }
+    if (k === 'k') { e.preventDefault(); openBrowse('spells'); return; }
+    if (k === 'a') { e.preventDefault(); if (info.attack) info.attack(); return; }
+    if (k === 'b') {
+      e.preventDefault();
+      var now = Date.now();
+      if (now - bailArm < 4000) { bailArm = 0; if (info.flee) info.flee(); }
+      else { bailArm = now; speak('Bail? Press B again to flee the dungeon.', 'urgent'); }
+      return;
+    }
+    if (e.key === '+' || e.key === '=') { faster(); return; }
+    if (e.key === '-' || e.key === '_') { slower(); return; }
+  }
+  function onKeyup(e) { if (e.code === 'Space' && on) { e.preventDefault(); stopListen(); } }
 
   // ---- ui helpers ----
   var toastTimer = null;
   function toast(msg) {
-    var el = document.getElementById('toast');
-    if (!el) return;
+    var el = document.getElementById('toast'); if (!el) return;
     el.textContent = msg; el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, 2600);
   }
@@ -153,56 +234,37 @@
     if (el) el.textContent = msg.length > 70 ? msg.slice(0, 67) + '…' : msg;
   }
 
-  function isTyping(el) {
-    return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
-  }
-
-  // ---- init / wiring ----
+  // ---- init ----
   function init(opts) {
     opts = opts || {};
     commandHandler = opts.onCommand || null;
-
     if (supportsTTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
-    else toast('Text-to-speech unavailable — on-screen text is fully readable.');
 
-    // Buttons
-    bindPTT(document.getElementById('ptt'));
-    on('repeat', 'click', repeat);
-    on('slower', 'click', slower);
-    on('faster', 'click', faster);
-    on('mute', 'click', toggleMute);
+    var bt = document.getElementById('blind-toggle');
+    if (bt) bt.addEventListener('click', toggle);
+    var pttB = document.getElementById('ptt');
+    if (pttB) {
+      pttB.addEventListener('pointerdown', function (e) { e.preventDefault(); startListen(); });
+      pttB.addEventListener('pointerup', function (e) { e.preventDefault(); stopListen(); });
+      pttB.addEventListener('pointerleave', function () { if (listening) stopListen(); });
+    }
+    var onEl = function (id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    onEl('repeat', repeat); onEl('slower', slower); onEl('faster', faster); onEl('mute', toggleMute);
 
-    // Keyboard
-    document.addEventListener('keydown', function (e) {
-      if (isTyping(document.activeElement)) return;
-      // Space = push-to-talk (hold)
-      if (e.code === 'Space') { e.preventDefault(); startListen(); return; }
-      if (e.key === 'h' || e.key === 'H') { e.preventDefault(); repeat(); return; }
-      if (e.key === '+' || e.key === '=') { faster(); return; }
-      if (e.key === '-' || e.key === '_') { slower(); return; }
-      if (e.key === '`') { toggleMute(); return; }
-      if (/^[1-9]$/.test(e.key) && commandHandler) { commandHandler('#choice ' + e.key); }
-    });
-    document.addEventListener('keyup', function (e) {
-      if (e.code === 'Space') { e.preventDefault(); stopListen(); }
-    });
+    document.addEventListener('keydown', onKeydown);
+    document.addEventListener('keyup', onKeyup);
 
-    blog('init — TTS:', supportsTTS, 'SR:', supportsSR);
-    if (!supportsSR) toast('Voice control needs Chrome/Edge — keyboard & buttons work everywhere.');
+    // Restore mode from sessionStorage (poker convention) — silent restore.
+    try { if (sessionStorage.getItem('blindMode') === '1') { on = true; var b = document.getElementById('blind-toggle'); if (b) { b.setAttribute('aria-pressed', 'true'); b.textContent = '👁 Blind mode: ON'; } document.body.classList.add('blind-on'); } } catch (e) {}
+    blog('init — TTS:', supportsTTS, 'SR:', supportsSR, 'blind:', on);
   }
-
-  function bindPTT(btn) {
-    if (!btn) return;
-    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); startListen(); });
-    btn.addEventListener('pointerup', function (e) { e.preventDefault(); stopListen(); });
-    btn.addEventListener('pointerleave', function () { if (listening) stopListen(); });
-  }
-  function on(id, ev, fn) { var el = document.getElementById(id); if (el) el.addEventListener(ev, fn); }
 
   window.BlindMode = {
     init: init, speak: speak, speakGM: speakGM, setGMVoice: setGMVoice,
-    repeat: repeat, faster: faster, slower: slower,
-    toggleMute: toggleMute, toast: toast, getLogs: function () { return logs.slice(); },
+    repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
+    toggle: toggle, isOn: function () { return on; },
+    registerInfo: function (providers) { info = Object.assign(info, providers || {}); },
+    toast: toast, getLogs: function () { return logs.slice(); },
     setCommandHandler: function (fn) { commandHandler = fn; },
     caps: { tts: supportsTTS, sr: supportsSR },
   };

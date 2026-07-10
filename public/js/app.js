@@ -33,6 +33,7 @@
   // ---------- setup ----------
   function boot() {
     BM.init({ onCommand: handleCommand });
+    registerBlindInfo();
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
       state.meta = meta;
       fill('race', meta.races); fill('cls', meta.classes);
@@ -358,6 +359,61 @@
     if (choice.item) body.item = choice.item;
     if (choice.spell) body.spell = choice.spell;
     api('/api/session/action', body).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot do that.', 'urgent'); });
+  }
+
+  // ---------- blind-mode info providers (poker keymap: A/E/K/C/H/X/B) ----------
+  function myRun() { return state.you && state.you.run; }
+  function myHero() {
+    var run = myRun(); if (!run) return null;
+    return run.combatants.find(function (c) { return c.ownerClientId === state.clientId; }) || null;
+  }
+  function registerBlindInfo() {
+    BM.registerInfo({
+      foes: function () {
+        var run = myRun(); if (!run) return [];
+        return (run.enemies || []).map(function (e) { return { id: e.id, key: e.id, label: e.name + ', ' + e.hp + ' HP' }; });
+      },
+      spells: function () {
+        var run = myRun(); if (!run || !run.turn || run.turn.ownerClientId !== state.clientId) return [];
+        return (run.turn.spells || []).map(function (s) { return { key: s.key, label: s.name + (s.uses != null ? ', ' + s.uses + ' left' : ', at will') }; });
+      },
+      targetFoe: function (id) {
+        var run = myRun(); var e = run && (run.enemies || []).find(function (x) { return x.id === id; });
+        state.queuedTarget = id;
+        BM.speak('Targeting ' + (e ? e.name : 'that enemy') + '. Press A to attack.', 'urgent');
+      },
+      attack: function () {
+        var atk = state.choices.filter(function (c) { return c.id === 'attack'; });
+        if (!atk.length) return BM.speak('You cannot attack right now.', 'urgent');
+        var byTarget = state.queuedTarget && atk.find(function (c) { return c.target === state.queuedTarget; });
+        doGameAction(byTarget || atk[0]);
+      },
+      castSpell: function (key) {
+        var c = state.choices.find(function (x) { return x.id === 'cast' && x.spell === key; });
+        if (!c) return BM.speak('You cannot cast that right now.', 'urgent');
+        if (state.queuedTarget) c = Object.assign({}, c, { target: state.queuedTarget });
+        doGameAction(c);
+      },
+      status: function () {
+        var h = myHero();
+        if (!h) return 'No character in play.';
+        return h.name + ', level 1 ' + (state.charInput ? state.charInput.cls : '') + '. Health ' + h.hp + ' of ' + h.maxHp + '. Armor class ' + h.ac + '.';
+      },
+      health: function () {
+        var run = myRun(); if (!run) return 'No party yet.';
+        return run.combatants.filter(function (c) { return c.side === 'hero'; })
+          .map(function (c) { return c.name + ' ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp); }).join('. ') + '.';
+      },
+      progression: function () {
+        var run = myRun();
+        return 'Level 1. Gold ' + (run ? run.gold : 0) + '. Rooms cleared ' + (run ? run.roomsCleared : 0) + '.';
+      },
+      flee: function () {
+        BM.speak('Bailing out of the dungeon.', 'urgent');
+        if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
+        setTimeout(function () { location.reload(); }, 600);
+      },
+    });
   }
 
   // ---------- command routing ----------
