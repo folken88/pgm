@@ -7,6 +7,7 @@
  * slots/uses (refilled per room — poker's per-room refresh convention).
  */
 const pf1 = require('./pf1core');
+const SFX = require('./sounds');
 const A = pf1.abilities;
 const R = pf1.resolve;
 const P = pf1.protections;
@@ -141,6 +142,7 @@ function cast(hero, ab, ctx, roll = Math.random) {
     }
     default: return { ok: false, error: 'unsupported spell' };
   }
+  if (ev.length && !ev[0].sound) ev[0].sound = SFX.forEffect(ab, roll);
   spend(hero, ab);
   return { ok: true, events: ev };
 }

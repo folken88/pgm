@@ -316,7 +316,10 @@
     log.forEach(function (e) {
       if (e.seq > state.lastSeq) {
         state.lastSeq = e.seq; appendLog(e.text, e.priority);
-        if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak
+        if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak/play
+        if (e.sound && !BM.isMuted()) {                // combat/spell SFX (poker's SND pools)
+          try { var sfx = new Audio(e.sound); sfx.volume = 0.55; sfx.play().catch(function () {}); } catch (err) {}
+        }
         if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (serialized queue)
           BM.speakGM(e.text);
           var a = el('announce'); if (a) a.textContent = e.text;

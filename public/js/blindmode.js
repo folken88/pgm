@@ -284,7 +284,7 @@
   window.BlindMode = {
     init: init, speak: speak, speakGM: speakGM, setGMVoice: setGMVoice,
     repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
-    toggle: toggle, isOn: function () { return on; },
+    toggle: toggle, isOn: function () { return on; }, isMuted: function () { return muted; },
     ptt: { start: startListen, stop: stopListen },
     registerInfo: function (providers) { info = Object.assign(info, providers || {}); },
     toast: toast, getLogs: function () { return logs.slice(); },

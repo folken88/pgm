@@ -14,6 +14,7 @@ const combat = require('./combat');
 const items = require('./items');
 const pf1 = require('./pf1core');
 const casting = require('./casting');
+const SFX = require('./sounds');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
@@ -203,7 +204,7 @@ function castSpell(run, hero, spellKey, targetId, roll) {
     nextTarget: () => livingRevealedEnemies(run)[0] || null,
   }, roll);
   if (!r.ok) return r;
-  for (const e of r.events) logEvent(run, e.text, e.priority);
+  for (const e of r.events) logEvent(run, e.text, e.priority, e.sound);
   return { ok: true };
 }
 
@@ -217,7 +218,7 @@ function aiHeroTurn(run, hero, roll) {
     const healAb = book.spells.find(s => s.effect === 'heal' && casting.canCast(hero, s));
     if (healAb) {
       const r = casting.cast(hero, healAb, { enemies: livingRevealedEnemies(run), allies }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
     }
     const healSlot = run.inventory.find(s => { const it = items.ITEM_BY_KEY[s.key]; return it && it.effect && it.effect.kind === 'heal' && s.qty > 0; });
     if (healSlot && useItem(run, hero, healSlot.key, null, roll).ok) return;
@@ -232,7 +233,7 @@ function aiHeroTurn(run, hero, roll) {
     if (buffAb) {
       hero._aiBuffed = true;
       const r = casting.cast(hero, buffAb, { enemies: foes, allies }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
     } else hero._aiBuffed = true;
   }
 
@@ -245,11 +246,11 @@ function aiHeroTurn(run, hero, roll) {
     const pickAb = (foes.length >= 2 && aoe) ? aoe : (nuke && foes.some(f => worksOn(nuke, f)) ? nuke : null);
     if (pickAb) {
       const r = casting.cast(hero, pickAb, { enemies: foes, allies, nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
     }
     if (book.atwill) {
       const r = casting.cast(hero, book.atwill, { enemies: foes, allies, target: foes.slice().sort((a, b) => a.hp - b.hp)[0], nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority); return; }
+      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
     }
   }
 
@@ -273,10 +274,10 @@ function enemyTurn(run, enemy, roll) {
   const ff = flat ? ' (caught flat-footed!)' : '';
   if (res.hit) {
     target.hp -= res.damage;
-    logEvent(run, `${enemy.name} hits ${target.name} for ${res.damage}${ff}. (${Math.max(0, target.hp)} HP left.)`, 'event');
+    logEvent(run, `${enemy.name} hits ${target.name} for ${res.damage}${ff}. (${Math.max(0, target.hp)} HP left.)`, 'event', SFX.pick(SFX.SND.flesh, roll));
     if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} falls!`, 'urgent'); }
   } else {
-    logEvent(run, `${enemy.name} misses ${target.name}${ff}.`, 'event');
+    logEvent(run, `${enemy.name} misses ${target.name}${ff}.`, 'event', SFX.pick(SFX.SND.whiffSword, roll));
   }
 }
 
@@ -350,7 +351,7 @@ function useItem(run, user, itemKey, targetId, roll) {
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + items.rollAmount(item, roll));
     if (target.hp > 0) target.down = false;
-    logEvent(run, `${user.name} uses ${item.name} on ${target.name}, healing ${target.hp - before}. (${target.hp}/${target.maxHp} HP.)`, 'event');
+    logEvent(run, `${user.name} uses ${item.name} on ${target.name}, healing ${target.hp - before}. (${target.hp}/${target.maxHp} HP.)`, 'event', SFX.pick(SFX.SND.flesh, roll));
     return { ok: true };
   }
   if (e.kind === 'throw') {
@@ -362,7 +363,7 @@ function useItem(run, user, itemKey, targetId, roll) {
     }
     const amt = items.rollAmount(item, roll);
     target.hp -= amt;
-    logEvent(run, `${user.name} throws ${item.name} at ${target.name} for ${amt} ${e.dtype} damage. (${Math.max(0, target.hp)} HP left.)`, 'event');
+    logEvent(run, `${user.name} throws ${item.name} at ${target.name} for ${amt} ${e.dtype} damage. (${Math.max(0, target.hp)} HP left.)`, 'event', SFX.pick(SFX.SND.lightning, roll));
     if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is destroyed!`, 'urgent'); }
     return { ok: true };
   }
@@ -380,10 +381,12 @@ function heroAttack(run, hero, target, roll) {
   const bm = pf1.buffs.buffAtkMods(hero);           // Bless/Divine Favor/Prayer/GMW...
   const res = combat.heroAttack(hero.character.derived, hero.character.weapon, targetAC, roll,
     bm.toHit - pf1.tick.attackPenalty(hero), bm.dmg);
-  if (!res.hit) { logEvent(run, `${hero.name} swings at ${target.name} and misses.`, 'event'); return; }
+  const w = hero.character.weapon || {};
+  const whiff = (w.cat === 'light' && !w.ranged) ? SFX.SND.whiffDagger : SFX.SND.whiffSword;
+  if (!res.hit) { logEvent(run, `${hero.name} swings at ${target.name} and misses.`, 'event', res.d20 === 1 ? SFX.SND.fumble : SFX.pick(whiff, roll)); return; }
   target.hp -= res.damage;
   const crit = res.crit ? 'Critical! ' : '';
-  logEvent(run, `${crit}${hero.name} hits ${target.name} for ${res.damage}. (${Math.max(0, target.hp)} HP left.)`, 'event');
+  logEvent(run, `${crit}${hero.name} hits ${target.name} for ${res.damage}. (${Math.max(0, target.hp)} HP left.)`, 'event', SFX.pick(SFX.SND.flesh, roll));
   if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is slain!`, 'urgent'); }
 }
 
@@ -429,8 +432,8 @@ function clearRoom(run, roll = Math.random) {
 
 function defeat(run) { run.phase = 'defeated'; logEvent(run, 'The party has fallen. The dungeon claims you.', 'urgent'); }
 
-function logEvent(run, text, priority) {
-  run.log.push({ seq: ++run.seq, text, priority: priority || 'event' });
+function logEvent(run, text, priority, sound) {
+  run.log.push({ seq: ++run.seq, text, priority: priority || 'event', sound: sound || null });
   if (run.log.length > 80) run.log.shift();
 }
 
