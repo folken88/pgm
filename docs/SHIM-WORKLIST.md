@@ -3,7 +3,13 @@
 Harness: `node scripts/shim-harness.js` — exercises EVERY kit ability through
 the transplanted poker engine (backend/src/pokerdungeon/) on a PGM run.
 
-## Status 2026-07-09: 422/433 abilities resolve.
+## Status 2026-07-09 (later): **433/433 — CONVERGED.** swing.js carries the
+verbatim attack pipeline (_swingVsAC/_canReach/_flankRegister/_atkStr from
+Dungeon.js L365-375 + L1449-1710): iteratives-ready to-hit math, crit confirm
+(Improved Crit/keen, Critical Focus), Sneak/Smite/Bane/Studied/Challenge dice,
+weapon arcana (magus pool, Divine Bond holy, flaming/shock/frost bursts), flank
+register, Mirror Image + concealment, DR + Penetrating Strike, monk fists,
+natural-attack size steps. Previously:
 Remaining failures (all 11) need exactly two Dungeon.js methods ported:
 1. `_swingVsAC` (Dungeon.js L1471-1710) — THE attack pipeline (iteratives, crit
    confirm, Sneak/Smite/Studied/Challenge dice, weapon arcana, flanking).

@@ -104,6 +104,7 @@ Object.assign(
   require('./game/dungeon/heroAI')(deps),
   require('./game/dungeon/enemyAI')(deps),
   require('./game/dungeon/summons'),
+  require('./game/dungeon/swing'),        // _swingVsAC / _canReach / _flankRegister (verbatim Dungeon.js)
 );
 
 module.exports = { DungeonShim, deps };
