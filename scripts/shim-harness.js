@@ -55,3 +55,39 @@ for (const [msg, where] of sorted.slice(0, 25)) {
   console.log(`[${where.length}×] ${msg}\n    e.g. ${where.slice(0, 4).join(', ')}\n`);
 }
 if (sorted.length > 25) console.log(`(+${sorted.length - 25} more failure kinds)`);
+
+// ── Phase 2: AI-driven FIGHT SIM — drives _allyAct/_enemyAct until terminal ──
+console.log('\n=== FIGHT SIM (poker AI brains) ===');
+const simFails = new Map();
+let fights = 0, finished = 0;
+for (const cls of ['wizard', 'cleric', 'rogue', 'barbarian', 'bard', 'magus', 'paladin', 'druid']) {
+  const party = [
+    { clientId: 'a1', ai: true, icon: '🧪', character: createCharacter({ name: 'Bot' + cls, race: 'human', cls }) },
+    { clientId: 'a2', ai: true, icon: '🛡️', character: createCharacter({ name: 'Tank', race: 'dwarf', cls: 'fighter' }) },
+  ];
+  let run;
+  try { run = pr.createPartyRun(party, roll); } catch (e) { simNote('createPartyRun: ' + firstLine(e), cls); continue; }
+  const shim = new DungeonShim(run);
+  run.heroes.forEach(m => {
+    m.playerId = m.name.toLowerCase(); m.nickname = m.name; m.left = false; m.isBot = true;
+    m.abilityScores = m.character.derived.scores; m.abilityUses = m.roomUses; m.runAbilityUses = m.runUses || {};
+    m.spellPool = (m.level || 1) * 4; m.gear = {}; m.weaponKey = 'dagger'; m.weapon = m.character.weapon;
+  });
+  run.combatants.filter(c => c.side === 'enemy').forEach(e => { e.uid = e.id; e.glyph = '👹'; e.revealed = true; e.toHit = e.creature.attack; });
+  fights++;
+  let guard = 0, dead = false;
+  while (guard++ < 60 && !dead) {
+    const foes = run.combatants.filter(c => c.side === 'enemy' && c.hp > 0);
+    const heroes = run.combatants.filter(c => c.side === 'hero' && c.hp > 0 && !c.down);
+    if (!foes.length || !heroes.length) { finished++; break; }
+    for (const m of heroes) { try { shim._allyAct(m); } catch (e) { simNote('_allyAct: ' + firstLine(e), cls); dead = true; break; } }
+    for (const e of run.combatants.filter(c => c.side === 'enemy' && c.hp > 0)) {
+      try { shim._enemyAct(e); } catch (err) { simNote('_enemyAct: ' + firstLine(err), cls); dead = true; break; }
+    }
+  }
+}
+function simNote(msg, where) { if (!simFails.has(msg)) simFails.set(msg, []); simFails.get(msg).push(where); }
+console.log(`fights finished cleanly: ${finished}/${fights}`);
+for (const [msg, where] of [...simFails.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 15)) {
+  console.log(`[${where.length}×] ${msg}\n    e.g. ${where.slice(0, 4).join(', ')}\n`);
+}

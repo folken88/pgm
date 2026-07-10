@@ -15,6 +15,7 @@ const items = require('./items');
 const pf1 = require('./pf1core');
 const casting = require('./casting');
 const SFX = require('./sounds');
+const { DungeonShim } = require('./pokerdungeon/shim');
 const { generatePartyRoom } = require('./roomgen');
 const { rollDie } = require('./dice');
 
@@ -22,6 +23,7 @@ function createPartyRun(party, roll = Math.random) {
   const run = { heroes: party.map(heroCombatant), combatants: [], room: null,
     turnIndex: 0, round: 1, phase: 'combat', gold: 0, roomsCleared: 0,
     inventory: [], seq: 0, log: [] };
+  run.shim = new DungeonShim(run);
   spawnRoom(run, roll);
   return run;
 }
@@ -45,6 +47,15 @@ function perceptionMod(character) {
   return p ? p.modifier : (character.derived.mods.wis || 0);
 }
 
+
+/** Wrap a pf1core weapon in the poker-engine shape (_swingVsAC fields). */
+function pokerWeapon(w) {
+  if (!w) return w;
+  return { ...w, toHit: w.toHit || 0, dmgBonus: w.dmgBonus || 0,
+    critRange: w.critRange || w.crit || 20, critMult: w.critMult || w.mult || 2,
+    key: w.key || String(w.name || '').toLowerCase(), isDagger: w.cat === 'light' && !w.ranged };
+}
+
 function heroCombatant(p) {
   const c = p.character;
   const d = c.derived;
@@ -62,6 +73,10 @@ function heroCombatant(p) {
     iteratives: d.iteratives || [0], buffs: pf1.buffs.ZERO(), buffApplied: {},
     spellbook: book, slots: {}, roomUses: {},
     runUses: Object.fromEntries(book.spells.filter(s => s.cost === 'run').map(s => [s.key, 1])),
+    // Poker-engine aliases (the transplanted mixins read these):
+    playerId: c.name.toLowerCase(), nickname: c.name, left: false, isBot: !!p.ai,
+    abilityScores: d.scores, gear: {}, weaponKey: (c.weapon && c.weapon.name || 'dagger').toLowerCase(),
+    weapon: pokerWeapon(c.weapon), spellPool: 0, abilityUses: {}, runAbilityUses: {},
   };
 }
 function enemyCombatant(e, i) {
@@ -72,6 +87,8 @@ function enemyCombatant(e, i) {
     revealed: false,
     // Fields the pf1core resolvers read directly off the combatant:
     type: e.type || null, fort: e.fort || 0, reflex: e.reflex || 0,
+    // Poker-engine aliases:
+    uid: 'e:' + i, glyph: '👹', toHit: e.attack || 0,
   };
 }
 
@@ -94,7 +111,10 @@ function spawnRoom(run, roll) {
   // Per-room spell refresh (poker's per-room refill convention). Room buffs
   // clear; run buffs (Bless/Inspire) persist.
   run.heroes.forEach(h => {
-    const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses;
+    try { run.shim._resetAbilities(h); } catch (e) {   // poker per-room refresh (slots/pool/uses)
+      const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses;
+    }
+    h.abilityUses = h.abilityUses || {}; h.roomUses = h.abilityUses;   // alias: poker room-cost counters
     h.buffs = pf1.buffs.ZERO(); h.buffApplied = {}; h._aiBuffed = false;
   });
 
@@ -177,6 +197,7 @@ function tickFor(run, cb, roll) {
 function runUntilHeroTurn(run, roll) {
   let guard = 0;
   while (run.phase === 'combat' && guard++ < 2000) {
+    run.combatants.forEach(c => { if (c.hp <= 0 && !c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; } });
     if (living(run, 'enemy').length === 0) return clearRoom(run, roll);
     if (living(run, 'hero').length === 0) return defeat(run);
     const cb = current(run);
@@ -191,72 +212,54 @@ function runUntilHeroTurn(run, roll) {
 
 /** Cast a spell by key through the casting layer; converts events into the log. */
 function castSpell(run, hero, spellKey, targetId, roll) {
-  const book = hero.spellbook || { atwill: null, spells: [] };
-  const ab = (book.atwill && book.atwill.key === spellKey) ? book.atwill
-           : book.spells.find(s => s.key === spellKey);
-  if (!ab) return { ok: false, error: 'you do not know that spell' };
-  if (!casting.canCast(hero, ab)) return { ok: false, error: 'no uses of ' + ab.name + ' left this room' };
-  const foes = livingRevealedEnemies(run);
-  const target = targetId ? foes.find(f => f.id === targetId) : null;
-  const allies = run.combatants.filter(c => c.side === 'hero');
-  const r = casting.cast(hero, ab, {
-    enemies: foes, allies, target,
-    nextTarget: () => livingRevealedEnemies(run)[0] || null,
-  }, roll);
-  if (!r.ok) return r;
-  for (const e of r.events) logEvent(run, e.text, e.priority, e.sound);
+  // THE TRANSPLANTED POKER ENGINE: the full class kit via _useAbility.
+  const shim = run.shim;
+  let kit;
+  try { kit = shim._abilitiesFor(hero) || []; } catch (e) { return { ok: false, error: 'no abilities' }; }
+  const slot = kit.findIndex(a => a.key === spellKey);
+  if (slot < 0) {
+    // At-will cantrip rides kit.atwill (its own poker path — _abCantrip).
+    const kd = pf1.abilities.kitFor(hero.cls);
+    if (kd && kd.atwill && kd.atwill.key === spellKey) {
+      const target = targetId ? livingRevealedEnemies(run).find(f => f.id === targetId) : livingRevealedEnemies(run)[0];
+      if (!target) return { ok: false, error: 'no visible target' };
+      try { run.shim._abCantrip(hero, kd.atwill, target); } catch (e) { return { ok: false, error: 'the casting fizzles' }; }
+      return { ok: true };
+    }
+    return { ok: false, error: 'you do not know that spell' };
+  }
+  const ab = kit[slot];
+  if (!kitUses(hero, ab)) return { ok: false, error: 'no uses of ' + ab.name + ' left this room' };
+  const before = run.seq;
+  try { shim._useAbility(hero, slot, { targetUid: targetId || undefined }); }
+  catch (e) { return { ok: false, error: 'the casting fizzles' }; }
+  if (run.seq === before) return { ok: false, error: 'that cannot be cast right now' };
   return { ok: true };
+}
+/** Poker kit-cost availability (free/pool/slot/room/run). */
+function kitUses(m, ab) {
+  if (!ab.cost || ab.cost === 'free') return true;
+  if (ab.cost === 'pool') return (m.spellPool || 0) >= (ab.slvl || 1);
+  if (ab.cost === 'slot') { const L = ab.slvl || 1; return ((m.slots || {})[L] || 0) > 0; }
+  if (ab.cost === 'room') return (m.abilityUses && (m.abilityUses[ab.key] === undefined ? 1 : m.abilityUses[ab.key])) > 0;
+  if (ab.cost === 'run') return (m.runAbilityUses && (m.runAbilityUses[ab.key] === undefined ? 1 : m.runAbilityUses[ab.key])) > 0;
+  return true;
 }
 
 function aiHeroTurn(run, hero, roll) {
+  // Potion fallback first (poker AI heals via spells; the party bag is PGM's).
   const allies = run.combatants.filter(c => c.side === 'hero');
-  const book = hero.spellbook || { atwill: null, spells: [] };
   const badlyHurt = allies.some(c => !c.down && c.hp <= c.maxHp / 3) || allies.some(c => c.down);
-
-  // 1) Heal first: a castable heal (cure/channel) beats a potion; potion is the fallback.
   if (badlyHurt) {
-    const healAb = book.spells.find(s => s.effect === 'heal' && casting.canCast(hero, s));
-    if (healAb) {
-      const r = casting.cast(hero, healAb, { enemies: livingRevealedEnemies(run), allies }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
-    }
     const healSlot = run.inventory.find(s => { const it = items.ITEM_BY_KEY[s.key]; return it && it.effect && it.effect.kind === 'heal' && s.qty > 0; });
-    if (healSlot && useItem(run, hero, healSlot.key, null, roll).ok) return;
+    const hasHealSpell = (() => { try { return (run.shim._abilitiesFor(hero) || []).some(a => a.effect === 'heal' && kitUses(hero, a)); } catch (e) { return false; } })();
+    if (healSlot && !hasHealSpell && useItem(run, hero, healSlot.key, null, roll).ok) return;
   }
-
+  // THE POKER HERO BRAIN: stance, target selection, spell/heal/buff priorities.
+  try { run.shim._allyAct(hero); return; }
+  catch (e) { logEvent(run, `${hero.name} hesitates, weapon ready.`, 'event'); }
   const foes = livingRevealedEnemies(run);
-  if (!foes.length) { logEvent(run, `${hero.name} scans the room, weapon ready.`, 'event'); return; }
-
-  // 1.5) One opening buff per room: Bless/Prayer/Divine Favor etc. before wading in.
-  if (!hero._aiBuffed) {
-    const buffAb = book.spells.find(s => s.effect === 'buff' && casting.canCast(hero, s));
-    if (buffAb) {
-      hero._aiBuffed = true;
-      const r = casting.cast(hero, buffAb, { enemies: foes, allies }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
-    } else hero._aiBuffed = true;
-  }
-
-  // 2) Casters spend a leveled spell when it's worth it: AoE on a crowd, else a
-  //    single-target nuke on the beefiest foe; cantrip over a weak melee swing.
-  if (pf1.abilities.isCaster(hero.cls)) {
-    const worksOn = (ab, t) => pf1.protections.spellWorksOn(ab, { ...t.creature, hp: t.hp, name: t.name });
-    const aoe = book.spells.find(s => s.effect === 'aoe' && casting.canCast(hero, s));
-    const nuke = book.spells.find(s => ['missile', 'touch', 'bolt'].includes(s.effect) && casting.canCast(hero, s));
-    const pickAb = (foes.length >= 2 && aoe) ? aoe : (nuke && foes.some(f => worksOn(nuke, f)) ? nuke : null);
-    if (pickAb) {
-      const r = casting.cast(hero, pickAb, { enemies: foes, allies, nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
-    }
-    if (book.atwill) {
-      const r = casting.cast(hero, book.atwill, { enemies: foes, allies, target: foes.slice().sort((a, b) => a.hp - b.hp)[0], nextTarget: () => livingRevealedEnemies(run)[0] || null }, roll);
-      if (r.ok) { for (const e of r.events) logEvent(run, e.text, e.priority, e.sound); return; }
-    }
-  }
-
-  // 3) Martials (and casters out of tricks) swing at the most-wounded foe.
-  const target = foes.slice().sort((a, b) => a.hp - b.hp)[0];
-  heroAttack(run, hero, target, roll);
+  if (foes.length) heroAttack(run, hero, foes.slice().sort((a, b) => a.hp - b.hp)[0], roll);
 }
 
 function enemyTurn(run, enemy, roll) {
@@ -377,17 +380,26 @@ function pickTarget(run, targetId) {
 }
 
 function heroAttack(run, hero, target, roll) {
-  const targetAC = pf1.spellmath.enemyAC(target);   // situational mods: prone/stunned/blinded/slowed/flat-footed
-  const bm = pf1.buffs.buffAtkMods(hero);           // Bless/Divine Favor/Prayer/GMW...
-  const res = combat.heroAttack(hero.character.derived, hero.character.weapon, targetAC, roll,
-    bm.toHit - pf1.tick.attackPenalty(hero), bm.dmg);
-  const w = hero.character.weapon || {};
-  const whiff = (w.cat === 'light' && !w.ranged) ? SFX.SND.whiffDagger : SFX.SND.whiffSword;
-  if (!res.hit) { logEvent(run, `${hero.name} swings at ${target.name} and misses.`, 'event', res.d20 === 1 ? SFX.SND.fumble : SFX.pick(whiff, roll)); return; }
-  target.hp -= res.damage;
-  const crit = res.crit ? 'Critical! ' : '';
-  logEvent(run, `${crit}${hero.name} hits ${target.name} for ${res.damage}. (${Math.max(0, target.hp)} HP left.)`, 'event', SFX.pick(SFX.SND.flesh, roll));
-  if (target.hp <= 0) { target.down = true; logEvent(run, `${target.name} is slain!`, 'urgent'); }
+  // POKER ATTACK PIPELINE: iteratives -> _swingVsAC (crit confirm, sneak/smite/
+  // bane dice, weapon arcana, Mirror Image/concealment, DR) — verbatim engine.
+  const shim = run.shim;
+  const offs = (hero.character.derived.iteratives && hero.character.derived.iteratives.length)
+    ? hero.character.derived.iteratives : [0];
+  let t = target;
+  for (const off of offs) {
+    if (!t || t.hp <= 0) t = livingRevealedEnemies(run)[0];
+    if (!t) break;
+    const ac = pf1.spellmath.enemyAC(t);
+    const r = shim._swingVsAC(hero, ac, t, off);
+    if (!r.hit) {
+      logEvent(run, `${hero.name} ${r.fumble ? 'FUMBLES against' : 'misses'} ${t.name}. ${shim._atkStr(r)}`, 'event', r.sound);
+      continue;
+    }
+    const d = pf1.resolve.dmgTo(t, r.damage, null);
+    const sneak = r.sneakDice ? ` (+${r.sneakDmg} sneak)` : '';
+    logEvent(run, `${r.crit ? 'CRITICAL! ' : ''}${hero.name} hits ${t.name} for ${d.dealt}${sneak}. (${Math.max(0, t.hp)} HP left.)`, r.crit ? 'urgent' : 'event', r.sound);
+    if (t.hp <= 0) { t.down = true; logEvent(run, `${t.name} is slain!`, 'urgent'); }
+  }
 }
 
 /** Equip a found weapon/armor onto a hero (between fights). Returns {ok}. */
@@ -399,7 +411,7 @@ function equipItem(run, hero, itemKey) {
   if (item.gearType === 'weapon') {
     const w = pf1.weapons.WEAPON_BY_NAME[item.weaponName];
     if (!w) { addItem(run, itemKey); return { ok: false, error: 'unknown weapon' }; }
-    c.weapon = w; c.weaponName = item.short || item.name;
+    c.weapon = pokerWeapon(w); hero.weapon = c.weapon; c.weaponName = item.short || item.name;
     logEvent(run, `${hero.name} equips the ${item.name}.`, 'event');
   } else {                                    // armor
     const dex = c.derived.mods.dex || 0;
@@ -442,15 +454,17 @@ function publicRun(run) {
   const cb = current(run);
   let turn = null;
   if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai) {
-    const book = cb.spellbook || { atwill: null, spells: [] };
-    const spells = [];
-    if (book.atwill) spells.push({ key: book.atwill.key, name: book.atwill.name, icon: book.atwill.icon, uses: null });
-    for (const s of book.spells) {
-      const uses = s.cost === 'slot' ? (cb.slots[s.slvl || 1] || 0)
-                 : s.cost === 'run' ? (cb.runUses[s.key] || 0)
-                 : (cb.roomUses[s.key] || 0);
-      if (uses > 0) spells.push({ key: s.key, name: s.name, icon: s.icon, uses });
-    }
+    let kit = [];
+    try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
+    const kd = pf1.abilities.kitFor(cb.cls);
+    if (kd && kd.atwill) kit = [{ ...kd.atwill, cost: 'free' }].concat(kit);
+    const spells = kit.filter(ab => kitUses(cb, ab)).map(ab => ({
+      key: ab.key, name: ab.name, icon: ab.icon,
+      uses: ab.cost === 'pool' ? cb.spellPool
+          : ab.cost === 'slot' ? ((cb.slots || {})[ab.slvl || 1] || 0)
+          : ab.cost === 'room' ? (cb.abilityUses && cb.abilityUses[ab.key] !== undefined ? cb.abilityUses[ab.key] : 1)
+          : null,
+    }));
     turn = { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name, spells };
   }
   const shown = run.combatants.filter(c => c.side === 'hero' || c.revealed);

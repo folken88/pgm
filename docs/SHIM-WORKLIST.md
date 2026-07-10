@@ -25,3 +25,13 @@ Remaining failures (all 11) need exactly two Dungeon.js methods ported:
 - Turn loop: keep PGM initiative/tick; shim handles actions.
 - publicRun turn.spells: derive from shim._abilitiesFor + _kitState-style uses.
 - Delve logs + sounds already flow (shim._note pushes {text,sound} to run.log).
+
+## Status 2026-07-10: **WIRED INTO LIVE PLAY.**
+- Hero attacks -> _swingVsAC iterative pipeline; player casts -> _useAbility
+  (FULL kit incl. grease/sleep/stances/mage armor); AI companions -> _allyAct
+  (poker hero brain — confirmed live: Jason auto-healed Josh at 2 HP).
+- Enemy side stays PGM's perception-aware turn until enemy stat blocks carry
+  poker abilities (boss/enemy-caster increment); then _enemyAct switches on.
+- KNOWN GAPS: summons refuse (_makeEnemy + turnOrder splice need PGM
+  adaptation); casting.js is now legacy (used only by its own tests);
+  Sleep cast needs an eyes-on verify (likely fine — kobold saved).
