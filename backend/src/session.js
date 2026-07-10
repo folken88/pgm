@@ -21,6 +21,25 @@ function delveFile(s) { return path.join(DELVE_DIR, BOOT + '_' + s.id + '-' + s.
 function delveLog(s, line) {
   try { fs.appendFileSync(delveFile(s), new Date().toISOString() + ' ' + line + '\n'); } catch (e) {}
 }
+// ── Hero LEGACY (persists across restarts/deploys): xp/level keyed by
+// delve name + hero name. Runs are roguelite-fresh; PROGRESSION endures.
+const LEGACY_FILE = path.join(DATA_DIR, 'legacy.json');
+let LEGACY = {};
+try { LEGACY = JSON.parse(fs.readFileSync(LEGACY_FILE, 'utf8')); } catch (e) {}
+function legacyKey(s, name) { return (s.name + '::' + name).toLowerCase(); }
+function saveLegacy() { try { fs.writeFileSync(LEGACY_FILE, JSON.stringify(LEGACY)); } catch (e) {} }
+function persistProgress(s) {
+  if (!s.run) return;
+  let dirty = false;
+  for (const h of s.run.heroes) {
+    if (!h.xp) continue;
+    const k = legacyKey(s, h.name);
+    const prev = LEGACY[k] || {};
+    if (prev.xp !== h.xp) { LEGACY[k] = { xp: h.xp, level: h.level || 1, at: Date.now() }; dirty = true; }
+  }
+  if (dirty) saveLegacy();
+}
+
 /** Append any run-log lines newer than the last flush (seq-tracked). */
 function flushRunLog(s) {
   if (!s || !s.run) return;
@@ -131,7 +150,24 @@ function startRun(clientId) {
   if (!s.members.has(clientId)) return { ok: false, error: 'only a player can start' };
   const ready = [...s.members.values()].filter(m => m.ready && m.character);
   if (ready.length < 1) return { ok: false, error: 'no ready characters yet' };
+  // Returning heroes (same delve name + hero name) resume their earned levels.
+  for (const m of ready) {
+    const saved = LEGACY[legacyKey(s, m.name)];
+    if (saved && saved.xp) {
+      const lvl = require('./pf1core').xp.levelFromXp(saved.xp);
+      if (lvl > (m.character.derived.level || 1)) characters.levelUp(m.character, lvl);
+      m._legacyXp = saved.xp;
+    }
+  }
   s.run = partyrun.createPartyRun(ready.map(m => ({ clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai })));
+  for (const m of ready) {
+    if (!m._legacyXp) continue;
+    const h = s.run.heroes.find(x => x.name === m.name);
+    if (h) {
+      h.xp = m._legacyXp; h.level = m.character.derived.level;
+      delveLog(s, `LEGACY RESUMED: ${m.name} returns at level ${h.level} (${h.xp} XP)`);
+    }
+  }
   s.phase = 'playing';
   s.startedAt = now();
   delveLog(s, `RUN STARTED: party = ${ready.map(m => m.name + ' (' + m.character.cls + (m.ai ? ', AI' : '') + ')').join(', ')}`);
@@ -143,6 +179,7 @@ function action(clientId, act) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
   const r = partyrun.applyAction(s.run, clientId, act);
   flushRunLog(s);
+  persistProgress(s);
   return r;
 }
 
