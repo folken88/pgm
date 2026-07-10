@@ -103,8 +103,20 @@ function spawnRoom(run, roll) {
   const xpForCR = pf1.xp.xpForCR;
   const room = generateMonRoom(run.heroes.length, apl, run.roomsCleared, MON, xpForCR, roll);
   run.room = { flavor: room.flavor, reward: room.reward };
+  // BOSS ROOM every 5th (poker's BOSS_EVERY): the toughest thematic foe the
+  // party can handle, ADVANCED +2-4 levels with pre-cast wards, leading mooks.
+  const depthNum = run.roomsCleared + 1;
+  const isBossRoom = depthNum % 5 === 0;
+  if (isBossRoom) {
+    const capCR = Math.max(1, Math.min(20, apl + Math.floor(run.roomsCleared / 4) + 2));
+    const cand = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= capCR);
+    const top = cand.sort((a, b) => (MON[b].crNum || 0) - (MON[a].crNum || 0)).slice(0, 3);
+    if (top.length) room.monKeys = [top[Math.floor(roll() * top.length)]].concat(room.monKeys.slice(0, 2));
+  }
+  let bossMade = false;
   const enemies = room.monKeys.map(k => {
-    const e = run.shim._makeEnemy(MON[k]);
+    const isBoss = isBossRoom && !bossMade && (bossMade = true);
+    const e = run.shim._makeEnemyPGM(MON[k], isBoss);
     e.key = k; e.revealed = false;
     e.stealth = STEALTH_OVERRIDES[k] != null ? STEALTH_OVERRIDES[k] : 10;
     e.art = artFor(e.name);
@@ -228,6 +240,7 @@ function runUntilHeroTurn(run, roll) {
     if (!cb || cb.down) { nextTurn(run); continue; }
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
+    if (cb.side === 'enemy' && cb.dominated > 0) { dominatedTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'hero' && !cb.ai) { logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
     if (cb.side === 'hero') aiHeroTurn(run, cb, roll);   // ai companion
     else enemyTurn(run, cb, roll);
@@ -273,6 +286,29 @@ function kitUses(m, ab) {
 
 /** A summoned minion's turn: swing at the weakest REAL foe, tick expiry,
  *  crumble at 0 (port of Dungeon.js L865-883). */
+/** A DOMINATED foe fights FOR the party this turn: fresh Will save to shake it,
+ *  else it savages its own allies (port of Dungeon.js dominated branch). */
+function dominatedTurn(run, e, roll) {
+  const sv = pf1.spellmath.saveVs(pf1.spellmath.enemySave(e, 'will'), e.dominateDC || 15, roll);
+  if (sv.saved) {
+    e.dominated = 0; e.dominatedBy = null;
+    logEvent(run, `💫 ${e.name} tears its will free of the domination! [Will ${sv.total} vs ${e.dominateDC || 15}]`, 'event');
+    return;
+  }
+  e.dominated -= 1;
+  const kin = run.combatants.filter(x => x.side === 'enemy' && !x.summoned && !x.down && x !== e);
+  if (kin.length) {
+    const prey = kin.slice().sort((a, b) => b.maxHp - a.maxHp)[0];
+    const r = run.shim._monsterSwing(e, pf1.spellmath.enemyAC(prey));
+    if (r.hit) {
+      const d = pf1.resolve.dmgTo(prey, r.damage, null);
+      logEvent(run, `💫 ${e.name}, DOMINATED, savages its ally ${prey.name} for ${d.dealt}!${prey.hp <= 0 ? ' ☠️ Slain!' : ''}`, 'event', SFX.pick(SFX.SND.flesh, roll));
+      if (prey.hp <= 0) prey.down = true;
+    } else logEvent(run, `💫 ${e.name}, DOMINATED, claws at its ally ${prey.name} — and misses.`, 'event');
+  } else logEvent(run, `💫 ${e.name} stands slack under the domination — no allies left to turn on.`, 'event');
+  if (e.dominated <= 0) { e.dominatedBy = null; logEvent(run, `💫 the domination on ${e.name} fades.`, 'event'); }
+}
+
 function summonTurn(run, minion, roll) {
   const glyph = minion.summonFlavor === 'devil' ? '😈' : '☠️';
   const foes = livingRevealedEnemies(run);
@@ -571,7 +607,7 @@ function publicRun(run) {
       level: c.level || null, xp: c.xp || 0,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
-      conditions: condList(c),
+      conditions: condList(c).concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
       slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
     })),
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),

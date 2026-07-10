@@ -106,23 +106,19 @@ Object.assign(
   require('./game/dungeon/enemyAI')(deps),
   require('./game/dungeon/summons'),
   require('./game/dungeon/swing'),        // _swingVsAC / _canReach / _flankRegister (verbatim Dungeon.js)
+  require('./game/dungeon/makeenemy'),    // _makeEnemy / _autoWards (verbatim: boss advancement + pre-cast wards)
 );
 
 // ── PGM-native overrides (assigned after the mixins so they win) ──
 let _summonSeq = 0;
 Object.assign(DungeonShim.prototype, {
-  /** Build a combatant from a MON stat block (summons; enemy spawns later). */
-  _makeEnemy(base) {
-    const id = 'e:s' + (++_summonSeq);
-    return {
-      ...base,                               // full MON block: special flags (healer/shout/sr/images/attacks...) ride along
-      id, uid: id, side: 'enemy', name: base.name, glyph: base.glyph || '👹', icon: base.glyph || '👹',
-      hp: base.hp, maxHp: base.hp, ac: base.ac, toHit: base.toHit || 0, attacks: base.attacks || 1,
-      dmgDie: base.dmgDie || 4, dmgBonus: base.dmgBonus || 0, dmgCount: base.dmgCount || 1,
-      art: null,                             // MON art points at poker's /dungeon tree; partyrun resolves via art.js
-      down: false, revealed: true, initMod: base.init || 0,
-      creature: { baseName: base.name, undead: base.type === 'undead' },
-    };
+  /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
+  _makeEnemyPGM(base, boss, elite) {
+    const e = this._makeEnemy(base, !!boss, elite || 0);
+    e.id = e.uid; e.side = 'enemy'; e.down = false; e.revealed = true;
+    e.initMod = base.init || 0; e.icon = e.glyph || '👹';
+    e.creature = { baseName: base.name, undead: base.type === 'undead' };
+    return e;
   },
   /** ALLIED summon — PGM adaptation of summons.js _abSummon (same rules: the
    *  minion appears on the SUMMONER'S initiative, right after them, fights for
@@ -140,7 +136,7 @@ Object.assign(DungeonShim.prototype, {
     const at = run.combatants.indexOf(m);
     const news = [];
     for (let i = 0; i < count; i++) {
-      const e = this._makeEnemy(MON[key]);
+      const e = this._makeEnemyPGM(MON[key]);
       e.summoned = true; e.summonedBy = m.playerId; e.summonExpiry = rounds;
       e.summonFlavor = spec.flavor || 'undead'; e.init = m.init;
       news.push(e);
@@ -149,6 +145,31 @@ Object.assign(DungeonShim.prototype, {
     const nm = MON[key].name;
     const label = count > 1 ? `${count} ${nm}${/s$/.test(nm) ? '' : 's'}` : `a ${nm}`;
     this._note(`${ab.icon || '☠️'} ${m.nickname} tears open the grave — ${label} rise${count > 1 ? '' : 's'} to fight for the party! (${rounds} rounds)`, ab.sound);
+  },
+});
+
+Object.assign(DungeonShim.prototype, {
+  /** ENEMY reinforcements (Whispering Way) — PGM adaptation of _enemySummon:
+   *  real foes raised onto the enemy side, spliced after the summoner. */
+  _enemySummon(e) {
+    const { MON } = require('./pf1data/monsters');
+    if (!(e.summonLeft > 0) || !e.summon) return;
+    e.summonLeft -= 1;
+    const pool = (e.summon.pool || []).filter(k => MON[k]);
+    if (!pool.length) return;
+    const key = pool[Math.floor(Math.random() * pool.length)];
+    const n = Math.max(1, e.summon.count || 1);
+    const run = this.run;
+    const at = run.combatants.indexOf(e);
+    const news = [];
+    for (let i = 0; i < n; i++) {
+      const m2 = this._makeEnemyPGM(MON[key]);
+      m2.init = e.init;
+      news.push(m2);
+    }
+    run.combatants.splice((at >= 0 ? at : run.turnIndex) + 1, 0, ...news);
+    const nm = MON[key].name;
+    this._note(`☠️ ${e.name} calls out — ${n > 1 ? n + ' ' + nm + 's' : 'a ' + nm} answer${n > 1 ? '' : 's'}, joining the enemy ranks!`);
   },
 });
 

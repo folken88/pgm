@@ -48,3 +48,22 @@ test('summons never block room-clear and crumble when the room clears', () => {
   const minion = run.combatants.find(c => c.summoned);
   if (minion) assert.ok(minion.down, 'summon crumbled at room end');
 });
+
+test('every 5th room is a BOSS room: advanced foe with Boss: prefix and fatter stats', () => {
+  const { seededRoller: sr } = require('../src/dice');
+  const { createCharacter: cc } = require('../src/characters');
+  const roll = sr(12);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: '🛡️', character: cc({ name: 'Kara', race: 'human', cls: 'fighter' }) }], roll);
+  // Fast-forward: clear 4 rooms by fiat, then descend into room 5.
+  for (let i = 0; i < 4; i++) {
+    run.combatants.filter(c => c.side === 'enemy' && !c.summoned).forEach(e => { e.hp = 0; });
+    run.turnIndex = run.combatants.indexOf(run.heroes[0]); run.phase = 'combat';
+    pr.applyAction(run, 'c1', { type: 'pass' }, roll);           // clears
+    if (i < 3) pr.applyAction(run, 'c1', { type: 'descend' }, roll);
+  }
+  pr.applyAction(run, 'c1', { type: 'descend' }, roll);          // into room 5
+  const boss = run.combatants.find(c => c.side === 'enemy' && /^Boss:/.test(c.name));
+  assert.ok(boss, 'a Boss-prefixed foe in room 5: ' + run.combatants.filter(c => c.side === 'enemy').map(c => c.name).join(', '));
+  assert.ok(boss.bossLevels >= 2 && boss.bossLevels <= 4, 'advanced 2-4 levels: ' + boss.bossLevels);
+  assert.ok(boss.hp > 0 && boss.toHit >= 2, 'advanced stats');
+});
