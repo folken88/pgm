@@ -79,7 +79,7 @@ const server = http.createServer(async (req, res) => {
   if (url === '/api/meta' && req.method === 'GET') {
     return sendJSON(res, 200, {
       races: RACES, classes: CLASSES, icons: session.ICONS,
-      companions: session.COMPANIONS.map((c, i) => ({ index: i, name: c.name, race: c.race, cls: c.cls, icon: c.icon })),
+      companions: require('./cast').ROSTER.map(r => ({ name: r.name, race: r.race, cls: r.cls, icon: r.icon })),
       voice: { enabled: eleven.enabled(), name: eleven.voiceName() },
     });
   }
@@ -141,7 +141,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url === '/api/session/companion' && req.method === 'POST') {
     const body = await readBody(req);
-    const r = session.addCompanion(body.clientId, body.index);
+    const r = session.addCompanion(body.clientId, body.name != null ? String(body.name) : body.index);
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
   }

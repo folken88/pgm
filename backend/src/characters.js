@@ -45,10 +45,13 @@ function validClass(cls) {
 /**
  * Build a playable character. Returns the persistable/serializable shape.
  */
-function createCharacter({ name, race = 'human', cls = 'fighter', skills = null }) {
+function createCharacter(opts) {
+  let { name, race = 'human', cls = 'fighter', skills = null } = opts;
   cls = validClass(cls);
-  const baseScores = SCORES_BY_CLASS[cls] || DEFAULT_SCORES;
-  const raceMods = RACE_MODS[race] || null;
+  // Cast/authored builds may supply their own scores + pf1core race mods
+  // (incl. flex +2 and exotic races); player creation uses the local defaults.
+  const baseScores = opts.baseScores || SCORES_BY_CLASS[cls] || DEFAULT_SCORES;
+  const raceMods = (opts.raceMods !== undefined) ? opts.raceMods : (RACE_MODS[race] || null);
 
   const weaponName = STARTING_WEAPON[cls] || DEFAULT_WEAPON;
   const weapon = pf1.weapons.WEAPON_BY_NAME[weaponName] || pf1.weapons.WEAPON_BY_NAME[DEFAULT_WEAPON];

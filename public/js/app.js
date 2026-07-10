@@ -264,16 +264,25 @@
   }
 
   function buildCompanionPicker() {
-    var box = el('companion-picker'); box.innerHTML = '';
+    var box = el('companion-picker');
+    if (box.dataset.built) return;                     // build once
+    box.dataset.built = '1';
+    box.innerHTML = '';
+    var sel = document.createElement('select');
+    sel.id = 'companion-select';
+    sel.setAttribute('aria-label', 'Choose an AI companion from the cast');
     (state.meta.companions || []).forEach(function (c) {
-      var b = document.createElement('button'); b.type = 'button';
-      b.textContent = '+ ' + c.icon + ' ' + c.name + ' (' + cap(c.cls) + ')';
-      b.addEventListener('click', function () { addCompanion(c.index, c.name); });
-      box.appendChild(b);
+      var o = document.createElement('option');
+      o.value = c.name;
+      o.textContent = c.icon + ' ' + c.name + ' — ' + cap(c.race).replace(/_/g, ' ') + ' ' + cap(c.cls);
+      sel.appendChild(o);
     });
+    var add = document.createElement('button'); add.type = 'button'; add.textContent = '+ Add to party';
+    add.addEventListener('click', function () { addCompanion(sel.value); });
+    box.appendChild(sel); box.appendChild(add);
   }
-  function addCompanion(index, name) {
-    api('/api/session/companion', { clientId: state.clientId, index: index }).then(function (r) {
+  function addCompanion(name) {
+    api('/api/session/companion', { clientId: state.clientId, name: name }).then(function (r) {
       if (!r.ok) BM.speak(r.error || 'Could not add companion.', 'urgent');
       else BM.speak(name + ' joins the party.', 'urgent');
     });

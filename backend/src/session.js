@@ -10,6 +10,7 @@ const path = require('node:path');
 const characters = require('./characters');
 const partyrun = require('./partyrun');
 const { COMPANIONS } = require('./content');
+const cast = require('./cast');
 
 // ── Full per-delve text logs (Tobias: keep them for analysis/troubleshooting) ──
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
@@ -94,15 +95,27 @@ function setCharacter(clientId, charInput) {
   return { ok: true };
 }
 
-function addCompanion(clientId, index) {
+function addCompanion(clientId, nameOrIndex) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
   if (s.host !== clientId) return { ok: false, error: 'only the host adds companions' };
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'party is full' };
-  const preset = COMPANIONS[((index | 0) % COMPANIONS.length + COMPANIONS.length) % COMPANIONS.length];
+  // The POKER CAST by name; numeric index falls back to the legacy presets.
+  let name, icon, character, voiceId = null;
+  if (typeof nameOrIndex === 'string' && cast.BY_NAME[nameOrIndex.toLowerCase()]) {
+    if ([...s.members.values()].some(m => m.ai && m.name === cast.BY_NAME[nameOrIndex.toLowerCase()].name)) {
+      return { ok: false, error: 'they are already in the party' };
+    }
+    const built = cast.buildCompanion(nameOrIndex);
+    name = built.roster.name; icon = built.roster.icon; character = built.character; voiceId = built.roster.voiceId;
+  } else {
+    const preset = COMPANIONS[((nameOrIndex | 0) % COMPANIONS.length + COMPANIONS.length) % COMPANIONS.length];
+    name = preset.name; icon = preset.icon;
+    character = characters.createCharacter({ name: preset.name, race: preset.race, cls: preset.cls });
+  }
   const aiId = 'ai' + (++seq);
-  const character = characters.createCharacter({ name: preset.name, race: preset.race, cls: preset.cls });
-  s.members.set(aiId, { memberId: aiId, clientId: null, name: preset.name, icon: preset.icon, character, ready: true, ai: true });
+  s.members.set(aiId, { memberId: aiId, clientId: null, name, icon, character, ready: true, ai: true, voiceId });
+  delveLog(s, `COMPANION ADDED: ${name} (${character.cls})`);
   return { ok: true };
 }
 
