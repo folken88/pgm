@@ -4,3 +4,4 @@ node_modules/
 # Secrets — NEVER commit (this repo is public). Set via env / deploy.
 .env
 .env.local
+data/

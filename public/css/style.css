@@ -178,6 +178,8 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 #hud-enemy:not(:empty)::before { content: "⚔ "; color: var(--danger); }
+.retreat-btn { margin-left: auto; background: var(--panel); border: 1px solid var(--danger); color: var(--danger); padding: .3rem .6rem; font-size: .85rem; border-radius: 8px; }
+.turn-banner.retreated { background: var(--panel); color: var(--accent); }
 
 /* Log */
 .log {

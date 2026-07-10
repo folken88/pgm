@@ -6,8 +6,11 @@ services:
     container_name: pgm
     ports:
       - "${WEB_PORT:-32097}:3000"
+    volumes:
+      - ./data:/app/data          # delve logs (+ future save DB)
     environment:
       - PORT=3000
+      - DATA_DIR=/app/data
       # ElevenLabs GM voice ("Ultron"); blank = silent fallback to browser TTS.
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - GM_VOICE=${GM_VOICE:-Ultron}

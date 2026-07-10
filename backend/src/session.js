@@ -5,9 +5,31 @@
  * delves (for the side window). One human may delve solo with AI companions;
  * different groups delve separately in parallel.
  */
+const fs = require('node:fs');
+const path = require('node:path');
 const characters = require('./characters');
 const partyrun = require('./partyrun');
 const { COMPANIONS } = require('./content');
+
+// ── Full per-delve text logs (Tobias: keep them for analysis/troubleshooting) ──
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
+const DELVE_DIR = path.join(DATA_DIR, 'delves');
+try { fs.mkdirSync(DELVE_DIR, { recursive: true }); } catch (e) {}
+const BOOT = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);   // session ids restart each boot — stamp the file
+function delveFile(s) { return path.join(DELVE_DIR, BOOT + '_' + s.id + '-' + s.name.replace(/[^a-z0-9]+/gi, '_').slice(0, 30) + '.log'); }
+function delveLog(s, line) {
+  try { fs.appendFileSync(delveFile(s), new Date().toISOString() + ' ' + line + '\n'); } catch (e) {}
+}
+/** Append any run-log lines newer than the last flush (seq-tracked). */
+function flushRunLog(s) {
+  if (!s || !s.run) return;
+  const newer = s.run.log.filter(e => e.seq > (s._logSeq || 0));
+  if (!newer.length) return;
+  s._logSeq = newer[newer.length - 1].seq;
+  const stamp = new Date().toISOString();
+  const lines = newer.map(e => `${stamp} [room ${s.run.roomsCleared + 1} rd ${s.run.round}] ${e.text}`).join('\n') + '\n';
+  try { fs.appendFileSync(delveFile(s), lines); } catch (e) {}
+}
 
 const MAX_PARTY = 8;        // humans + AI companions per delve
 const MAX_SPECTATORS = 10;
@@ -34,6 +56,7 @@ function createDelve({ name, icon, delveName }) {
   s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
   clients.set(clientId, { sessionId: id, role: 'player' });
   sessions.set(id, s);
+  delveLog(s, `DELVE CREATED "${s.name}" by ${name} ${icon}`);
   return { ok: true, clientId, sessionId: id };
 }
 
@@ -47,6 +70,7 @@ function joinDelve(sessionId, { name, icon, role }) {
     const clientId = newClientId();
     s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
     clients.set(clientId, { sessionId, role: 'player' });
+    delveLog(s, `PLAYER JOINED: ${name}`);
     return { ok: true, clientId, sessionId, role: 'player' };
   }
   if (s.spectators.size >= MAX_SPECTATORS) return { ok: false, error: 'That delve\'s gallery is full.' };
@@ -97,12 +121,16 @@ function startRun(clientId) {
   s.run = partyrun.createPartyRun(ready.map(m => ({ clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai })));
   s.phase = 'playing';
   s.startedAt = now();
+  delveLog(s, `RUN STARTED: party = ${ready.map(m => m.name + ' (' + m.character.cls + (m.ai ? ', AI' : '') + ')').join(', ')}`);
+  flushRunLog(s);
   return { ok: true };
 }
 
 function action(clientId, act) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
-  return partyrun.applyAction(s.run, clientId, act);
+  const r = partyrun.applyAction(s.run, clientId, act);
+  flushRunLog(s);
+  return r;
 }
 
 function leave(clientId) {

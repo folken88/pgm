@@ -49,14 +49,33 @@
     voice = vs.find(function (v) { return /en[-_]/i.test(v.lang) && /female|zira|jenny|samantha/i.test(v.name); })
          || vs.find(function (v) { return /en[-_]/i.test(v.lang); }) || vs[0] || null;
   }
+  // ONE pump for ALL audio — browser TTS *and* GM (Ultron) MP3 lines share the
+  // queue, so the GM can never talk over blind-mode announcements (Tobias:
+  // overlap = word salad for a blind player).
   function pump() {
-    if (!supportsTTS || muted || speaking || queue.length === 0) return;
+    if (muted || speaking || queue.length === 0) return;
     var item = queue.shift();
+    if (item.audioPromise) {                   // GM line (ElevenLabs)
+      speaking = true;
+      item.audioPromise.then(function (b64) {
+        if (muted) { speaking = false; pump(); return; }
+        if (b64) {
+          gmAudio = new Audio('data:audio/mpeg;base64,' + b64);
+          gmAudio.onended = gmAudio.onerror = function () { speaking = false; pump(); };
+          gmAudio.play().catch(function () { speaking = false; fallbackTts(item.text); });
+        } else { speaking = false; fallbackTts(item.text); }
+      }).catch(function () { speaking = false; fallbackTts(item.text); });
+      return;
+    }
+    if (!supportsTTS) { pump(); return; }
     var u = new SpeechSynthesisUtterance(item.text);
     u.rate = rate; if (voice) u.voice = voice;
     u.onend = u.onerror = function () { speaking = false; pump(); };
     speaking = true;
     try { TTS.speak(u); } catch (e) { speaking = false; }
+  }
+  function fallbackTts(text) {                 // GM audio failed → speak it if blind mode is on
+    if (on && text) rawSpeak(text, 'urgent'); else pump();
   }
   function rawSpeak(text, prio) {   // internal: ignores the on/off gate (toggle announcements)
     if (!supportsTTS || !text) return;
@@ -112,20 +131,14 @@
     lastText = text; setStatus(text);
     if (muted) return;
     if (!gmVoiceOn) { if (on) rawSpeak(text, 'urgent'); return; }
-    fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) })
+    // Prefetch the audio NOW, but play it only when the queue reaches it —
+    // GM lines wait their turn behind in-flight blind-TTS and vice versa.
+    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) })
       .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (muted) return;
-        if (d && d.ok && d.audio) {
-          try { if (TTS) TTS.cancel(); } catch (e) {}
-          speaking = false;
-          if (gmAudio) { try { gmAudio.pause(); } catch (e) {} }
-          gmAudio = new Audio('data:audio/mpeg;base64,' + d.audio);
-          gmAudio.onended = gmAudio.onerror = function () { pump(); };
-          gmAudio.play().catch(function () { if (on) rawSpeak(text, 'urgent'); });
-        } else if (on) rawSpeak(text, 'urgent');
-      })
-      .catch(function () { if (on) rawSpeak(text, 'urgent'); });
+      .then(function (d) { return (d && d.ok && d.audio) ? d.audio : null; })
+      .catch(function () { return null; });
+    queue.push({ text: text, prio: 'urgent', audioPromise: audioPromise });
+    pump();
   }
 
   // ---- push-to-talk (blind mode only) ----

@@ -107,7 +107,14 @@ function spawnRoom(run, roll) {
   const seen = enemies.filter(e => e.revealed);
   const hidden = enemies.filter(e => !e.revealed);
   if (seen.length) {
-    logEvent(run, `You enter ${room.flavor}. You spot: ${seen.map(e => e.name).join(', ')}. Roll for initiative!`, 'urgent');
+    // Natural prose from the SAME list the UI and target menus use, grouped by
+    // kind ("two goblins and a giant centipede") + a disposition beat so players
+    // know these creatures are together and hostile (Tobias 2026-07-09).
+    const prose = groupProse(seen);
+    const stance = seen.length > 1
+      ? 'They loiter together at their ease — until they see you, and turn as one, weapons and teeth bared.'
+      : `It ${seen[0].creature && seen[0].creature.undead ? 'stands in unnatural stillness' : 'looks up from its business'} — and fixes on you, hostile.`;
+    logEvent(run, `You enter ${room.flavor}. Ahead: ${prose}. ${stance} Roll for initiative!`, 'urgent');
   } else {
     logEvent(run, `You enter ${room.flavor}. It seems quiet… but stay wary.`, 'urgent');
   }
@@ -115,6 +122,20 @@ function spawnRoom(run, roll) {
     logEvent(run, 'Something you have not seen lurks here — be ready.', 'event');
   }
   runUntilHeroTurn(run, roll);
+}
+
+/** "two goblins and a giant centipede" — grouped, natural, from the real list. */
+function groupProse(list) {
+  const counts = new Map();
+  for (const e of list) {
+    const base = e.creature ? e.creature.baseName || e.name : e.name;
+    counts.set(base, (counts.get(base) || 0) + 1);
+  }
+  const WORDS = ['', 'a', 'two', 'three', 'four', 'five', 'six'];
+  const parts = [...counts.entries()].map(([name, n]) =>
+    n === 1 ? `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}` : `${WORDS[n] || n} ${name}s`);
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
 }
 
 function living(run, side) { return run.combatants.filter(c => c.side === side && !c.down); }
@@ -263,6 +284,15 @@ function enemyTurn(run, enemy, roll) {
 function applyAction(run, clientId, action, roll = Math.random) {
   action = action || {};
   const type = typeof action === 'string' ? action : action.type;
+
+  // RETREAT: any party member, any time (not turn-gated) — the party pulls out
+  // alive with its gold. Tobias: there must always be a retreat button.
+  if (type === 'retreat' && (run.phase === 'combat' || run.phase === 'cleared')) {
+    if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
+    run.phase = 'retreated';
+    logEvent(run, `🏳️ The party retreats from the delve — ${run.roomsCleared} room${run.roomsCleared === 1 ? '' : 's'} cleared, ${run.gold} gold carried out. Live to delve again.`, 'urgent');
+    return { ok: true };
+  }
 
   if (run.phase === 'cleared' && type === 'descend') {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };

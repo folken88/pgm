@@ -45,6 +45,9 @@
     el('skill-begin').addEventListener('click', confirmCharacter);
     el('skill-auto').addEventListener('click', resetSkills);
     el('lobby-start').addEventListener('click', startAdventure);
+    el('retreat-btn').addEventListener('click', function () {
+      if (confirm('Retreat from the delve? You keep your gold; the run ends for the whole party.')) doRetreat();
+    });
     window.addEventListener('beforeunload', function () {
       if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
     });
@@ -264,7 +267,7 @@
   }
 
   // ---------- game ----------
-  function enterGame() { showScreen('game'); el('log').innerHTML = ''; state.lastSeq = 0; state.lastAnnouncedTurn = null;
+  function enterGame() { showScreen('game'); el('log').innerHTML = ''; state.lastSeq = 0; state.speakFloor = null; state.lastAnnouncedTurn = null;
     BM.speak(state.role === 'spectator' ? 'The adventure begins. You are watching.' : 'The adventure begins!', 'urgent'); }
 
   function renderGame(you) {
@@ -278,15 +281,27 @@
       else banner.textContent = 'Resolving…';
     } else if (run.phase === 'cleared') { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
     else if (run.phase === 'defeated') { banner.textContent = '☠ The party has fallen.'; banner.classList.add('defeated'); }
+    else if (run.phase === 'retreated') { banner.textContent = '🏳️ The party has retreated — gold in hand.'; banner.classList.add('retreated'); }
+    var rb = el('retreat-btn');
+    if (rb) rb.hidden = !(state.role === 'player' && (run.phase === 'combat' || run.phase === 'cleared'));
 
     renderStrip('party-strip', run.combatants.filter(function (c) { return c.side === 'hero'; }));
     renderStrip('enemy-strip', run.combatants.filter(function (c) { return c.side === 'enemy'; }));
     renderInventory(run.inventory);
 
-    (run.log || []).forEach(function (e) {
+    // On the FIRST snapshot after (re)joining, display the backlog but only
+    // SPEAK the last few lines — replaying whole prior rooms aloud described
+    // creatures that were no longer there (Tobias's accuracy bug).
+    var log = run.log || [];
+    if (state.speakFloor === null) {
+      var maxSeq = log.length ? log[log.length - 1].seq : 0;
+      state.speakFloor = Math.max(0, maxSeq - 3);
+    }
+    log.forEach(function (e) {
       if (e.seq > state.lastSeq) {
         state.lastSeq = e.seq; appendLog(e.text, e.priority);
-        if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (falls back to browser TTS)
+        if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak
+        if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (serialized queue)
           BM.speakGM(e.text);
           var a = el('announce'); if (a) a.textContent = e.text;
         } else { BM.speak(e.text, e.priority); }
@@ -332,7 +347,7 @@
         choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
       });
       choices.push({ id: 'descend', label: 'Descend deeper' });
-    } else if (run.phase === 'defeated') { choices.push({ id: 'leave', label: 'Return to start' }); }
+    } else if (run.phase === 'defeated' || run.phase === 'retreated') { choices.push({ id: 'leave', label: 'Return to start' }); }
     state.choices = choices;
     var nav = el('choices'); nav.innerHTML = '';
     choices.forEach(function (c, i) {
@@ -408,12 +423,12 @@
         var run = myRun();
         return 'Level 1. Gold ' + (run ? run.gold : 0) + '. Rooms cleared ' + (run ? run.roomsCleared : 0) + '.';
       },
-      flee: function () {
-        BM.speak('Bailing out of the dungeon.', 'urgent');
-        if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
-        setTimeout(function () { location.reload(); }, 600);
-      },
+      flee: function () { doRetreat(); },
     });
+  }
+  function doRetreat() {
+    api('/api/session/action', { clientId: state.clientId, action: 'retreat' })
+      .then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot retreat right now.', 'urgent'); });
   }
 
   // ---------- command routing ----------
@@ -469,6 +484,7 @@
       var eq = gname && eqs.find(function (c) { return c.label.toLowerCase().indexOf(gname) >= 0; });
       return doGameAction(eq || eqs[0]);
     }
+    if (/\b(retreat|withdraw|fall back)\b/.test(t)) return doRetreat();
     if (/\b(descend|deeper|continue|next|onward)\b/.test(t)) return chooseById('descend');
     if (/\b(pass|hold|wait|skip)\b/.test(t)) return chooseById('pass');
     if (/\b(leave|return|quit|exit)\b/.test(t)) return chooseById('leave');

@@ -79,3 +79,38 @@ persistence reads (PGM substitutes its own known/prepared source).
 
 **Vetting interplay:** as each effect family lands in PGM, the spells it powers get vetted
 in `docs/ITEMS-VETTING.md`-style ledger entries (a vetted spell = castable + resolvable).
+
+---
+
+## TOBIAS DIRECTIVE 2026-07-09 (course correction — supersedes family-by-family pacing)
+
+**"This game should already do everything poker dungeon can do in the dungeon, then we
+add the PGM features to that. Get the poker-dungeon and remove the poker."** Wholesale
+adoption of the poker dungeon experience is the BASELINE, not the destination. Work list
+(his exact asks):
+
+1. **AI companions = the poker AI heroes** (the authored cast in `pf1data/characterBuilds.js`
+   + their kits + the heroAI brain) brought over **exactly as they are** — plus PGM
+   additions: skill points, they accompany human players, can be GIVEN treasure, USE
+   items given to them, and SPEAK with the party leader via chat + their ElevenLabs
+   voices (poker's `character_voices`). NOTE: signature weapons still poker-only —
+   in PGM the cast uses found/basic gear (locked earlier).
+2. **CRITICAL a11y bug: the GM voice (Ultron — Tobias calls the narrator "Gaspar") must
+   NEVER talk over the blind-mode TTS.** All audio must serialize through one queue —
+   GM lines and access-TTS may never overlap, or the blind player gets word salad.
+3. **Spot-line accuracy + prose**: "You spot: giant centipede, goblin" reported a
+   creature that wasn't there (1 creature in the room). Perception narration must be
+   derived from the SAME list the UI/targets use, grouped naturally ("a giant centipede
+   and a goblin — they look up as one, menacing") conveying allied+aggressive, THEN
+   initiative. Consistency and accuracy are the requirement.
+4. **Full text logs of every delve** (server-side, persistent) for analysis &
+   troubleshooting.
+5. **Left side panel = party status panel** for sighted players; blind players can
+   navigate it piece by piece.
+6. **Retreat button** (party retreats from the delve).
+7. **Sound effects from poker-dungeon** for attacks/spells/buffs — copy the audio
+   library + wire SND-style pools to combat/cast events.
+
+Priority order agreed with the deploy state (testers live at pgm.folkengames.com):
+audio-collision fix → spot accuracy → delve logs → retreat → sounds → party panel →
+poker cast companions (with voices/chat) → remaining Phase B families ride along.
