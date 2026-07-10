@@ -48,6 +48,22 @@
     el('retreat-btn').addEventListener('click', function () {
       if (confirm('Retreat from the delve? You keep your gold; the run ends for the whole party.')) doRetreat();
     });
+    // Chat prompt: play via typed commands (same grammar as voice); questions
+    // route to the LLM GM when that layer lands.
+    function sendChat() {
+      var inp = el('chat-input'); var t = (inp.value || '').trim();
+      if (!t) return;
+      inp.value = '';
+      appendLog('› ' + t, 'event');
+      handleCommand(t.toLowerCase());
+    }
+    el('chat-send').addEventListener('click', sendChat);
+    el('chat-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+    // Push-to-talk for EVERYONE (not just blind mode): hold the mic, speak a command.
+    var pm = el('ptt-main');
+    pm.addEventListener('pointerdown', function (e) { e.preventDefault(); BM.ptt.start(); });
+    pm.addEventListener('pointerup', function (e) { e.preventDefault(); BM.ptt.stop(); });
+    pm.addEventListener('pointerleave', function () { BM.ptt.stop(); });
     window.addEventListener('beforeunload', function () {
       if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
     });
@@ -267,7 +283,7 @@
   }
 
   // ---------- game ----------
-  function enterGame() { showScreen('game'); el('log').innerHTML = ''; state.lastSeq = 0; state.speakFloor = null; state.lastAnnouncedTurn = null;
+  function enterGame() { showScreen('game'); document.body.classList.add('in-game'); el('log').innerHTML = ''; state.lastSeq = 0; state.speakFloor = null; state.lastAnnouncedTurn = null;
     BM.speak(state.role === 'spectator' ? 'The adventure begins. You are watching.' : 'The adventure begins!', 'urgent'); }
 
   function renderGame(you) {
@@ -285,9 +301,9 @@
     var rb = el('retreat-btn');
     if (rb) rb.hidden = !(state.role === 'player' && (run.phase === 'combat' || run.phase === 'cleared'));
 
-    renderStrip('party-strip', run.combatants.filter(function (c) { return c.side === 'hero'; }));
-    renderStrip('enemy-strip', run.combatants.filter(function (c) { return c.side === 'enemy'; }));
-    renderInventory(run.inventory);
+    renderBattlefield(run);
+    renderPartyPanel(run);
+    renderLootPanel(run);
 
     // On the FIRST snapshot after (re)joining, display the backlog but only
     // SPEAK the last few lines — replaying whole prior rooms aloud described
@@ -309,26 +325,63 @@
     });
     renderGameChoices(run, myTurn);
   }
-  function renderStrip(id, list) {
-    var ul = el(id); ul.innerHTML = '';
-    list.forEach(function (c) {
-      var li = document.createElement('li');
-      if (c.current) li.classList.add('current');
-      if (c.down) li.classList.add('down');
-      if (!c.down && c.hp <= c.maxHp / 3) li.classList.add('hurt');
-      li.innerHTML = '<span>' + (c.icon || '') + '</span><span class="cn">' + esc(c.name) + (c.ownerClientId === state.clientId ? ' (you)' : '') + (c.ai ? ' 🤖' : '')
-        + '</span><span class="hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp) + '</span>';
-      ul.appendChild(li);
+  // Battlefield: enemies across the top, allies just under — INITIATIVE order
+  // left→right (run.combatants is already initiative-sorted server-side).
+  function renderBattlefield(run) {
+    var rows = { enemy: el('enemy-row'), hero: el('ally-row') };
+    rows.enemy.innerHTML = ''; rows.hero.innerHTML = '';
+    run.combatants.forEach(function (c) {
+      var d = document.createElement('div');
+      d.className = 'unit' + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && c.hp <= c.maxHp / 3 ? ' hurt' : '');
+      d.innerHTML = '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>'
+        + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.clientId ? ' ✦' : '') + '</div>'
+        + '<div class="u-hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP') + '</div>'
+        + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
+      if (c.side === 'enemy' && !c.down) { d.style.cursor = 'pointer'; d.title = 'Click to attack / target'; d.addEventListener('click', function () {
+        var atk = state.choices.find(function (x) { return x.id === 'attack' && x.target === c.id; });
+        if (atk) doGameAction(atk);
+        else { state.queuedTarget = c.id; BM.speak('Targeting ' + c.name + '.', 'urgent'); }
+      }); }
+      rows[c.side].appendChild(d);
     });
   }
-  function renderInventory(inv) {
-    var box = el('inventory');
-    if (!inv || !inv.length) { box.textContent = ''; return; }
-    box.innerHTML = '<span class="bag">Party bag:</span> ' + inv.map(function (i) {
-      return (i.icon || '') + ' ' + esc(i.short || i.name) + ' ×' + i.qty;
-    }).join('  ·  ');
+
+  // LEFT: party status panel (blind players browse it with P).
+  function renderPartyPanel(run) {
+    var box = el('party-status'); box.innerHTML = '';
+    run.combatants.filter(function (c) { return c.side === 'hero'; }).forEach(function (c) {
+      var pct = Math.max(0, Math.min(100, Math.round(100 * c.hp / c.maxHp)));
+      var card = document.createElement('div');
+      card.className = 'hero-card' + (c.current ? ' current' : '') + (c.down ? ' down' : '')
+        + (pct <= 33 ? ' critical' : pct <= 66 ? ' hurt' : '');
+      var slots = c.slots ? Object.entries(c.slots).map(function (kv) { return 'L' + kv[0] + '×' + kv[1]; }).join(' ') : '';
+      card.innerHTML = '<div class="hc-name">' + (c.icon || '') + ' ' + esc(c.name)
+        + (c.ownerClientId === state.clientId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
+        + '<div class="hpbar"><div style="width:' + pct + '%"></div></div>'
+        + '<div class="hc-meta">' + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
+        + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '');
+      box.appendChild(card);
+    });
   }
 
+  // RIGHT: inventory & treasure with contextual actions.
+  function renderLootPanel(run) {
+    el('gold-line').textContent = 'Gold: ' + (run.gold || 0);
+    var box = el('bag-list'); box.innerHTML = '';
+    var inv = run.inventory || [];
+    if (!inv.length) { box.innerHTML = '<p class="delve-empty">The bag is empty.</p>'; return; }
+    var myTurn = !!(run.turn && run.turn.ownerClientId === state.clientId);
+    inv.forEach(function (i) {
+      var row = document.createElement('div'); row.className = 'bag-item';
+      var actBtn = '';
+      if (i.type === 'gear' && run.phase === 'cleared' && state.role === 'player') actBtn = '<button data-act="equip">Equip</button>';
+      else if (i.type === 'consumable' && myTurn) actBtn = '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
+      row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.short || i.name) + ' ×' + i.qty + '</span>' + actBtn;
+      var b = row.querySelector('button');
+      if (b) b.addEventListener('click', function () { doGameAction({ id: b.dataset.act, item: i.key, label: i.name }); });
+      box.appendChild(row);
+    });
+  }
   function renderGameChoices(run, myTurn) {
     var choices = [];
     var spectating = state.role === 'spectator';
@@ -418,6 +471,14 @@
         var run = myRun(); if (!run) return 'No party yet.';
         return run.combatants.filter(function (c) { return c.side === 'hero'; })
           .map(function (c) { return c.name + ' ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp); }).join('. ') + '.';
+      },
+      party: function () {   // P-key: the left status panel, piece by piece
+        var run = myRun(); if (!run) return [];
+        return run.combatants.filter(function (c) { return c.side === 'hero'; }).map(function (c) {
+          var conds = (c.conditions || []).length ? ', ' + c.conditions.join(', ') : '';
+          var slots = c.slots ? ', slots ' + Object.entries(c.slots).map(function (kv) { return 'level ' + kv[0] + ' times ' + kv[1]; }).join(', ') : '';
+          return { key: c.id, label: c.name + (c.ai ? ', AI companion' : '') + ': ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp + ' health') + ', armor class ' + c.ac + conds + slots };
+        });
       },
       progression: function () {
         var run = myRun();

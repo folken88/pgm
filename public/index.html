@@ -112,26 +112,37 @@
         <button id="retreat-btn" type="button" class="retreat-btn" title="Retreat from the delve (keep your gold)">🏳️ Retreat</button>
       </div>
 
-      <p id="turn-banner" class="turn-banner" aria-live="polite"></p>
+      <div class="game-layout">
+        <!-- LEFT: party status panel (blind-navigable via P) -->
+        <aside id="party-panel" class="side-panel" aria-label="Party status">
+          <h3>Party</h3>
+          <div id="party-status"></div>
+        </aside>
 
-      <div class="combat-grid">
-        <div class="combat-col">
-          <h3 id="party-h">Party</h3>
-          <ul id="party-strip" class="cstrip" aria-labelledby="party-h"></ul>
+        <!-- MIDDLE: battlefield (enemies top, allies under, initiative L→R) -->
+        <div class="battlefield">
+          <div id="enemy-row" class="init-row enemy-row" aria-label="Enemies, in initiative order"></div>
+          <div id="ally-row" class="init-row ally-row" aria-label="Allies, in initiative order"></div>
+          <p id="turn-banner" class="turn-banner" aria-live="polite"></p>
+          <!-- The narration log: polite live region so a screen reader reads new lines -->
+          <div id="log" class="log" role="log" aria-live="polite" aria-atomic="false"></div>
+          <!-- Choices: numbered, keyboard + click + voice selectable -->
+          <nav id="choices" class="choices" aria-label="Choices"></nav>
+          <div class="chat-row">
+            <input id="chat-input" type="text" autocomplete="off"
+              placeholder="Type to play or ask — e.g. attack the goblin, drink potion, retreat" aria-label="Chat command" />
+            <button id="chat-send" type="button">Send</button>
+            <button id="ptt-main" type="button" aria-pressed="false" title="Hold to speak a command">🎤</button>
+          </div>
         </div>
-        <div class="combat-col">
-          <h3 id="foes-h">Foes</h3>
-          <ul id="enemy-strip" class="cstrip" aria-labelledby="foes-h"></ul>
-        </div>
+
+        <!-- RIGHT: inventory & treasure -->
+        <aside id="loot-panel" class="side-panel" aria-label="Inventory and treasure">
+          <h3>Treasure</h3>
+          <p id="gold-line" class="gold-line">Gold: 0</p>
+          <div id="bag-list"></div>
+        </aside>
       </div>
-
-      <p id="inventory" class="inventory" aria-live="polite"></p>
-
-      <!-- The narration log: polite live region so a screen reader reads new lines -->
-      <div id="log" class="log" role="log" aria-live="polite" aria-atomic="false"></div>
-
-      <!-- Choices: numbered, keyboard + click + voice selectable -->
-      <nav id="choices" class="choices" aria-label="Choices"></nav>
 
       <!-- Urgent announcements (victory/defeat) get an assertive region -->
       <div id="announce" class="visually-hidden" role="alert" aria-live="assertive"></div>

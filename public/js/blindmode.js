@@ -159,7 +159,8 @@
     return r;
   }
   function startListen() {
-    if (!on) return;
+    // Voice control works for EVERYONE via the mic buttons; the Space-hold
+    // shortcut stays blind-mode-only (see onKeydown).
     if (!supportsSR) { toast('Voice control needs Chrome/Edge — keyboard works everywhere.'); return; }
     if (listening) return;
     if (!recog) recog = buildRecog();
@@ -169,20 +170,25 @@
   function setPTT(v) {
     var b = document.getElementById('ptt');
     if (b) { b.setAttribute('aria-pressed', String(v)); b.textContent = v ? '🔴 Listening…' : '🎤 Hold to speak'; }
+    var m = document.getElementById('ptt-main');
+    if (m) { m.setAttribute('aria-pressed', String(v)); m.textContent = v ? '🔴' : '🎤'; }
   }
 
   // ---- browse modes (E foes / K spells — Tab cycles, Enter acts, Escape closes) ----
   function openBrowse(kind) {
-    var list = (kind === 'foes' ? (info.foes && info.foes()) : (info.spells && info.spells())) || [];
-    if (!list.length) { speak(kind === 'foes' ? 'No visible enemies.' : 'No spells available.', 'urgent'); return; }
+    var src = kind === 'foes' ? info.foes : kind === 'spells' ? info.spells : info.party;
+    var list = (src && src()) || [];
+    var empty = { foes: 'No visible enemies.', spells: 'No spells available.', party: 'No party yet.' };
+    if (!list.length) { speak(empty[kind], 'urgent'); return; }
     browse = { kind: kind, list: list, idx: 0 };
     speakBrowse();
   }
   function speakBrowse() {
     var it = browse.list[browse.idx];
     var pos = (browse.idx + 1) + ' of ' + browse.list.length;
-    speak((browse.kind === 'foes' ? 'Enemy ' + pos + ': ' + it.label : 'Spell ' + pos + ': ' + it.label)
-      + '. Tab for next, Enter to ' + (browse.kind === 'foes' ? 'target' : 'cast') + ', Escape to close.', 'urgent');
+    var head = browse.kind === 'foes' ? 'Enemy ' : browse.kind === 'spells' ? 'Spell ' : 'Party member ';
+    var enter = browse.kind === 'foes' ? ', Enter to target' : browse.kind === 'spells' ? ', Enter to cast' : '';
+    speak(head + pos + ': ' + it.label + '. Tab for next' + enter + ', Escape to close.', 'urgent');
   }
   function browseKeydown(e) {
     if (e.key === 'Tab') { e.preventDefault(); browse.idx = (browse.idx + 1) % browse.list.length; speakBrowse(); return true; }
@@ -190,7 +196,8 @@
       e.preventDefault();
       var it = browse.list[browse.idx]; var kind = browse.kind; browse = null;
       if (kind === 'foes') { if (info.targetFoe) info.targetFoe(it.id); }
-      else if (info.castSpell) info.castSpell(it.key);
+      else if (kind === 'spells') { if (info.castSpell) info.castSpell(it.key); }
+      else speak(it.label + '.', 'urgent');   // party browse: Enter re-reads
       return true;
     }
     if (e.key === 'Escape') { e.preventDefault(); browse = null; speak((browse === null ? (e._k === 'e' ? 'Enemies' : 'Menu') : 'Menu') + ' closed.', 'urgent'); return true; }
@@ -202,7 +209,8 @@
     a: 'A. Attack your target.', e: 'E. Inspect enemies. Tab cycles, Enter targets.',
     k: 'K. Spellbook. Tab cycles, Enter casts.', c: 'C. Character sheet.',
     h: 'H. Health of the party.', x: 'X. Level and experience.',
-    b: 'B. Bail — press twice to flee the dungeon.', '?': 'Question mark. Toggles help mode.',
+    b: 'B. Bail — press twice to retreat from the dungeon.', p: 'P. Browse the party status panel piece by piece.',
+    '?': 'Question mark. Toggles help mode.',
   };
   function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
 
@@ -222,6 +230,7 @@
     if (k === 'x') { e.preventDefault(); speak((info.progression && info.progression()) || 'No progression yet.', 'urgent'); return; }
     if (k === 'e') { e.preventDefault(); openBrowse('foes'); return; }
     if (k === 'k') { e.preventDefault(); openBrowse('spells'); return; }
+    if (k === 'p') { e.preventDefault(); openBrowse('party'); return; }
     if (k === 'a') { e.preventDefault(); if (info.attack) info.attack(); return; }
     if (k === 'b') {
       e.preventDefault();
@@ -276,6 +285,7 @@
     init: init, speak: speak, speakGM: speakGM, setGMVoice: setGMVoice,
     repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
     toggle: toggle, isOn: function () { return on; },
+    ptt: { start: startListen, stop: stopListen },
     registerInfo: function (providers) { info = Object.assign(info, providers || {}); },
     toast: toast, getLogs: function () { return logs.slice(); },
     setCommandHandler: function (fn) { commandHandler = fn; },

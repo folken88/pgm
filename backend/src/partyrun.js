@@ -459,6 +459,9 @@ function publicRun(run) {
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, ownerClientId: c.ownerClientId || null,
       current: cb ? c.id === cb.id : false,
+      init: c.init || 0,
+      conditions: condList(c),
+      slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
     })),
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),
     inventory: run.inventory.map(s => {
@@ -472,6 +475,25 @@ function publicRun(run) {
     turn,
     log: run.log.slice(-40),
   };
+}
+
+/** Human-readable active conditions on a combatant (for the status panels). */
+function condList(c) {
+  const out = [];
+  if (c.paralyzed > 0) out.push(c.heldDC ? 'held' : 'paralyzed');
+  if (c.nauseated > 0) out.push('nauseated');
+  if (c.blinded > 0) out.push('blinded');
+  if (c.slowed > 0) out.push('slowed');
+  if (c.sickened > 0) out.push('sickened');
+  if (c.prone) out.push('prone');
+  if (c.grappled) out.push('grappled');
+  if (c.asleep) out.push('asleep');
+  if (c.fascinated) out.push('fascinated');
+  if (c.charmed) out.push('charmed');
+  if (c.acid && c.acid.rounds > 0) out.push('burning (acid)');
+  if (c._bleeding) out.push('bleeding');
+  if (c.buffs && ((c.buffs.toHit || 0) + (c.buffs.ac || 0) + (c.buffs.deflect || 0) + (c.buffs.save || 0)) > 0) out.push('blessed');
+  return out;
 }
 
 /** Compact status for the concurrent-delves side window. */

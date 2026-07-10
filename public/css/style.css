@@ -149,6 +149,61 @@ button { cursor: pointer; }
 .inventory:empty { display: none; }
 .inventory .bag { color: var(--accent); font-weight: 700; }
 
+/* ── Game layout: LEFT party status · MIDDLE battlefield · RIGHT treasure ── */
+.game-layout { display: grid; grid-template-columns: 230px 1fr 230px; gap: .8rem; align-items: start; }
+@media (max-width: 1000px) { .game-layout { grid-template-columns: 1fr; } .side-panel { order: 2; } .battlefield { order: 1; } }
+.side-panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: .6rem .7rem; font-size: .9rem;
+}
+.side-panel h3 { margin: 0 0 .5rem; font-size: .95rem; color: var(--accent); }
+.hero-card {
+  border: 1px solid var(--line); border-radius: 8px; padding: .45rem .55rem; margin-bottom: .45rem;
+  background: var(--bg);
+}
+.hero-card.current { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset; }
+.hero-card.down { opacity: .55; }
+.hero-card .hc-name { font-weight: 700; display: flex; gap: .4rem; align-items: baseline; }
+.hero-card .hc-name .you { color: var(--ok); font-size: .75rem; }
+.hero-card .hpbar { height: 6px; background: #333; border-radius: 4px; margin: .3rem 0; overflow: hidden; }
+.hero-card .hpbar > div { height: 100%; background: var(--ok); border-radius: 4px; }
+.hero-card.hurt .hpbar > div { background: var(--accent); }
+.hero-card.critical .hpbar > div { background: var(--danger); }
+.hero-card .hc-meta { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.hero-card .hc-conds { color: var(--danger); font-size: .78rem; }
+
+/* Battlefield: enemies across the top, allies just under, initiative L→R */
+.init-row { display: flex; gap: .5rem; overflow-x: auto; padding: .3rem 0; min-height: 3.4rem; }
+.unit {
+  min-width: 96px; border: 1px solid var(--line); border-radius: 10px; padding: .35rem .5rem;
+  background: var(--panel); text-align: center; font-size: .85rem; flex: 0 0 auto;
+}
+.enemy-row .unit { border-color: #5a3030; }
+.unit .u-icon { font-size: 1.3rem; }
+.unit .u-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.unit .u-hp { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.unit .u-conds { color: var(--danger); font-size: .72rem; min-height: .9rem; }
+.unit.current { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok); }
+.unit.down { opacity: .45; filter: grayscale(1); }
+.unit.hurt .u-hp { color: var(--danger); }
+
+/* Chat / PTT row */
+.chat-row { display: flex; gap: .5rem; margin-top: .7rem; }
+.chat-row input { flex: 1; }
+#chat-send { background: var(--accent); color: var(--accent-ink); border: none; font-weight: 700; padding: .5rem .9rem; }
+#ptt-main { font-size: 1.1rem; padding: .5rem .7rem; }
+#ptt-main[aria-pressed="true"] { background: var(--danger); color: #fff; }
+
+/* Right panel: treasure */
+.gold-line { font-weight: 800; color: var(--accent); margin: .2rem 0 .5rem; }
+.bag-item { display: flex; align-items: center; gap: .4rem; padding: .3rem 0; border-bottom: 1px solid var(--line); }
+.bag-item:last-child { border-bottom: 0; }
+.bag-item .bi-name { flex: 1; }
+.bag-item button { padding: .2rem .5rem; font-size: .78rem; background: var(--bg); }
+
+/* Concurrent-delves window docks below the layout while in game */
+body.in-game #side-window { position: static; width: auto; max-width: 760px; margin: .8rem auto 6rem; }
+
 /* Combat view */
 .turn-banner {
   font-weight: 800; padding: .5rem .8rem; border-radius: 8px; margin: 0 0 .7rem;

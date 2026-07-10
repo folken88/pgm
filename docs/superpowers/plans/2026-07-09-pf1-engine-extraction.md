@@ -114,3 +114,20 @@ adoption of the poker dungeon experience is the BASELINE, not the destination. W
 Priority order agreed with the deploy state (testers live at pgm.folkengames.com):
 audio-collision fix → spot accuracy → delve logs → retreat → sounds → party panel →
 poker cast companions (with voices/chat) → remaining Phase B families ride along.
+[Items 1-4 SHIPPED to prod 2026-07-09.]
+
+### THE PARITY MILESTONE (Tobias 2026-07-09): report when PGM ≥ poker-dungeon's PF1 sim.
+Canonical GAME-SCREEN LAYOUT (build exactly this):
+- LEFT: party status panel (per-hero: HP/AC/conditions/slots; blind-navigable
+  piece by piece — P key browse).
+- RIGHT: party inventory & treasure (gold, bag, equip/give actions).
+- MIDDLE (like poker-dungeon): ENEMIES across the top, ALLIES just under, both
+  ordered by INITIATIVE left→right; action buttons; a CHAT PROMPT (ask questions
+  or play via chat commands); a PUSH-TO-TALK button (talk to the LLM to control
+  play — voice for everyone, not just blind mode).
+Parity checklist vs poker dungeon still open: sounds (SND pools), poker cast as
+AI companions (kits/heroAI/11labs voices/chat), summons, charm/dominate, sleep/
+grease/control, dispel, savedie, rays, spellstrike, stances+Rage, full attack
+pipeline (_swingVsAC iteratives/crit/arcana), maneuvers (grapple/trip/bullrush),
+XP/leveling (started — pacing checked, not yet wired), boss/ward mechanics,
+enemy casters, Mirror Image/Displacement defenses, LLM GM Q&A via chat/PTT.
