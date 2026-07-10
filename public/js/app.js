@@ -355,7 +355,7 @@
         if (atk) doGameAction(atk);
         else { state.queuedTarget = c.id; BM.speak('Targeting ' + c.name + '.', 'urgent'); }
       }); }
-      rows[c.side].appendChild(d);
+      rows[c.summoned ? 'hero' : c.side].appendChild(d);   // summons fight for the party — show them with the allies
     });
   }
 

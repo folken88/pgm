@@ -160,8 +160,8 @@ function groupProse(list) {
   return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
 }
 
-function living(run, side) { return run.combatants.filter(c => c.side === side && !c.down); }
-function livingRevealedEnemies(run) { return run.combatants.filter(c => c.side === 'enemy' && !c.down && c.revealed); }
+function living(run, side) { return run.combatants.filter(c => c.side === side && !c.down && !c.summoned); }
+function livingRevealedEnemies(run) { return run.combatants.filter(c => c.side === 'enemy' && !c.down && c.revealed && !c.summoned); }
 function current(run) { return run.combatants[run.turnIndex]; }
 function nextTurn(run) {
   run.turnIndex = (run.turnIndex + 1) % run.combatants.length;
@@ -204,6 +204,7 @@ function runUntilHeroTurn(run, roll) {
     const cb = current(run);
     if (!cb || cb.down) { nextTurn(run); continue; }
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
+    if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'hero' && !cb.ai) { logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
     if (cb.side === 'hero') aiHeroTurn(run, cb, roll);   // ai companion
     else enemyTurn(run, cb, roll);
@@ -245,6 +246,24 @@ function kitUses(m, ab) {
   if (ab.cost === 'room') return (m.abilityUses && (m.abilityUses[ab.key] === undefined ? 1 : m.abilityUses[ab.key])) > 0;
   if (ab.cost === 'run') return (m.runAbilityUses && (m.runAbilityUses[ab.key] === undefined ? 1 : m.runAbilityUses[ab.key])) > 0;
   return true;
+}
+
+/** A summoned minion's turn: swing at the weakest REAL foe, tick expiry,
+ *  crumble at 0 (port of Dungeon.js L865-883). */
+function summonTurn(run, minion, roll) {
+  const glyph = minion.summonFlavor === 'devil' ? '😈' : '☠️';
+  const foes = livingRevealedEnemies(run);
+  if (foes.length) {
+    const prey = foes.slice().sort((a, b) => a.hp - b.hp)[0];
+    const r = run.shim._monsterSwing(minion, pf1.spellmath.enemyAC(prey));
+    if (r.hit) {
+      const d = pf1.resolve.dmgTo(prey, r.damage, null);
+      logEvent(run, `${glyph} ${minion.name} (your ${minion.summonFlavor}) rends ${prey.name} for ${d.dealt}!${prey.hp <= 0 ? ' ☠️ Slain!' : ''}`, 'event', SFX.pick(SFX.SND.flesh, roll));
+      if (prey.hp <= 0) prey.down = true;
+    } else logEvent(run, `${glyph} ${minion.name} (your ${minion.summonFlavor}) claws at ${prey.name} — and misses.`, 'event');
+  } else logEvent(run, `${glyph} ${minion.name} stands ready — no foe in reach.`, 'event');
+  minion.summonExpiry = (minion.summonExpiry || 1) - 1;
+  if (minion.summonExpiry <= 0) { minion.hp = 0; minion.down = true; logEvent(run, `${glyph} ${minion.name} crumbles back to dust — the summoning ends.`, 'event'); }
 }
 
 function aiHeroTurn(run, hero, roll) {
@@ -425,6 +444,7 @@ function equipItem(run, hero, itemKey) {
 }
 
 function clearRoom(run, roll = Math.random) {
+  run.combatants.forEach(c => { if (c.summoned && !c.down) { c.down = true; } });
   run.phase = 'cleared';
   run.gold += run.room.reward.gp;
   run.roomsCleared += 1;
@@ -459,7 +479,7 @@ function publicRun(run) {
     try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
     const kd = pf1.abilities.kitFor(cb.cls);
     if (kd && kd.atwill) kit = [{ ...kd.atwill, cost: 'free' }].concat(kit);
-    const spells = kit.filter(ab => kitUses(cb, ab)).map(ab => ({
+    const spells = kit.filter(ab => kitUses(cb, ab) && run.shim._charAllows(cb, ab)).map(ab => ({
       key: ab.key, name: ab.name, icon: ab.icon,
       uses: ab.cost === 'pool' ? cb.spellPool
           : ab.cost === 'slot' ? ((cb.slots || {})[ab.slvl || 1] || 0)
@@ -476,7 +496,7 @@ function publicRun(run) {
       id: c.id, side: c.side, name: c.name, icon: c.icon,
       art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
-      ai: !!c.ai, ownerClientId: c.ownerClientId || null,
+      ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
       conditions: condList(c),

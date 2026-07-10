@@ -107,4 +107,48 @@ Object.assign(
   require('./game/dungeon/swing'),        // _swingVsAC / _canReach / _flankRegister (verbatim Dungeon.js)
 );
 
+// ── PGM-native overrides (assigned after the mixins so they win) ──
+let _summonSeq = 0;
+Object.assign(DungeonShim.prototype, {
+  /** Build a combatant from a MON stat block (summons; enemy spawns later). */
+  _makeEnemy(base) {
+    const id = 'e:s' + (++_summonSeq);
+    return {
+      id, uid: id, side: 'enemy', name: base.name, glyph: base.glyph || '👹', icon: base.glyph || '👹',
+      hp: base.hp, maxHp: base.hp, ac: base.ac, toHit: base.toHit || 0,
+      dmgDie: base.dmgDie || 4, dmgBonus: base.dmgBonus || 0, dmgCount: base.dmgCount || 1,
+      fort: base.fort || 0, reflex: base.reflex || 0, dr: base.dr || null, resist: base.resist || null,
+      type: base.type || null, evil: !!base.evil, align: base.align || null,
+      down: false, revealed: true, initMod: 0,
+      creature: { baseName: base.name, undead: base.type === 'undead' },
+    };
+  },
+  /** ALLIED summon — PGM adaptation of summons.js _abSummon (same rules: the
+   *  minion appears on the SUMMONER'S initiative, right after them, fights for
+   *  the party, crumbles after ~level rounds). */
+  _abSummon(m, ab) {
+    const { MON } = require('./pf1data/monsters');
+    const spec = ab.summon || {};
+    const pool = (spec.pool || (spec.key ? [spec.key] : [])).filter(k => MON[k]);
+    if (!pool.length) { this._note(`${ab.icon || '☠️'} ${m.nickname}'s ${ab.name} fizzles — the grave yields nothing.`); return; }
+    const key = pool[Math.floor(Math.random() * pool.length)];
+    const rollN = (c) => { if (typeof c === 'number') return Math.max(1, c); const mm = /^(\d+)d(\d+)(?:\+(\d+))?$/.exec(String(c || '1')); if (!mm) return 1; let t = 0; for (let i = 0; i < +mm[1]; i++) t += 1 + Math.floor(Math.random() * +mm[2]); return t + (+mm[3] || 0); };
+    const count = Math.max(1, rollN(spec.count));
+    const rounds = spec.rounds || Math.max(3, Math.ceil(m.level || 1));
+    const run = this.run;
+    const at = run.combatants.indexOf(m);
+    const news = [];
+    for (let i = 0; i < count; i++) {
+      const e = this._makeEnemy(MON[key]);
+      e.summoned = true; e.summonedBy = m.playerId; e.summonExpiry = rounds;
+      e.summonFlavor = spec.flavor || 'undead'; e.init = m.init;
+      news.push(e);
+    }
+    run.combatants.splice((at >= 0 ? at : run.turnIndex) + 1, 0, ...news);
+    const nm = MON[key].name;
+    const label = count > 1 ? `${count} ${nm}${/s$/.test(nm) ? '' : 's'}` : `a ${nm}`;
+    this._note(`${ab.icon || '☠️'} ${m.nickname} tears open the grave — ${label} rise${count > 1 ? '' : 's'} to fight for the party! (${rounds} rounds)`, ab.sound);
+  },
+});
+
 module.exports = { DungeonShim, deps };
