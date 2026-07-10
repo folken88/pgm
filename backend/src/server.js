@@ -24,6 +24,7 @@ const path = require('node:path');
 const game = require('./game');
 const session = require('./session');
 const eleven = require('./elevenlabs');
+const gm = require('./gm');
 const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
@@ -90,6 +91,14 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const audio = await eleven.synthesize(String(body.text || ''));
     return sendJSON(res, 200, audio ? { ok: true, audio } : { ok: false });
+  }
+
+  // The LLM Game Master: question + live delve context -> narrated answer.
+  if (url === '/api/gm' && req.method === 'POST') {
+    const body = await readBody(req);
+    const snap = session.sessionSnapshotFor(body.clientId);
+    const r = await gm.askGM(String(body.question || '').slice(0, 400), snap);
+    return sendJSON(res, 200, { ok: r.provider !== 'none', text: r.text, provider: r.provider });
   }
 
   if (url === '/api/character/plan' && req.method === 'POST') {

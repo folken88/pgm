@@ -576,7 +576,15 @@
       var byName = target && atk.find(function (c) { return c.label.toLowerCase().indexOf(target) >= 0; });
       return doGameAction(byName || atk[0]);
     }
-    BM.speak('Say attack, pass, a number, or wait for your turn.', 'urgent');
+    askGM(t);   // not a command — the Game Master answers (chat + PTT questions)
+  }
+  function askGM(question) {
+    appendLog('🎲 You ask: ' + question, 'event');
+    BM.speak('The Game Master considers…', 'ambient');
+    api('/api/gm', { clientId: state.clientId, question: question }).then(function (r) {
+      appendLog('🎲 GM: ' + r.text, 'event');
+      BM.speakGM(r.text);              // Ultron voice, serialized behind blind TTS
+    }).catch(function () { BM.speak('The GM is silent.', 'urgent'); });
   }
   function selectGameIndex(i) { var c = state.choices[i]; if (c) doGameAction(c); else BM.speak('No choice ' + (i + 1) + '.', 'urgent'); }
   function chooseById(id) { var c = state.choices.find(function (x) { return x.id === id; }); if (c) doGameAction(c); else BM.speak('Not available right now.', 'urgent'); }
