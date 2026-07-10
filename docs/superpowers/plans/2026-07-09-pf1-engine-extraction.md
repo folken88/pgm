@@ -82,6 +82,12 @@ in `docs/ITEMS-VETTING.md`-style ledger entries (a vetted spell = castable + res
 
 ---
 
+## STANDING PRINCIPLE (Tobias 2026-07-10): WHEN IN DOUBT, USE PF1 RAW.
+PF1 is open source (OGL) and proven — any mechanic question without explicit
+guidance defaults to the real Pathfinder 1e rule, not an invented simplification.
+Existing simplifications (thrown-alchemical auto-hit, Will≈avg(fort,ref), etc.)
+are debt to be paid back toward RAW, not precedent.
+
 ## TOBIAS DIRECTIVE 2026-07-09 (course correction — supersedes family-by-family pacing)
 
 **"This game should already do everything poker dungeon can do in the dungeon, then we
