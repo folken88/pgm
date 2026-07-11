@@ -45,8 +45,16 @@
     el('skill-begin').addEventListener('click', confirmCharacter);
     el('skill-auto').addEventListener('click', resetSkills);
     el('lobby-start').addEventListener('click', startAdventure);
+    // Two-press arm instead of native confirm() — confirm() isn't narrated and
+    // traps VoiceOver focus (poker replaced it for the same reason).
+    var retreatArm = 0;
     el('retreat-btn').addEventListener('click', function () {
-      if (confirm('Retreat from the delve? You keep your gold; the run ends for the whole party.')) doRetreat();
+      var b = el('retreat-btn'), now = Date.now();
+      if (now - retreatArm < 5000) { retreatArm = 0; b.textContent = '🏳️ Retreat'; doRetreat(); return; }
+      retreatArm = now;
+      b.textContent = '🏳️ Press again to confirm';
+      BM.speak('Retreat? The run ends for the whole party; you keep the gold. Press again to confirm.', 'urgent');
+      setTimeout(function () { if (Date.now() - retreatArm >= 5000) b.textContent = '🏳️ Retreat'; }, 5200);
     });
     // Chat prompt: play via typed commands (same grammar as voice); questions
     // route to the LLM GM when that layer lands.
@@ -58,7 +66,10 @@
       handleCommand(t.toLowerCase());
     }
     el('chat-send').addEventListener('click', sendChat);
-    el('chat-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+    el('chat-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); sendChat(); if (BM.isOn()) { e.target.blur(); BM.speak('Sent. Back to combat keys.', 'urgent'); } }
+      if (e.key === 'Escape') { e.preventDefault(); e.target.value = ''; e.target.blur(); if (BM.isOn()) BM.speak('Chat cancelled.', 'urgent'); }
+    });
     // Push-to-talk for EVERYONE (not just blind mode): hold the mic, speak a command.
     var pm = el('ptt-main');
     pm.addEventListener('pointerdown', function (e) { e.preventDefault(); BM.ptt.start(); });
@@ -475,15 +486,58 @@
         if (state.queuedTarget) c = Object.assign({}, c, { target: state.queuedTarget });
         doGameAction(c);
       },
-      status: function () {
+      status: function () {   // L key — poker's "Life": your own standing
         var h = myHero();
         if (!h) return 'No character in play.';
-        return h.name + ', level 1 ' + (state.charInput ? state.charInput.cls : '') + '. Health ' + h.hp + ' of ' + h.maxHp + '. Armor class ' + h.ac + '.';
+        var conds = (h.debuffs || []).length ? '. Conditions: ' + h.debuffs.join(', ') : '';
+        return h.name + ', level ' + (h.level || 1) + ' ' + (h.cls || '') + '. Health ' + h.hp + ' of ' + h.maxHp + '. Armor class ' + h.ac + conds + '.';
       },
       health: function () {
         var run = myRun(); if (!run) return 'No party yet.';
         return run.combatants.filter(function (c) { return c.side === 'hero'; })
           .map(function (c) { return c.name + ' ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp); }).join('. ') + '.';
+      },
+      money: function () {   // M key — gold + depth
+        var run = myRun(); if (!run) return 'No delve yet.';
+        return run.gold + ' gold. Depth ' + (run.roomsCleared + 1) + '.';
+      },
+      buffs: function () {   // B key — poker's party BUFFS (bail is in the Escape menu)
+        var run = myRun(); if (!run) return 'No party yet.';
+        var lines = run.combatants.filter(function (c) { return c.side === 'hero' && (c.buffs || []).length; })
+          .map(function (c) { return c.name + ': ' + c.buffs.join(', '); });
+        return lines.length ? lines.join('. ') + '.' : 'No buffs running.';
+      },
+      debuffs: function () {   // D key
+        var run = myRun(); if (!run) return 'No party yet.';
+        var lines = run.combatants.filter(function (c) { return c.side === 'hero' && (c.debuffs || []).length; })
+          .map(function (c) { return c.name + ': ' + c.debuffs.join(', '); });
+        return lines.length ? lines.join('. ') + '.' : 'Nobody is debuffed.';
+      },
+      cantrip: function () {   // C key — cycle at-will element (free, engine-backed)
+        api('/api/session/action', { clientId: state.clientId, action: 'cantrip' }).then(function (r) {
+          BM.speak(r.ok ? 'Cantrip: ' + r.cantripName + '.' : (r.error || 'No cantrip to cycle.'), 'urgent');
+        });
+      },
+      descend: function () {   // 0 key — poker's "open the next door"
+        var run = myRun();
+        if (!run) return BM.speak('No delve yet.', 'urgent');
+        if (run.phase !== 'cleared') return BM.speak('The door only opens once the room is clear.', 'urgent');
+        api('/api/session/action', { clientId: state.clientId, action: 'descend' })
+          .then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot descend.', 'urgent'); });
+      },
+      chatFocus: function () {   // Backslash — jump into chat, Enter sends, Escape cancels
+        var inp = el('chat-input');
+        if (!inp || el('game').hidden) return BM.speak('No chat here.', 'urgent');
+        inp.focus();
+        BM.speak('Chat. Type, then Enter to send, Escape to cancel.', 'urgent');
+      },
+      sessionMenu: function () {   // Escape — bail lives HERE (poker), never on a single key
+        var run = myRun(); var items = [];
+        if (run && (run.phase === 'combat' || run.phase === 'cleared')) {
+          items.push({ label: 'Retreat — end the run for the whole party, keep the gold', run: doRetreat });
+        }
+        items.push({ label: 'Close this menu', run: function () {} });
+        return items;
       },
       party: function () {   // P-key: the left status panel, piece by piece
         var run = myRun(); if (!run) return [];
@@ -494,8 +548,9 @@
         });
       },
       progression: function () {
-        var run = myRun();
-        return 'Level 1. Gold ' + (run ? run.gold : 0) + '. Rooms cleared ' + (run ? run.roomsCleared : 0) + '.';
+        var run = myRun(); var h = myHero();
+        var lvl = h ? 'Level ' + (h.level || 1) + '. Experience ' + (h.xp || 0) + (h.xpNext ? ' of ' + h.xpNext + ' for the next level' : '') + '. ' : '';
+        return lvl + 'Gold ' + (run ? run.gold : 0) + '. Rooms cleared ' + (run ? run.roomsCleared : 0) + '.';
       },
       flee: function () { doRetreat(); },
     });

@@ -379,6 +379,25 @@ function applyAction(run, clientId, action, roll = Math.random) {
     return { ok: true };
   }
 
+  // CANTRIP CYCLE (poker's C key): a free action, not turn-gated. With no key,
+  // steps to the next element; with action.spell, picks that one directly.
+  if (type === 'cantrip') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    let st = null;
+    try { st = run.shim._cantripState(hero); } catch (e) {}
+    if (!st || !st.choices.length) return { ok: false, error: 'your class has no at-will cantrip to cycle' };
+    let next;
+    if (action.spell) next = st.choices.find(c => c.key === action.spell);
+    else {
+      const i = st.choices.findIndex(c => c.key === st.current);
+      next = st.choices[(i + 1) % st.choices.length];
+    }
+    if (!next) return { ok: false, error: 'not a cantrip you can cast' };
+    hero.cantrip = next.key;
+    return { ok: true, cantrip: next.key, cantripName: next.name };
+  }
+
   if (run.phase === 'cleared' && type === 'descend') {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     spawnRoom(run, roll);
@@ -604,10 +623,15 @@ function publicRun(run) {
       art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
-      level: c.level || null, xp: c.xp || 0,
+      level: c.level || null, xp: c.xp || 0, cls: c.cls || null,
+      xpNext: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).next : null,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
       conditions: condList(c).concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
+      // Split views for the blind B (buffs) / D (debuffs) readouts (poker keymap).
+      buffs: (c.buffs && ((c.buffs.toHit || 0) + (c.buffs.ac || 0) + (c.buffs.deflect || 0) + (c.buffs.save || 0)) > 0 ? ['blessed'] : [])
+        .concat(c.precast && c.precast.length ? c.precast : []),
+      debuffs: condList(c).filter(x => x !== 'blessed'),
       slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
     })),
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),

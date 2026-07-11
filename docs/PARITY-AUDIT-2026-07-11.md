@@ -202,10 +202,15 @@ so Josh's muscle memory will retreat the party when he asks for buffs.
 
 ---
 
-## 5. RECOMMENDED PRIORITY ORDER (proposal, not started)
-1. **A11y keymap realignment to poker** (B→buffs, bail→Esc session menu, add S stop,
-   L/M/D/0/\, [ ]/− =, fix "level 1" hardcodes, replace native confirm) — direct
-   mandate, safety regression, low effort.
+## 5. RECOMMENDED PRIORITY ORDER
+1. ~~**A11y keymap realignment to poker**~~ **DONE 2026-07-11**: B→party buffs,
+   D→debuffs, L→life, M→money, C→cantrip cycle (new server action, engine
+   `_cantripState`), 0→door, \→chat (Enter sends/Esc cancels), S→stop-speaking
+   (with in-flight-GM-fetch guard), Esc→session menu (bail behind Enter, numbers
+   unmapped per poker), [ ]=rate and − ==volume both persisted, "level 1"
+   hardcodes fixed (real level/cls/xpNext in payload), native retreat confirm()
+   replaced with announced two-press arm. Also fixed: urgent blind-TTS now cuts
+   a playing GM clip instead of talking over it.
 2. **TTS engine hardening** — adopt poker's native-queue + watchdog approach
    (or port BM's speech core outright).
 3. **AFK auto-act + action queue + reconnect grace** — multiplayer-critical.

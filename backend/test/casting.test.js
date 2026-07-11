@@ -113,3 +113,18 @@ test('a wizard AI companion prefers spells over melee', () => {
   const zaraCast = run.log.some(e => /Zara/.test(e.text) && /(casts|looses|Ray of Frost|Magic Missile|Burning Hands|Shocking)/i.test(e.text));
   assert.ok(zaraCast || run.phase !== 'combat', 'Zara cast something: ' + run.log.map(e => e.text).join(' | '));
 });
+
+test("the 'cantrip' action cycles a wizard's at-will element and refuses for a fighter", () => {
+  const roll = seededRoller(4);
+  const run = pr.createPartyRun(party('wizard', true), roll);
+  const first = pr.applyAction(run, 'c1', { type: 'cantrip' }, roll);
+  assert.ok(first.ok, 'wizard can cycle: ' + (first.error || ''));
+  assert.ok(first.cantripName, 'named the new cantrip');
+  const seen = new Set([first.cantrip]);
+  for (let i = 0; i < 3; i++) seen.add(pr.applyAction(run, 'c1', { type: 'cantrip' }, roll).cantrip);
+  assert.ok(seen.size >= 2, 'cycling steps through elements: ' + [...seen].join(','));
+  const run2 = pr.createPartyRun([{ clientId: 'cf', icon: 'X', character: createCharacter({ name: 'Brute', race: 'human', cls: 'fighter' }) }], roll);
+  const r2 = pr.applyAction(run2, 'cf', { type: 'cantrip' }, roll);
+  assert.strictEqual(r2.ok, false);
+  assert.match(r2.error, /no at-will cantrip/i);
+});

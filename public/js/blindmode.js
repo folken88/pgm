@@ -1,21 +1,30 @@
 /**
- * PGM blind-mode engine — mirrors poker-dungeon's blindMode controls exactly
- * where possible (same toggle, same keymap, same conventions), per Tobias:
+ * PGM blind-mode engine — mirrors poker-dungeon's blindMode keymap exactly
+ * where possible (2026-07-11 realignment; see docs/PARITY-AUDIT-2026-07-11.md):
  *
  *   `        toggle blind mode on/off (announced; sessionStorage, like poker)
  *   ?        help / learn mode — keys are SPOKEN, not fired
+ *   1-9      pick a numbered choice/action
+ *   0        open the next door (descend) — poker's 0
  *   A        attack (queued target if you picked one in E-mode, else first foe)
- *   E        inspect-enemies mode: Tab cycles foes (name + HP), Enter marks the
- *            target for your attacks, Escape closes
- *   K        spellbook: Tab cycles castable spells, Enter casts (at the queued/
- *            first target), Escape closes
- *   C        character sheet (status readout)
- *   H        health re-read (party HP summary) — poker's H re-read
- *   X        progression (level + XP)
- *   B        bail — arms a confirm; press B again to flee the dungeon
- *   1-9      pick a numbered choice
+ *   E        inspect-enemies mode: Tab cycles foes, Enter targets, Escape closes
+ *   K        spellbook: Tab cycles castable spells, Enter casts, Escape closes
+ *   C        cycle at-will cantrip element (casters) — poker's C
+ *   L        Life: your own status (level, class, HP, AC) — poker's L
+ *   M        Money: gold + depth — poker's M
+ *   H        party health summary
+ *   B        party BUFFS — poker's B (bail is NOT on a key; see Escape)
+ *   D        party debuffs — poker's D
+ *   P        browse the party status panel piece by piece (PGM addition)
+ *   X        level and experience progression
+ *   S        stop speaking (skips what's playing, keeps the rest queued)
+ *   \        jump into the chat field (Enter sends, Escape cancels)
+ *   Escape   session menu: Tab cycles Retreat / Return to start, Enter fires.
+ *            Numbers deliberately NOT mapped here (poker: stray digit bailed a
+ *            run). Single-key bail was removed for the same fat-finger reason.
  *   Space    hold to talk (push-to-talk voice), release to send
- *   + / -    speech faster / slower
+ *   [ / ]    reading speed slower / faster (persisted)
+ *   - / =    narration volume down / up (persisted)
  *
  * OFF by default (sighted players see a normal UI, no TTS). The 👁 button at
  * top-left and the backtick both toggle. GM narration audio (Ultron) plays for
@@ -32,12 +41,16 @@
 
   var PRIO = { ambient: 0, event: 1, urgent: 2 };
   var on = false;                  // blind mode — OFF by default (poker convention)
-  var queue = [], speaking = false, muted = false, rate = 1.35, lastText = '';
+  var queue = [], speaking = false, muted = false, lastText = '';
+  var rate = 1.35, volume = 1;     // persisted localStorage (poker: blindRate/blindVolume)
+  try {
+    var r0 = parseFloat(localStorage.getItem('blindRate')); if (r0 >= 0.6 && r0 <= 2.4) rate = r0;
+    var v0 = parseFloat(localStorage.getItem('blindVolume')); if (v0 >= 0.1 && v0 <= 1) volume = v0;
+  } catch (e) {}
   var commandHandler = null, voice = null;
-  var info = {};                   // app-registered providers: foes(), spells(), status(), health(), progression(), attack(), cast(), flee()
+  var info = {};                   // app-registered providers: foes/spells/status/health/buffs/debuffs/money/descend/cantrip/chatFocus/…
   var helpMode = false;            // '?' learn mode
-  var browse = null;               // {kind:'foes'|'spells', list, idx}
-  var bailArm = 0;
+  var browse = null;               // {kind:'foes'|'spells'|'party'|'session', list, idx}
 
   var logs = [];
   function blog() { var m = '[BlindMode] ' + Array.prototype.join.call(arguments, ' '); logs.push(m); if (logs.length > 300) logs.shift(); try { console.log(m); } catch (e) {} }
@@ -52,24 +65,28 @@
   // ONE pump for ALL audio — browser TTS *and* GM (Ultron) MP3 lines share the
   // queue, so the GM can never talk over blind-mode announcements (Tobias:
   // overlap = word salad for a blind player).
+  var pumpGen = 0;   // bumped by stop/mute so a skipped in-flight GM fetch can't resurrect
   function pump() {
     if (muted || speaking || queue.length === 0) return;
     var item = queue.shift();
     if (item.audioPromise) {                   // GM line (ElevenLabs)
       speaking = true;
+      var gen = pumpGen;
       item.audioPromise.then(function (b64) {
+        if (gen !== pumpGen) return;           // skipped/muted while fetching
         if (muted) { speaking = false; pump(); return; }
         if (b64) {
           gmAudio = new Audio('data:audio/mpeg;base64,' + b64);
+          gmAudio.volume = volume;
           gmAudio.onended = gmAudio.onerror = function () { speaking = false; pump(); };
           gmAudio.play().catch(function () { speaking = false; fallbackTts(item.text); });
         } else { speaking = false; fallbackTts(item.text); }
-      }).catch(function () { speaking = false; fallbackTts(item.text); });
+      }).catch(function () { if (gen === pumpGen) { speaking = false; fallbackTts(item.text); } });
       return;
     }
     if (!supportsTTS) { pump(); return; }
     var u = new SpeechSynthesisUtterance(item.text);
-    u.rate = rate; if (voice) u.voice = voice;
+    u.rate = rate; u.volume = volume; if (voice) u.voice = voice;
     u.onend = u.onerror = function () { speaking = false; pump(); };
     speaking = true;
     try { TTS.speak(u); } catch (e) { speaking = false; }
@@ -82,7 +99,9 @@
     var weight = PRIO[prio] != null ? PRIO[prio] : 1;
     if (weight >= PRIO.urgent) {
       queue = queue.filter(function (q) { return PRIO[q.prio] >= PRIO.urgent; });
+      pumpGen++;                                     // an in-flight GM fetch must not resurrect
       try { TTS.cancel(); } catch (e) {}
+      if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }   // never talk over: the access tier wins
       speaking = false;
       queue.unshift({ text: text, prio: prio });
     } else if (weight === PRIO.ambient && queue.length) return;
@@ -97,11 +116,25 @@
   }
   function repeat() { if (lastText) speak(lastText, 'urgent'); }
   function clampRate(r) { return Math.max(0.6, Math.min(2.4, r)); }
-  function faster() { rate = clampRate(rate + 0.15); speak('Faster.', 'urgent'); }
-  function slower() { rate = clampRate(rate - 0.15); speak('Slower.', 'urgent'); }
+  function saveRate() { try { localStorage.setItem('blindRate', String(rate)); } catch (e) {} }
+  function faster() { rate = clampRate(rate + 0.15); saveRate(); speak('Faster.', 'urgent'); }
+  function slower() { rate = clampRate(rate - 0.15); saveRate(); speak('Slower.', 'urgent'); }
+  function nudgeVolume(d) {
+    volume = Math.max(0.1, Math.min(1, volume + d));
+    try { localStorage.setItem('blindVolume', String(volume)); } catch (e) {}
+    speak('Volume ' + Math.round(volume * 100) + ' percent.', 'urgent');
+  }
+  // S key — poker's "sacred stop": skip what's playing NOW, keep the queue.
+  function stopSpeaking() {
+    pumpGen++;
+    try { TTS && TTS.cancel(); } catch (e) {}
+    if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }
+    speaking = false;
+    pump();
+  }
   function toggleMute() {
     muted = !muted;
-    if (muted) { try { TTS && TTS.cancel(); } catch (e) {} queue = []; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} } }
+    if (muted) { pumpGen++; try { TTS && TTS.cancel(); } catch (e) {} queue = []; speaking = false; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; } }
     var btn = document.getElementById('mute');
     if (btn) { btn.setAttribute('aria-pressed', String(muted)); btn.textContent = muted ? '🔇 Speech: off' : '🔊 Speech: on'; }
     toast(muted ? 'Speech off' : 'Speech on');
@@ -118,7 +151,7 @@
     if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '👁 Blind mode: ON' : '👁 Blind mode: off'; }
     document.body.classList.toggle('blind-on', on);
     rawSpeak(on
-      ? 'Blind mode on. A attack, E enemies, K spells, C character, H health, X progression, question mark for help. Hold space to talk.'
+      ? 'Blind mode on. A attack, E enemies, K spells, L life, H health, B buffs, D debuffs, X progression, Escape for the session menu, S stops speech, question mark for help. Hold space to talk.'
       : 'Blind mode off.', 'urgent');
     blog('blind mode', on ? 'ON' : 'off');
   }
@@ -187,11 +220,20 @@
     if (m) { m.setAttribute('aria-pressed', String(v)); m.textContent = v ? '🔴' : '🎤'; }
   }
 
-  // ---- browse modes (E foes / K spells — Tab cycles, Enter acts, Escape closes) ----
+  // ---- browse modes (E foes / K spells / P party / Esc session menu) ----
+  // Tab cycles (Shift-Tab back), Enter acts, Escape closes. The session menu is
+  // poker's Esc menu: bail lives HERE behind an explicit Enter, never on a
+  // single key, and numbers are deliberately not mapped inside it (a stray
+  // digit once bailed a poker run).
   function openBrowse(kind) {
-    var src = kind === 'foes' ? info.foes : kind === 'spells' ? info.spells : info.party;
-    var list = (src && src()) || [];
-    var empty = { foes: 'No visible enemies.', spells: 'No spells available.', party: 'No party yet.' };
+    var list;
+    if (kind === 'session') {
+      list = (info.sessionMenu && info.sessionMenu()) || [];
+    } else {
+      var src = kind === 'foes' ? info.foes : kind === 'spells' ? info.spells : info.party;
+      list = (src && src()) || [];
+    }
+    var empty = { foes: 'No visible enemies.', spells: 'No spells available.', party: 'No party yet.', session: 'No session options here.' };
     if (!list.length) { speak(empty[kind], 'urgent'); return; }
     browse = { kind: kind, list: list, idx: 0 };
     speakBrowse();
@@ -199,30 +241,43 @@
   function speakBrowse() {
     var it = browse.list[browse.idx];
     var pos = (browse.idx + 1) + ' of ' + browse.list.length;
-    var head = browse.kind === 'foes' ? 'Enemy ' : browse.kind === 'spells' ? 'Spell ' : 'Party member ';
-    var enter = browse.kind === 'foes' ? ', Enter to target' : browse.kind === 'spells' ? ', Enter to cast' : '';
+    var head = { foes: 'Enemy ', spells: 'Spell ', party: 'Party member ', session: 'Session menu ' }[browse.kind];
+    var enter = { foes: ', Enter to target', spells: ', Enter to cast', party: '', session: ', Enter to choose' }[browse.kind];
     speak(head + pos + ': ' + it.label + '. Tab for next' + enter + ', Escape to close.', 'urgent');
   }
   function browseKeydown(e) {
-    if (e.key === 'Tab') { e.preventDefault(); browse.idx = (browse.idx + 1) % browse.list.length; speakBrowse(); return true; }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      var n = browse.list.length;
+      browse.idx = (browse.idx + (e.shiftKey ? n - 1 : 1)) % n;
+      speakBrowse(); return true;
+    }
     if (e.key === 'Enter' || e.code === 'NumpadEnter') {
       e.preventDefault();
       var it = browse.list[browse.idx]; var kind = browse.kind; browse = null;
       if (kind === 'foes') { if (info.targetFoe) info.targetFoe(it.id); }
       else if (kind === 'spells') { if (info.castSpell) info.castSpell(it.key); }
+      else if (kind === 'session') { if (it.run) it.run(); }
       else speak(it.label + '.', 'urgent');   // party browse: Enter re-reads
       return true;
     }
-    if (e.key === 'Escape') { e.preventDefault(); browse = null; speak((browse === null ? (e._k === 'e' ? 'Enemies' : 'Menu') : 'Menu') + ' closed.', 'urgent'); return true; }
+    if (e.key === 'Escape') { e.preventDefault(); browse = null; speak('Menu closed.', 'urgent'); return true; }
     return false;
   }
 
-  // ---- the keymap (mirrors poker's dungeon blind keys) ----
+  // ---- the keymap (mirrors poker's dungeon blind keys — see header) ----
   var HELP = {
     a: 'A. Attack your target.', e: 'E. Inspect enemies. Tab cycles, Enter targets.',
-    k: 'K. Spellbook. Tab cycles, Enter casts.', c: 'C. Character sheet.',
+    k: 'K. Spellbook. Tab cycles, Enter casts.', c: 'C. Cycle your at-will cantrip element.',
+    l: 'L. Your own status — level, class, health, armor.', m: 'M. Money and depth.',
     h: 'H. Health of the party.', x: 'X. Level and experience.',
-    b: 'B. Bail — press twice to retreat from the dungeon.', p: 'P. Browse the party status panel piece by piece.',
+    b: 'B. Party buffs.', d: 'D. Party debuffs.',
+    p: 'P. Browse the party status panel piece by piece.',
+    s: 'S. Stop speaking.', '0': 'Zero. Open the next door when the room is clear.',
+    '\\': 'Backslash. Jump into the chat field.',
+    escape: 'Escape. Session menu — retreat lives there, behind Enter.',
+    '[': 'Left bracket. Read slower.', ']': 'Right bracket. Read faster.',
+    '-': 'Minus. Volume down.', '=': 'Equals. Volume up.',
     '?': 'Question mark. Toggles help mode.',
   };
   function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
@@ -235,25 +290,29 @@
 
     if (browse && browseKeydown(e)) return;
     var k = (e.key || '').toLowerCase();
-    if (helpMode && HELP[k]) { e.preventDefault(); speak(HELP[k], 'urgent'); return; }   // learn mode: speak, don't fire
+    var hk = e.key === 'Escape' ? 'escape' : k;
+    if (helpMode && HELP[hk]) { e.preventDefault(); speak(HELP[hk], 'urgent'); return; }   // learn mode: speak, don't fire
     if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak('Help mode ' + (helpMode ? 'on — keys are described, not fired.' : 'off.'), 'urgent'); return; }
     if (e.code === 'Space') { e.preventDefault(); startListen(); return; }
+    if (k === 's') { e.preventDefault(); stopSpeaking(); return; }
     if (k === 'h') { e.preventDefault(); speak((info.health && info.health()) || lastText || 'Nothing yet.', 'urgent'); return; }
-    if (k === 'c') { e.preventDefault(); speak((info.status && info.status()) || 'No character yet.', 'urgent'); return; }
+    if (k === 'l') { e.preventDefault(); speak((info.status && info.status()) || 'No character yet.', 'urgent'); return; }
+    if (k === 'm') { e.preventDefault(); speak((info.money && info.money()) || 'No gold yet.', 'urgent'); return; }
     if (k === 'x') { e.preventDefault(); speak((info.progression && info.progression()) || 'No progression yet.', 'urgent'); return; }
+    if (k === 'b') { e.preventDefault(); speak((info.buffs && info.buffs()) || 'No buffs.', 'urgent'); return; }
+    if (k === 'd') { e.preventDefault(); speak((info.debuffs && info.debuffs()) || 'No debuffs.', 'urgent'); return; }
+    if (k === 'c') { e.preventDefault(); if (info.cantrip) info.cantrip(); else speak('No cantrip to cycle.', 'urgent'); return; }
     if (k === 'e') { e.preventDefault(); openBrowse('foes'); return; }
     if (k === 'k') { e.preventDefault(); openBrowse('spells'); return; }
     if (k === 'p') { e.preventDefault(); openBrowse('party'); return; }
     if (k === 'a') { e.preventDefault(); if (info.attack) info.attack(); return; }
-    if (k === 'b') {
-      e.preventDefault();
-      var now = Date.now();
-      if (now - bailArm < 4000) { bailArm = 0; if (info.flee) info.flee(); }
-      else { bailArm = now; speak('Bail? Press B again to flee the dungeon.', 'urgent'); }
-      return;
-    }
-    if (e.key === '+' || e.key === '=') { faster(); return; }
-    if (e.key === '-' || e.key === '_') { slower(); return; }
+    if (e.key === '0') { e.preventDefault(); if (info.descend) info.descend(); return; }
+    if (e.key === '\\') { e.preventDefault(); if (info.chatFocus) info.chatFocus(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); openBrowse('session'); return; }
+    if (e.key === ']') { faster(); return; }
+    if (e.key === '[') { slower(); return; }
+    if (e.key === '=' || e.key === '+') { nudgeVolume(0.1); return; }
+    if (e.key === '-' || e.key === '_') { nudgeVolume(-0.1); return; }
   }
   function onKeyup(e) { if (e.code === 'Space' && on) { e.preventDefault(); stopListen(); } }
 
@@ -297,6 +356,7 @@
   window.BlindMode = {
     init: init, speak: speak, speakGM: speakGM, speakAs: speakAs, setGMVoice: setGMVoice,
     repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
+    stopSpeaking: stopSpeaking, nudgeVolume: nudgeVolume,
     toggle: toggle, isOn: function () { return on; }, isMuted: function () { return muted; },
     ptt: { start: startListen, stop: stopListen },
     registerInfo: function (providers) { info = Object.assign(info, providers || {}); },
