@@ -241,7 +241,7 @@ function runUntilHeroTurn(run, roll) {
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'enemy' && cb.dominated > 0) { dominatedTurn(run, cb, roll); nextTurn(run); continue; }
-    if (cb.side === 'hero' && !cb.ai) { logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
+    if (cb.side === 'hero' && !cb.ai) { run.turnStartedAt = Date.now(); logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
     if (cb.side === 'hero') aiHeroTurn(run, cb, roll);   // ai companion
     else enemyTurn(run, cb, roll);
     nextTurn(run);
@@ -676,4 +676,20 @@ function summary(run) {
 
 function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
-module.exports = { createPartyRun, applyAction, publicRun, summary, spawnRoom };
+/** AFK backstop (poker: AFK_PASS_MS=60s auto-ATTACK). If the current human has
+ *  sat on their turn too long, they swing on instinct so the party isn't held
+ *  hostage. Returns true if the run changed. */
+const AFK_MS = parseInt(process.env.AFK_MS || '60000', 10);
+function sweepAfk(run, roll = Math.random) {
+  if (run.phase !== 'combat' || !run.turnStartedAt) return false;
+  if (Date.now() - run.turnStartedAt < AFK_MS) return false;
+  const cb = current(run);
+  if (!cb || cb.side !== 'hero' || cb.ai || cb.down) return false;
+  logEvent(run, `⏱️ ${cb.name} hesitates too long — and attacks on instinct.`, 'event');
+  run.turnStartedAt = null;
+  const r = applyAction(run, cb.ownerClientId, { type: 'attack' }, roll);
+  if (!r.ok) applyAction(run, cb.ownerClientId, { type: 'pass' }, roll);   // nothing to hit → hold
+  return true;
+}
+
+module.exports = { createPartyRun, applyAction, publicRun, summary, spawnRoom, sweepAfk, AFK_MS };

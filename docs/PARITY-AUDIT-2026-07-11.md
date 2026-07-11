@@ -213,7 +213,9 @@ so Josh's muscle memory will retreat the party when he asks for buffs.
    a playing GM clip instead of talking over it.
 2. **TTS engine hardening** — adopt poker's native-queue + watchdog approach
    (or port BM's speech core outright).
-3. **AFK auto-act + action queue + reconnect grace** — multiplayer-critical.
+3. **AFK auto-act** ~~+ action queue + reconnect grace~~ — AFK DONE 2026-07-11
+   (60s idle human turn auto-attacks, 5s server sweep, AFK_MS env-tunable).
+   Action queue + reconnect grace still open.
 4. **Caster UX**: spellbook-by-level popover, prepare/loadout + domains pickers,
    metamagic toggles, cantrip cycling (engine already supports all of it).
 5. **Loot economy**: CR-tiered +N gear, roll-offs, hock, (steps toward real PF1

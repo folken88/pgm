@@ -183,6 +183,17 @@ function action(clientId, act) {
   return r;
 }
 
+/** AFK sweep across every live delve (server.js runs this on an interval and
+ *  broadcasts when anything moved). */
+function sweepAfk() {
+  let changed = false;
+  for (const s of sessions.values()) {
+    if (s.phase !== 'playing' || !s.run) continue;
+    if (partyrun.sweepAfk(s.run)) { flushRunLog(s); persistProgress(s); changed = true; }
+  }
+  return changed;
+}
+
 function leave(clientId) {
   const s = sessionOf(clientId);
   clients.delete(clientId);
@@ -239,6 +250,6 @@ function snapshotFor(clientId) {
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
 };

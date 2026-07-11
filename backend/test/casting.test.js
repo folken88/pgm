@@ -128,3 +128,20 @@ test("the 'cantrip' action cycles a wizard's at-will element and refuses for a f
   assert.strictEqual(r2.ok, false);
   assert.match(r2.error, /no at-will cantrip/i);
 });
+
+test('AFK sweep: an idle human turn auto-attacks after the timeout', () => {
+  const roll = seededRoller(9);
+  const run = pr.createPartyRun(party('fighter'), roll);
+  let rooms = 0;
+  while (run.phase !== 'combat' && rooms++ < 8) {
+    if (!pr.applyAction(run, 'c1', { type: 'descend' }, roll).ok) break;
+  }
+  assert.strictEqual(run.phase, 'combat', 'combat holds at the human turn');
+  assert.ok(run.turnStartedAt, 'turn timer stamped');
+  assert.strictEqual(pr.sweepAfk(run, roll), false, 'fresh turn is not swept');
+  run.turnStartedAt = Date.now() - (pr.AFK_MS + 1000);   // simulate 60s idle
+  const before = run.log.length;
+  assert.strictEqual(pr.sweepAfk(run, roll), true, 'stale turn IS swept');
+  const fresh = run.log.slice(before).map(e => e.text).join(' | ');
+  assert.match(fresh, /hesitates too long/, 'instinct-attack narrated: ' + fresh);
+});

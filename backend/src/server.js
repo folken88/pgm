@@ -196,6 +196,10 @@ const server = http.createServer(async (req, res) => {
   return serveStatic(req, res);
 });
 
+// AFK backstop: an idle human's turn auto-attacks after AFK_MS so the party
+// is never held hostage (poker parity). Sweep every 5s, push state if moved.
+setInterval(() => { try { if (session.sweepAfk()) broadcast(); } catch (e) {} }, 5000).unref();
+
 server.listen(PORT, () => {
   console.log(`[PGM v0] listening on http://localhost:${PORT}`);
 });
