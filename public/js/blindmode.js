@@ -140,6 +140,19 @@
     queue.push({ text: text, prio: 'urgent', audioPromise: audioPromise });
     pump();
   }
+  /** Speak as a specific character (their 11labs voiceId) — same queue. */
+  function speakAs(text, voiceId) {
+    if (!text) return;
+    lastText = text; setStatus(text);
+    if (muted) return;
+    if (!gmVoiceOn || !voiceId) { if (on) rawSpeak(text, 'urgent'); return; }
+    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, voiceId: voiceId }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return (d && d.ok && d.audio) ? d.audio : null; })
+      .catch(function () { return null; });
+    queue.push({ text: text, prio: 'urgent', audioPromise: audioPromise });
+    pump();
+  }
 
   // ---- push-to-talk (blind mode only) ----
   var recog = null, listening = false;
@@ -282,7 +295,7 @@
   }
 
   window.BlindMode = {
-    init: init, speak: speak, speakGM: speakGM, setGMVoice: setGMVoice,
+    init: init, speak: speak, speakGM: speakGM, speakAs: speakAs, setGMVoice: setGMVoice,
     repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
     toggle: toggle, isOn: function () { return on; }, isMuted: function () { return muted; },
     ptt: { start: startListen, stop: stopListen },

@@ -56,7 +56,7 @@ async function askGM(question, snap) {
   ];
   // 1) Ollama (local 5080 box — primary when reachable)
   let text = await tryChat(`${OLLAMA_URL}/api/chat`, { 'Content-Type': 'application/json' },
-    { model: OLLAMA_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: 160 } }, 30000);   // 30s covers a cold VRAM load; a DOWN host still fails fast (conn refused)
+    { model: OLLAMA_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: 600 } }, 45000);   // gpt-oss REASONS before answering — the budget must cover thinking + reply; 45s covers a cold VRAM load, a DOWN host still fails fast
   if (text) return { text: text.trim(), provider: 'ollama' };
   // 2) OpenRouter
   if (OPENROUTER_KEY) {
@@ -75,4 +75,27 @@ async function askGM(question, snap) {
   return { text: 'The GM is silent — no oracle answers from beyond. (No LLM provider reachable.)', provider: 'none' };
 }
 
-module.exports = { askGM, buildContext };
+/** Roleplay a party companion answering their leader (chat + 11labs voice). */
+async function askCompanion(name, flavor, question, snap) {
+  const messages = [
+    { role: 'system', content: `You ARE ${name}, an AI-controlled companion in a Pathfinder 1e dungeon party, speaking to your party leader.
+PERSONA: ${flavor}
+RULES: Stay fully in character. Never roll dice, decide outcomes, or invent things not in the context. 1-3 spoken sentences, no markdown. You may advise, banter, complain, or scheme — in YOUR voice.` },
+    { role: 'user', content: `SITUATION:
+${buildContext(snap)}
+
+YOUR LEADER SAYS TO YOU: ${question}` },
+  ];
+  let text = await tryChat(`${OLLAMA_URL}/api/chat`, { 'Content-Type': 'application/json' },
+    { model: OLLAMA_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: 600 } }, 45000);
+  if (text) return { text: text.trim(), provider: 'ollama' };
+  if (OPENAI_KEY) {
+    text = await tryChat('https://api.openai.com/v1/chat/completions',
+      { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
+      { model: OPENAI_MODEL, messages, max_tokens: 140 }, 20000);
+    if (text) return { text: text.trim(), provider: 'openai' };
+  }
+  return { text: `${name} says nothing.`, provider: 'none' };
+}
+
+module.exports = { askGM, askCompanion, buildContext };

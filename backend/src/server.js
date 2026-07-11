@@ -89,7 +89,7 @@ const server = http.createServer(async (req, res) => {
   // Returns { ok, audio: <base64 mp3> } or { ok:false } (client uses browser TTS).
   if (url === '/api/tts' && req.method === 'POST') {
     const body = await readBody(req);
-    const audio = await eleven.synthesize(String(body.text || ''));
+    const audio = await eleven.synthesize(String(body.text || ''), body.voiceId ? String(body.voiceId) : undefined);
     return sendJSON(res, 200, audio ? { ok: true, audio } : { ok: false });
   }
 
@@ -99,6 +99,19 @@ const server = http.createServer(async (req, res) => {
     const snap = session.sessionSnapshotFor(body.clientId);
     const r = await gm.askGM(String(body.question || '').slice(0, 400), snap);
     return sendJSON(res, 200, { ok: r.provider !== 'none', text: r.text, provider: r.provider });
+  }
+
+  // Companion chat: speak WITH a party companion (LLM roleplay + their voice).
+  if (url === '/api/companion' && req.method === 'POST') {
+    const body = await readBody(req);
+    const snap = session.sessionSnapshotFor(body.clientId);
+    const member = snap && snap.members && snap.members.find(m => m.ai && m.name.toLowerCase() === String(body.name || '').toLowerCase());
+    if (!member) return sendJSON(res, 404, { ok: false, error: 'no such companion in your party' });
+    const { CHARACTER_FLAVOR } = require('./dungeon-port/character_flavor');
+    const flavor = CHARACTER_FLAVOR[member.name] || CHARACTER_FLAVOR[member.name.split(' ')[0]] || `${member.name}, a ${member.race} ${member.cls} adventurer.`;
+    const r = await gm.askCompanion(member.name, flavor, String(body.question || '').slice(0, 400), snap);
+    const voiceId = require('./cast').BY_NAME[member.name.toLowerCase()] ? require('./cast').BY_NAME[member.name.toLowerCase()].voiceId : null;
+    return sendJSON(res, 200, { ok: r.provider !== 'none', text: r.text, name: member.name, voiceId });
   }
 
   if (url === '/api/character/plan' && req.method === 'POST') {

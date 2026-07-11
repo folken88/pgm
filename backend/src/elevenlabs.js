@@ -42,14 +42,16 @@ async function resolveVoiceId() {
   } catch (e) { console.warn('[11labs] voice resolve failed'); _voiceId = null; return null; }
 }
 
-/** Synthesize a GM line. Returns base64 mp3, or null (caller falls back). */
-async function synthesize(text) {
+/** Synthesize a line. voiceIdOverride = a character's own 11labs voice
+ *  (companion chat); default = the GM voice. Returns base64 mp3 or null. */
+async function synthesize(text, voiceIdOverride) {
   if (!ENABLED || !text) return null;
   const clean = String(text).trim().slice(0, 400);
   if (!clean) return null;
-  if (audioCache.has(clean)) return audioCache.get(clean);
+  const cacheKey = (voiceIdOverride || 'gm') + '::' + clean;
+  if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
 
-  const voiceId = await resolveVoiceId();
+  const voiceId = voiceIdOverride || await resolveVoiceId();
   if (!voiceId) return null;
 
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
@@ -66,7 +68,7 @@ async function synthesize(text) {
     const buf = await res.arrayBuffer();
     if (!buf || buf.byteLength === 0) return null;
     const b64 = Buffer.from(buf).toString('base64');
-    if (audioCache.size < 300) audioCache.set(clean, b64);
+    if (audioCache.size < 300) audioCache.set(cacheKey, b64);
     return b64;
   } catch (e) { return null; } finally { clearTimeout(timer); }
 }

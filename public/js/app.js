@@ -541,6 +541,11 @@
   }
   function toggleByIndex(i) { var s = state.plan.skills[i]; if (s) toggleSkill(s.key); else BM.speak('No skill number ' + (i + 1) + '.', 'urgent'); }
   function gameCommand(t) {
+    // "Gaspar, should we fall back?" is SPEECH to a companion, not a retreat
+    // order — name-addressed messages route to the companion before any
+    // command words inside them can fire.
+    var comp = companionAddressed(t);
+    if (comp) return askCompanion(comp.name, comp.msg);
     var NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
     var mk = t.match(/^#choice (\d)$/); if (mk) return selectGameIndex(parseInt(mk[1], 10) - 1);
     var w = t.match(/\b(one|two|three|four|five|six|seven|eight|nine)\b/); if (w) return selectGameIndex(NUM[w[1]] - 1);
@@ -577,6 +582,28 @@
       return doGameAction(byName || atk[0]);
     }
     askGM(t);   // not a command — the Game Master answers (chat + PTT questions)
+  }
+  function companionAddressed(t) {
+    var run = myRun(); if (!run) return null;
+    var low = t.toLowerCase().replace(/^(?:hey|ok)\s+/, '');
+    var ais = run.combatants.filter(function (c) { return c.side === 'hero' && c.ai; });
+    for (var i = 0; i < ais.length; i++) {
+      var full = ais[i].name.toLowerCase();
+      var first = full.split(' ')[0];
+      var lead = low.indexOf(full) === 0 ? full : (low.indexOf(first) === 0 ? first : null);
+      if (!lead) continue;
+      var m = low.slice(lead.length).match(/^[,:.!?]?\s+(.+)$/);   // "gaspar, press on?" / "gaspar what now"
+      if (m) return { name: ais[i].name, msg: m[1] };
+    }
+    return null;
+  }
+  function askCompanion(name, msg) {
+    appendLog('💬 You, to ' + name + ': ' + msg, 'event');
+    api('/api/companion', { clientId: state.clientId, name: name, question: msg }).then(function (r) {
+      if (!r.ok && r.error) { BM.speak(r.error, 'urgent'); return; }
+      appendLog('💬 ' + r.name + ': ' + r.text, 'event');
+      BM.speakAs(r.text, r.voiceId);       // their own 11labs voice (queued, never overlapping)
+    }).catch(function () { BM.speak(name + ' says nothing.', 'urgent'); });
   }
   function askGM(question) {
     appendLog('🎲 You ask: ' + question, 'event');

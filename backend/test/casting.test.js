@@ -73,8 +73,19 @@ test('a cleric AI companion casts Cure on a badly hurt ally instead of swinging'
   ];
   const run = pr.createPartyRun(partyList, roll);
   const kara = run.heroes.find(h => h.name === 'Kara');
+  // createPartyRun auto-plays AI turns up to the first human turn, so Mira can
+  // clear the opening room before we stage the scenario — descend until a
+  // fight actually holds at Kara's turn.
+  let rooms = 0;
+  while (run.phase !== 'combat' && rooms++ < 8) {
+    if (!pr.applyAction(run, 'c1', { type: 'descend' }, roll).ok) break;
+  }
+  assert.strictEqual(run.phase, 'combat', 'found a room where combat holds');
   kara.hp = 2;                                       // badly hurt
-  const HEAL = /Mira[^.]*(Cure|channel|heal)/i;   // tolerant: poker-engine narration phrasing
+  // The foe must survive long enough for Mira's heal decision to matter.
+  for (const c of run.combatants) if (c.side === 'enemy') { c.hp = 200; c.maxHp = 200; }
+  // "💚 Mira casts Cure Light Wounds — Kara heals 8 (10/12)." (or channel wording)
+  const HEAL = /Mira[^]*?(Cure|channel|heal)[^]*?Kara heals/i;
   // Let the loop run a few of Kara's turns (passing) so Mira acts.
   let guard = 0;
   while (guard++ < 8 && run.phase === 'combat' && !run.log.some(e => HEAL.test(e.text))) {
@@ -82,8 +93,8 @@ test('a cleric AI companion casts Cure on a badly hurt ally instead of swinging'
     if (!v.turn) break;
     pr.applyAction(run, v.turn.ownerClientId, { type: 'pass' }, roll);
   }
-  assert.ok(run.log.some(e => HEAL.test(e.text)), 'Mira healed via spell: ' + run.log.map(e => e.text).join(' | '));
-  assert.ok(kara.hp > 2, 'Kara got healed');
+  assert.ok(run.log.some(e => HEAL.test(e.text)),
+    'Mira healed Kara via spell: ' + run.log.map(e => e.text).join(' | '));
 });
 
 test('a wizard AI companion prefers spells over melee', () => {
