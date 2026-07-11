@@ -99,9 +99,9 @@ function spawnRoom(run, roll) {
   // POKER BESTIARY (155 MON stat blocks, vetted-by-provenance) behind PGM's
   // CR/XP budget; special flags (healer/shout/sr/shaman casts...) drive
   // _enemyAct. Stealth: default DC 10, sneaky lurkers overridden.
-  const { MON } = pf1.monsters;
+  const { MON, MON_GANGS } = pf1.monsters;
   const xpForCR = pf1.xp.xpForCR;
-  const room = generateMonRoom(run.heroes.length, apl, run.roomsCleared, MON, xpForCR, roll);
+  const room = generateMonRoom(run.heroes.length, apl, run.roomsCleared, MON, xpForCR, roll, MON_GANGS);
   run.room = { flavor: room.flavor, reward: room.reward };
   // BOSS ROOM every 5th (poker's BOSS_EVERY): the toughest thematic foe the
   // party can handle, ADVANCED +2-4 levels with pre-cast wards, leading mooks.
@@ -111,12 +111,21 @@ function spawnRoom(run, roll) {
     const capCR = Math.max(1, Math.min(20, apl + Math.floor(run.roomsCleared / 4) + 2));
     const cand = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= capCR);
     const top = cand.sort((a, b) => (MON[b].crNum || 0) - (MON[a].crNum || 0)).slice(0, 3);
-    if (top.length) room.monKeys = [top[Math.floor(roll() * top.length)]].concat(room.monKeys.slice(0, 2));
+    // Milestone bosses (poker bossKeyFor): designated PF1 creatures anchor the
+    // early/mid/late game when they fit the CR window; otherwise top-3 pick.
+    const milestone = depthNum >= 13 ? 'barbed_devil' : depthNum >= 8 ? 'brass_golem' : depthNum >= 4 ? 'ogre' : 'skeletal_champion';
+    const bossKey = (MON[milestone] && (MON[milestone].crNum || 99) <= capCR + 2 && roll() < 0.5)
+      ? milestone
+      : (top.length ? top[Math.floor(roll() * top.length)] : null);
+    if (bossKey) room.monKeys = [bossKey].concat(room.monKeys.slice(0, 2));
   }
   let bossMade = false;
   const enemies = room.monKeys.map(k => {
     const isBoss = isBossRoom && !bossMade && (bossMade = true);
-    const e = run.shim._makeEnemyPGM(MON[k], isBoss);
+    // ELITE advancement (poker): a mook well under the party's weight has a 25%
+    // chance to come advanced +2-4 levels (same machinery as bosses, no wards).
+    const elite = !isBoss && (MON[k].crNum || 0.25) <= apl - 2 && roll() < 0.25;
+    const e = run.shim._makeEnemyPGM(MON[k], isBoss, elite);
     e.key = k; e.revealed = false;
     e.stealth = STEALTH_OVERRIDES[k] != null ? STEALTH_OVERRIDES[k] : 10;
     e.art = artFor(e.name);
@@ -484,8 +493,15 @@ function heroAttack(run, hero, target, roll) {
   // bane dice, weapon arcana, Mirror Image/concealment, DR) — verbatim engine.
   const shim = run.shim;
   hero.flatFooted = false;                    // acting ends flat-footed (PF1)
-  const offs = (hero.character.derived.iteratives && hero.character.derived.iteratives.length)
+  let offs = (hero.character.derived.iteratives && hero.character.derived.iteratives.length)
     ? hero.character.derived.iteratives : [0];
+  // Poker action economy: melee on a NEW target = move + standard (ONE attack);
+  // staying on the same target = full attack. Ranged always full-attacks (no
+  // move needed to reach). Enemies already honor this via e._lastAtkTarget in
+  // the verbatim enemyAI.
+  const ranged = !!(hero.weapon && hero.weapon.ranged);
+  if (!ranged && target && hero._lastAtkTarget !== target.id) offs = [offs[0]];
+  if (target) hero._lastAtkTarget = target.id;
   let t = target;
   for (const off of offs) {
     if (!t || t.hp <= 0) t = livingRevealedEnemies(run)[0];
