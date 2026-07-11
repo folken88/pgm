@@ -65,32 +65,89 @@
   // ONE pump for ALL audio — browser TTS *and* GM (Ultron) MP3 lines share the
   // queue, so the GM can never talk over blind-mode announcements (Tobias:
   // overlap = word salad for a blind player).
+  //
+  // HARDENING (poker's blindMode learned these the hard way — see its comments):
+  // Chrome DROPS utterance onend sometimes, and auto-pauses long speech at
+  // ~15s. Relying on onend alone can wedge this pump forever. So: `cur` tracks
+  // the in-flight item (onstart/onboundary refresh lastAlive), a 3s watchdog
+  // force-advances anything silent too long, and resume() fires every 8s.
   var pumpGen = 0;   // bumped by stop/mute so a skipped in-flight GM fetch can't resurrect
+  var cur = null;    // { text, isAudio, started, startedAt, lastAlive, retried }
+  function itemDone(gen) {
+    if (gen !== undefined && gen !== pumpGen) return;   // stale callback from a skipped item
+    cur = null; speaking = false; pump();
+  }
   function pump() {
     if (muted || speaking || queue.length === 0) return;
     var item = queue.shift();
     if (item.audioPromise) {                   // GM line (ElevenLabs)
       speaking = true;
       var gen = pumpGen;
+      cur = { text: item.text, isAudio: true, started: false, startedAt: Date.now(), lastAlive: Date.now() };
       item.audioPromise.then(function (b64) {
         if (gen !== pumpGen) return;           // skipped/muted while fetching
-        if (muted) { speaking = false; pump(); return; }
+        if (muted) { itemDone(gen); return; }
         if (b64) {
           gmAudio = new Audio('data:audio/mpeg;base64,' + b64);
           gmAudio.volume = volume;
-          gmAudio.onended = gmAudio.onerror = function () { speaking = false; pump(); };
-          gmAudio.play().catch(function () { speaking = false; fallbackTts(item.text); });
-        } else { speaking = false; fallbackTts(item.text); }
-      }).catch(function () { if (gen === pumpGen) { speaking = false; fallbackTts(item.text); } });
+          gmAudio.ontimeupdate = function () { if (cur) { cur.started = true; cur.lastAlive = Date.now(); } };
+          gmAudio.onended = gmAudio.onerror = function () { itemDone(gen); };
+          gmAudio.play().catch(function () { if (gen === pumpGen) { cur = null; speaking = false; fallbackTts(item.text); } });
+        } else { cur = null; speaking = false; fallbackTts(item.text); }
+      }).catch(function () { if (gen === pumpGen) { cur = null; speaking = false; fallbackTts(item.text); } });
       return;
     }
     if (!supportsTTS) { pump(); return; }
-    var u = new SpeechSynthesisUtterance(item.text);
-    u.rate = rate; u.volume = volume; if (voice) u.voice = voice;
-    u.onend = u.onerror = function () { speaking = false; pump(); };
-    speaking = true;
-    try { TTS.speak(u); } catch (e) { speaking = false; }
+    speakUtterance(item.text, false);
   }
+  function speakUtterance(text, isRetry) {
+    var gen = pumpGen;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = rate; u.volume = volume; if (voice) u.voice = voice;
+    cur = { text: text, isAudio: false, started: false, startedAt: Date.now(), lastAlive: Date.now(), retried: !!isRetry };
+    u.onstart = function () { if (cur) { cur.started = true; cur.lastAlive = Date.now(); } };
+    u.onboundary = function () { if (cur) cur.lastAlive = Date.now(); };
+    u.onend = u.onerror = function () { itemDone(gen); };
+    speaking = true;
+    try { TTS.speak(u); } catch (e) { cur = null; speaking = false; }
+  }
+  // Watchdog: never let a wedged engine hold the queue hostage.
+  setInterval(function () {
+    if (!speaking || !cur) return;
+    var now = Date.now();
+    if (cur.isAudio) {
+      // A GM clip that has produced no timeupdate for 12s (or never started
+      // within 15s of the fetch beginning) is stuck — skip it.
+      if (now - cur.lastAlive > 12000 || (!cur.started && now - cur.startedAt > 15000)) {
+        blog('watchdog: GM clip stuck — skipping');
+        pumpGen++;
+        if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }
+        cur = null; speaking = false; pump();
+      }
+      return;
+    }
+    if (!cur.started && now - cur.startedAt > 5000) {
+      // Utterance queued but never started: engine wedged. Retry the line once,
+      // then give up on it and move on.
+      blog('watchdog: utterance never started —', cur.retried ? 'skipping' : 'retrying');
+      var text = cur.text, retried = cur.retried;
+      pumpGen++;
+      try { TTS.cancel(); } catch (e) {}
+      cur = null; speaking = false;
+      if (!retried) speakUtterance(text, true); else pump();
+      return;
+    }
+    if (cur.started && now - cur.lastAlive > 10000) {
+      // Engine claims busy but has been silent 10s (onend was dropped) — advance.
+      blog('watchdog: utterance silent too long — advancing');
+      pumpGen++;
+      try { TTS.cancel(); } catch (e) {}
+      cur = null; speaking = false; pump();
+    }
+  }, 3000);
+  // Chrome auto-pauses speechSynthesis around the 15s mark; an unconditional
+  // resume() defeats it (poker does exactly this).
+  if (supportsTTS) setInterval(function () { try { TTS.resume(); } catch (e) {} }, 8000);
   function fallbackTts(text) {                 // GM audio failed → speak it if blind mode is on
     if (on && text) rawSpeak(text, 'urgent'); else pump();
   }
@@ -102,7 +159,7 @@
       pumpGen++;                                     // an in-flight GM fetch must not resurrect
       try { TTS.cancel(); } catch (e) {}
       if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }   // never talk over: the access tier wins
-      speaking = false;
+      cur = null; speaking = false;
       queue.unshift({ text: text, prio: prio });
     } else if (weight === PRIO.ambient && queue.length) return;
     else queue.push({ text: text, prio: prio });
@@ -129,12 +186,12 @@
     pumpGen++;
     try { TTS && TTS.cancel(); } catch (e) {}
     if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }
-    speaking = false;
+    cur = null; speaking = false;
     pump();
   }
   function toggleMute() {
     muted = !muted;
-    if (muted) { pumpGen++; try { TTS && TTS.cancel(); } catch (e) {} queue = []; speaking = false; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; } }
+    if (muted) { pumpGen++; try { TTS && TTS.cancel(); } catch (e) {} queue = []; cur = null; speaking = false; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; } }
     var btn = document.getElementById('mute');
     if (btn) { btn.setAttribute('aria-pressed', String(muted)); btn.textContent = muted ? '🔇 Speech: off' : '🔊 Speech: on'; }
     toast(muted ? 'Speech off' : 'Speech on');
