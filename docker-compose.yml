@@ -16,7 +16,7 @@ services:
       - GM_VOICE=${GM_VOICE:-Ultron}
       # LLM Game Master provider chain (Ollama primary -> OpenRouter -> OpenAI)
       - OLLAMA_URL=${OLLAMA_URL:-http://192.168.1.202:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:14b-instruct}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss:20b}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     restart: unless-stopped

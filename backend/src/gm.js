@@ -8,7 +8,7 @@
  * about the visible situation; PF1 RAW for rules questions (standing principle).
  */
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://192.168.1.202:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:14b-instruct';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gpt-oss:20b';   // what the 5080 box carries
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
@@ -56,7 +56,7 @@ async function askGM(question, snap) {
   ];
   // 1) Ollama (local 5080 box — primary when reachable)
   let text = await tryChat(`${OLLAMA_URL}/api/chat`, { 'Content-Type': 'application/json' },
-    { model: OLLAMA_MODEL, messages, stream: false, options: { num_predict: 160 } }, 9000);
+    { model: OLLAMA_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: 160 } }, 30000);   // 30s covers a cold VRAM load; a DOWN host still fails fast (conn refused)
   if (text) return { text: text.trim(), provider: 'ollama' };
   // 2) OpenRouter
   if (OPENROUTER_KEY) {
