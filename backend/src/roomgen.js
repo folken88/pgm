@@ -110,10 +110,17 @@ function generatePartyRoom(partySize, apl, depth, roll = Math.random) {
 const STEALTH_OVERRIDES = { giant_spider: 19, ghoul: 13, shadow: 18, wight: 13 };
 function generateMonRoom(partySize, apl, depth, MON, xpForCR, roll = Math.random, MON_GANGS = {}) {
   partySize = Math.max(1, partySize || 1); apl = Math.max(1, apl || 1); depth = depth || 0;
-  const maxCr = Math.max(1, apl + 1 + Math.floor(depth / 4));
+  // DIFFICULTY = PARTY CAPABILITY, NOT DEPTH (Tobias 2026-07-12: never throw
+  // foes the party can't handle, even if a big party levels slowly). Foe CR is
+  // capped to the party's level; a large party (action economy) handles a
+  // slightly higher cap. Depth adds VARIETY/quantity + XP, never raw lethality.
+  const effApl = apl + (partySize >= 5 ? 1 : 0);
+  const maxCr = Math.max(1, effApl + 1);
   const cands = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= maxCr && !MON[k].boss);
   const tier = pickTier(depth, roll);
-  const budget = Math.max(50, Math.round(BASE_XP[tier] * (partySize / 4) * apl * (1 + depth * 0.08)));
+  // Budget sizes the fight to party + level (bigger party → more foes), NOT
+  // depth — so a level-1 party faces level-1 fights at depth 1 or 20.
+  const budget = Math.max(50, Math.round(BASE_XP[tier] * (partySize / 4) * apl));
   const monKeys = [];
   // GANG THEMING (poker): the first pick sets the room's gang; the rest fill
   // from the same gang (unlisted creatures are wildcards). Multi-gang monsters

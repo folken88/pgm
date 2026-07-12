@@ -49,9 +49,12 @@ function summary(s) {
 function playersRev(s) { for (const [, cid] of players) { const s2 = session._testInternals(cid); if (s2 === s) return cid; } return null; }
 
 function heroOf(sess, clientId) {
+  if (!sess || !sess.run) return null;
   const snap = session.sessionSnapshotFor(clientId);
   const mid = snap && snap.yourMemberId;
-  return sess.run && sess.run.heroes.find(h => h.ownerClientId === mid || h.ownerClientId === clientId);
+  return sess.run.heroes.find(h => h.ownerClientId === mid || h.ownerClientId === clientId)
+    || sess.run.heroes.find(h => !h.ai)   // dev fallback: the (sole) human hero
+    || null;
 }
 function findCombatant(run, name, side) {
   if (!name) return null;
@@ -179,7 +182,7 @@ async function runCmd(who, cmd) {
 
   // ── inspection ──
   if (verb === 'state') return { ok: true, state: summary(sess), said: [] };
-  if (verb === 'hero') { const h = heroOf(sess, clientId); return { ok: true, hero: h && { name: h.name, hp: h.hp, maxHp: h.maxHp, ac: h.ac, slots: h.slots, pack: h.pack, negLevels: h.negLevels || 0, runUses: h.runAbilityUses, roomUses: h.abilityUses }, said: [] }; }
+  if (verb === 'hero') { const h = heroOf(sess, clientId); return { ok: true, hero: h && { name: h.name, cls: h.cls, level: h.level, xp: h.xp || 0, hp: h.hp, maxHp: h.maxHp, ac: h.ac, slots: h.slots, pack: h.pack, negLevels: h.negLevels || 0, runUses: h.runAbilityUses, roomUses: h.abilityUses }, said: [] }; }
   if (verb === 'kit') {
     const snap = session.sessionSnapshotFor(clientId);
     const live = snap && snap.run && snap.run.turn && snap.run.turn.kit;
@@ -204,6 +207,15 @@ async function runCmd(who, cmd) {
     const slot = run.inventory.find(x => x.key === key);
     if (slot) slot.qty += qty; else run.inventory.push({ key, qty });
     return done({ gave: key + ' x' + qty });
+  }
+  if (verb === 'givexp') {
+    const h = heroOf(sess, clientId); if (!h) return fail('no hero');
+    const amt = parseInt(parts[1], 10) || 0;
+    h.xp = (h.xp || 0) + amt;
+    const pr = require('./partyrun');
+    // trigger the same level-up path a room clear would (via a harmless clear)
+    const nl = require('./pf1core').xp.levelFromXp(h.xp);
+    return done({ gaveXp: amt, xp: h.xp, levelWouldBe: nl, note: 'clear a room to apply the level-up' });
   }
   if (verb === 'gold') { run.gold = parseInt(parts[1], 10) || 0; return done({ gold: run.gold }); }
   if (verb === 'kill') {

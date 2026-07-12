@@ -14,19 +14,23 @@ function rollInit(run, roll) {
 }
 
 
-test('room XP = sum of PF1 xpForCR split evenly across the party', () => {
+test('room XP: PF1 creature XP + clear bonus, split evenly, plus skill & treasure XP', () => {
   const roll = seededRoller(4);
   const run = pr.createPartyRun([
     { clientId: 'c1', icon: '🛡️', character: createCharacter({ name: 'Kara', race: 'human', cls: 'fighter' }) },
     { clientId: 'c2', icon: '🔮', character: createCharacter({ name: 'Mira', race: 'human', cls: 'cleric' }) },
   ], roll);
   const foes = run.combatants.filter(c => c.side === 'enemy');
-  const expected = Math.floor(foes.reduce((s, e) => s + pf1.xp.xpForCR(e.crNum || 0.25), 0) / 2);
+  const creatureXp = foes.reduce((s, e) => s + pf1.xp.xpForCR(e.crNum || 0.25), 0);
+  const creatureShare = Math.floor(creatureXp / 2);          // per-creature split
+  const clearShare = Math.floor(creatureXp * 1.25 / 2);      // + 25% clear bonus
   foes.forEach(e => { e.hp = 0; });
   run.turnIndex = run.combatants.indexOf(run.heroes[0]); run.phase = 'combat';
   pr.applyAction(run, 'c1', { type: 'pass' }, roll);
   assert.strictEqual(run.phase, 'cleared');
-  assert.strictEqual(run.heroes[0].xp, expected, 'even split: ' + expected);
+  // each hero got at least the clear-bonus share (skill + treasure XP on top).
+  assert.ok(run.heroes[0].xp >= clearShare, 'clear-bonus XP: got ' + run.heroes[0].xp + ' >= ' + clearShare);
+  assert.ok(run.heroes[0].xp > creatureShare, 'bonuses exceed raw creature split');
   assert.ok(run.log.some(e => /earns \d+ XP/.test(e.text)), 'award narrated');
 });
 

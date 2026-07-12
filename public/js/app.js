@@ -498,6 +498,10 @@
     log.forEach(function (e) {
       if (e.seq > state.lastSeq) {
         state.lastSeq = e.seq; appendLog(e.text, e.priority);
+        // A NEW ROOM begins → drop any stale narration still queued from the
+        // last room so the GM speaks THIS room promptly (Tobias: cancel his
+        // announcement when the party moves on).
+        if (/^You enter /.test(e.text) && e.seq > state.speakFloor) BM.flushSpeech();
         if (e.sound === 'earcon:dice' && e.seq > state.speakFloor) diceEarcon();
         if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak/play
         if (e.sound && e.sound.indexOf('earcon:') !== 0 && !BM.isMuted()) {   // combat/spell SFX (poker's SND pools)

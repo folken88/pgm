@@ -202,6 +202,16 @@
     cur = null; speaking = false;
     pump();
   }
+  // Drop everything pending AND stop the current clip — used when the party
+  // moves to a new room so the GM can't narrate a room behind (Tobias: "cancel
+  // his announcement if the players move onto the next room").
+  function flushSpeech() {
+    pumpGen++;
+    queue = [];
+    try { TTS && TTS.cancel(); } catch (e) {}
+    if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }
+    cur = null; speaking = false;
+  }
   function toggleMute() {
     muted = !muted;
     if (muted) { pumpGen++; try { TTS && TTS.cancel(); } catch (e) {} queue = []; cur = null; speaking = false; if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; } }
@@ -426,7 +436,7 @@
   window.BlindMode = {
     init: init, speak: speak, speakGM: speakGM, speakAs: speakAs, setGMVoice: setGMVoice,
     repeat: repeat, faster: faster, slower: slower, toggleMute: toggleMute,
-    stopSpeaking: stopSpeaking, nudgeVolume: nudgeVolume,
+    stopSpeaking: stopSpeaking, flushSpeech: flushSpeech, nudgeVolume: nudgeVolume,
     toggle: toggle, isOn: function () { return on; }, isMuted: function () { return muted; },
     ptt: { start: startListen, stop: stopListen },
     registerInfo: function (providers) { info = Object.assign(info, providers || {}); },

@@ -168,13 +168,17 @@ function spawnRoom(run, roll) {
   const depthNum = run.roomsCleared + 1;
   const isBossRoom = depthNum % 5 === 0;
   if (isBossRoom) {
-    const capCR = Math.max(1, Math.min(20, apl + Math.floor(run.roomsCleared / 4) + 2));
-    const cand = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= capCR);
+    // Boss = a fair CHALLENGE for the party's level, not depth. Pick a base foe
+    // near the party's capability; _makeEnemyPGM advances it a couple levels
+    // into a proper boss. A big party (action economy) earns a slightly higher
+    // cap. Milestone bosses (ogre/golem/devil) only appear once the party is
+    // high enough level to face them — never dropped on an under-levelled party.
+    const effApl = apl + (run.heroes.length >= 5 ? 1 : 0);
+    const baseCap = Math.max(1, effApl + 1);
+    const cand = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= baseCap && !MON[k].boss);
     const top = cand.sort((a, b) => (MON[b].crNum || 0) - (MON[a].crNum || 0)).slice(0, 3);
-    // Milestone bosses (poker bossKeyFor): designated PF1 creatures anchor the
-    // early/mid/late game when they fit the CR window; otherwise top-3 pick.
-    const milestone = depthNum >= 13 ? 'barbed_devil' : depthNum >= 8 ? 'brass_golem' : depthNum >= 4 ? 'ogre' : 'skeletal_champion';
-    const bossKey = (MON[milestone] && (MON[milestone].crNum || 99) <= capCR + 2 && roll() < 0.5)
+    const milestone = effApl >= 10 ? 'barbed_devil' : effApl >= 7 ? 'brass_golem' : effApl >= 4 ? 'ogre' : 'skeletal_champion';
+    const bossKey = (MON[milestone] && (MON[milestone].crNum || 99) <= baseCap && roll() < 0.5)
       ? milestone
       : (top.length ? top[Math.floor(roll() * top.length)] : null);
     if (bossKey) room.monKeys = [bossKey].concat(room.monKeys.slice(0, 2));
@@ -212,6 +216,10 @@ function spawnRoom(run, roll) {
     });
   });
   run.heroes.forEach(h => { h.flatFooted = !h.down && enemies.some(en => !h.perceived.has(en.id)); });
+  // NECESSARY skill check (Tobias 2026-07-12): the entry Perception roll grants
+  // XP — full for spotting the ambush, 25% for being caught out. Once per room,
+  // server-driven (not player-spammable). Stored now, paid at room clear.
+  run.heroes.forEach(h => { h._skillFrac = enemies.length ? (h.perceived.size / enemies.length) : 1; });
 
   // Per-room spell refresh (poker's per-room refill convention). Room buffs
   // clear; run buffs (Bless/Inspire) persist.
@@ -775,15 +783,31 @@ function awardRoomXp(run) {
   run._lastRoomXp = roomXp;
   if (roomXp <= 0) return;
   const recips = run.heroes.filter(h => !h.left);
-  const per = Math.floor(roomXp / Math.max(1, recips.length));
-  if (per <= 0) return;
-  logEvent(run, `✨ Foes vanquished — the party earns ${roomXp} XP (${per} each).`, 'event');
+  // PF1 XP structure preserved (2000 to L2). Award per-creature XP + a
+  // room-CLEAR bonus (Tobias 2026-07-12), split evenly among the party — the
+  // 8-way split is fine; foes are kept in-range instead (see spawnRoom).
+  const CLEAR_BONUS = 0.25;   // clearing the room is worth +25% of the foes' XP
+  const grant = Math.round(roomXp * (1 + CLEAR_BONUS));
+  const per = Math.max(1, Math.floor(grant / Math.max(1, recips.length)));
+  logEvent(run, `✨ Foes vanquished — the party earns ${grant} XP (${per} each, room-clear bonus included).`, 'event');
+  const apl = Math.round(recips.reduce((s2, h) => s2 + (h.level || 1), 0) / Math.max(1, recips.length));
+  const effApl = apl + (recips.length >= 5 ? 1 : 0);
+  const skillBase = Math.round(pf1.xp.xpForCR(effApl) * 0.1);   // a solid Perception roll's worth
   for (const h of recips) {
-    h.xp = (h.xp || 0) + per;
-    const nl = pf1.xp.levelFromXp(h.xp);
-    const from = h.level || 1;
-    if (nl > from) applyLevelUp(run, h, from, nl);
+    // per-creature + clear-bonus share, plus THIS hero's skill-check XP
+    const skill = Math.round(skillBase * (0.25 + 0.75 * (h._skillFrac == null ? 1 : h._skillFrac)));
+    grantXp(run, h, per + skill);
+    h._skillFrac = null;
   }
+}
+
+/** Add XP to a hero and level them up if they cross a PF1 threshold. */
+function grantXp(run, hero, amount) {
+  if (!amount || amount <= 0) return;
+  hero.xp = (hero.xp || 0) + amount;
+  const from = hero.level || 1;
+  const nl = pf1.xp.levelFromXp(hero.xp);
+  if (nl > from) applyLevelUp(run, hero, from, nl);
 }
 function applyLevelUp(run, hero, from, to) {
   const c = hero.character;
@@ -836,6 +860,14 @@ function clearRoom(run, roll = Math.random) {
   hoard.drops.forEach(d => addItem(run, d.key, d.qty));
   let found = treasure.prose(hoard);
   if (hoard.diverted) logEvent(run, `(vetting: ${hoard.diverted} unvetted table result${hoard.diverted === 1 ? '' : 's'} diverted to gems)`, 'ambient');
+  // TREASURE XP (Tobias 2026-07-12): a modest bonus for the haul, split evenly.
+  const hoardVal = hoard.coins + hoard.drops.reduce((s2, d) => { const it = items.ITEM_BY_KEY[d.key]; return s2 + (it && it.value ? it.value * (d.qty || 1) : 0); }, 0);
+  const treasureXp = Math.round(hoardVal * 0.15);
+  const recips = run.heroes.filter(h => !h.left);
+  if (treasureXp > 0 && recips.length) {
+    const each = Math.max(1, Math.floor(treasureXp / recips.length));
+    recips.forEach(h => grantXp(run, h, each));
+  }
   logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 
