@@ -168,6 +168,14 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
   }
 
+  // The Swashgoblin: buy potions/Restoration/Raise Dead between delves.
+  if (url === '/api/pub/buy' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.pubBuy(body.clientId, String(body.service || ''), body.target);
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
   if (url === '/api/session/start' && req.method === 'POST') {
     const body = await readBody(req);
     const r = session.startRun(body.clientId);

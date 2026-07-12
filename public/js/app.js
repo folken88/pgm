@@ -123,6 +123,10 @@
     if (state.you.phase === 'playing' && state.you.run) {
       if (state.mode !== 'game') enterGame();
       renderGame(state.you);
+    } else if (state.you.phase === 'pub') {
+      if (state.mode !== 'lobby') { showScreen('lobby'); BM.speakGM('Welcome back to the Swashgoblin. Rest, resupply, and raise your dead.'); }
+      renderLobby(state.you);
+      renderPub(state.you);
     } else if (state.mode === 'lobby') {
       renderLobby(state.you);
     }
@@ -298,6 +302,48 @@
       else BM.speak(name + ' joins the party.', 'urgent');
     });
   }
+  // --- THE SWASHGOBLIN: the adventurers' pub between delves ---
+  function renderPub(you) {
+    el('lobby-name').textContent = '🍺 The Swashgoblin: ' + you.name;
+    var box = el('pub-panel');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'pub-panel';
+      box.setAttribute('aria-label', 'The Swashgoblin');
+      el('lobby').insertBefore(box, el('lobby-start'));
+    }
+    var pub = you.pub || { gold: 0, services: [], dead: [], hurt: [], stash: {} };
+    var html = '<h3>🍺 The Swashgoblin</h3>'
+      + '<p id="pub-gold" aria-live="polite">Party purse: <strong>' + pub.gold + ' gold</strong>.'
+      + (pub.dead.length ? ' Hauled in like luggage: ' + pub.dead.map(esc).join(', ') + '.' : '')
+      + (pub.hurt.length ? ' Weakened: ' + pub.hurt.map(function (h) { return esc(h.name) + ' (' + h.negLevels + ' neg)'; }).join(', ') + '.' : '') + '</p>';
+    html += '<div class="pub-services">';
+    pub.services.forEach(function (svc) {
+      if (svc.kind === 'stash') {
+        html += '<button data-svc="' + svc.key + '">' + esc(svc.label) + ' - ' + svc.gp + 'g</button>';
+      } else if (svc.kind === 'restoration') {
+        pub.hurt.forEach(function (h) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(h.name) + '">Restoration: ' + esc(h.name) + ' - ' + svc.gp + 'g</button>'; });
+      } else if (svc.kind === 'raise') {
+        pub.dead.forEach(function (n) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(n) + '">Raise ' + esc(n) + ' - ' + svc.gp + 'g</button>'; });
+      }
+    });
+    html += '</div>';
+    var stashKeys = Object.keys(pub.stash || {});
+    if (stashKeys.length) html += '<p>Stash for the next delve: ' + stashKeys.map(function (k) { return k + ' ×' + pub.stash[k]; }).join(', ') + '</p>';
+    box.innerHTML = html;
+    box.querySelectorAll('[data-svc]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        api('/api/pub/buy', { clientId: state.clientId, service: b.getAttribute('data-svc'), target: b.getAttribute('data-target') || undefined })
+          .then(function (r) {
+            BM.speak(r.ok ? (r.text || 'Done.') : (r.error || 'The barkeep shrugs.'), 'urgent');
+            if (r.ok && r.snapshot) { state.you = r.snapshot; renderLobby(r.snapshot); renderPub(r.snapshot); }
+          });
+      });
+    });
+    el('lobby-start').hidden = false;
+    el('lobby-start').textContent = '⚔️ Set out again';
+  }
+
   function startAdventure() {
     api('/api/session/start', { clientId: state.clientId }).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot start yet.', 'urgent'); });
   }

@@ -148,11 +148,85 @@ function removeCompanion(clientId, memberId) {
   return { ok: true };
 }
 
+// ── THE SWASHGOBLIN (Tobias 2026-07-11): the adventurers' pub between delves.
+// A run's end drops the party here: gold banks into the party purse, the dead
+// are hauled along like luggage until a hired cleric raises them (2 negative
+// levels, PF1), Restoration and potions are for sale. Prices are tunable —
+// RAW where affordable, mates' rates where RAW would empty every purse forever.
+const PUB_SERVICES = {
+  potion_clw:  { label: 'Potion of Cure Light Wounds', gp: 50,  kind: 'stash', item: 'potion_clw' },
+  potion_cmw:  { label: 'Potion of Cure Moderate Wounds', gp: 300, kind: 'stash', item: 'potion_cmw' },
+  restoration: { label: 'Restoration (cure negative levels)', gp: 380, kind: 'restoration' },
+  raisedead:   { label: 'Hire a cleric: Raise Dead', gp: 1000, kind: 'raise' },
+};
+function pubKey(s) { return ('pub::' + s.name).toLowerCase(); }
+function pubPurse(s) { return (LEGACY[pubKey(s)] && LEGACY[pubKey(s)].gold) || 0; }
+function pubBank(s, delta) {
+  const k = pubKey(s);
+  LEGACY[k] = { gold: Math.max(0, pubPurse(s) + delta), at: Date.now() };
+  saveLegacy();
+}
+/** A run just ended — the party staggers back to the Swashgoblin. */
+function enterPub(s) {
+  if (!s.run) return;
+  pubBank(s, s.run.gold || 0);
+  for (const h of s.run.heroes) {
+    const m = [...s.members.values()].find(x => x.name === h.name);
+    if (m) { m.dead = !!h.dead; m.negLevels = h.negLevels || 0; }
+    const k = legacyKey(s, h.name);
+    LEGACY[k] = Object.assign({}, LEGACY[k], { dead: !!h.dead, negLevels: h.negLevels || 0, at: Date.now() });
+  }
+  saveLegacy();
+  s.phase = 'pub';
+  delveLog(s, 'PARTY AT THE SWASHGOBLIN: purse ' + pubPurse(s) + 'gp, dead: ' + ([...s.members.values()].filter(m => m.dead).map(m => m.name).join(', ') || 'none'));
+}
+function pubBuy(clientId, serviceKey, targetName) {
+  const s = sessionOf(clientId); if (!s || s.phase !== 'pub') return { ok: false, error: 'you are not at the Swashgoblin' };
+  const svc = PUB_SERVICES[serviceKey]; if (!svc) return { ok: false, error: 'the barkeep has never heard of that' };
+  if (pubPurse(s) < svc.gp) return { ok: false, error: 'not enough gold — the purse holds ' + pubPurse(s) + 'gp' };
+  if (svc.kind === 'stash') {
+    pubBank(s, -svc.gp);
+    s.stash = s.stash || {};
+    s.stash[svc.item] = (s.stash[svc.item] || 0) + 1;
+    delveLog(s, 'PUB: bought ' + svc.label + ' (' + svc.gp + 'gp)');
+    return { ok: true, text: svc.label + ' added to the party stash.' };
+  }
+  const m = [...s.members.values()].find(x => x.name.toLowerCase() === String(targetName || '').toLowerCase());
+  if (!m) return { ok: false, error: 'no party member by that name' };
+  if (svc.kind === 'restoration') {
+    if (!(m.negLevels > 0)) return { ok: false, error: m.name + ' has no negative levels' };
+    pubBank(s, -svc.gp);
+    m.negLevels = 0;
+    LEGACY[legacyKey(s, m.name)] = Object.assign({}, LEGACY[legacyKey(s, m.name)], { negLevels: 0, at: Date.now() });
+    saveLegacy();
+    delveLog(s, 'PUB: Restoration on ' + m.name + ' (' + svc.gp + 'gp)');
+    return { ok: true, text: 'The cleric chants — ' + m.name + ' stands straighter. Negative levels gone.' };
+  }
+  if (svc.kind === 'raise') {
+    if (!m.dead) return { ok: false, error: m.name + ' is not dead' };
+    pubBank(s, -svc.gp);
+    m.dead = false;
+    m.negLevels = (m.negLevels || 0) + 2;   // PF1 Raise Dead
+    LEGACY[legacyKey(s, m.name)] = Object.assign({}, LEGACY[legacyKey(s, m.name)], { dead: false, negLevels: m.negLevels, at: Date.now() });
+    saveLegacy();
+    delveLog(s, 'PUB: Raise Dead on ' + m.name + ' (' + svc.gp + 'gp) — 2 negative levels');
+    return { ok: true, text: m.name + ' gasps back to life — weakened by two negative levels until a Restoration.' };
+  }
+  return { ok: false, error: 'nothing happened' };
+}
+
 function startRun(clientId) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
   if (!s.members.has(clientId)) return { ok: false, error: 'only a player can start' };
-  const ready = [...s.members.values()].filter(m => m.ready && m.character);
-  if (ready.length < 1) return { ok: false, error: 'no ready characters yet' };
+  for (const m of s.members.values()) {   // legacy dead flag follows the hero
+    const saved = LEGACY[legacyKey(s, m.name)] || {};
+    if (saved.dead != null && m.dead == null) m.dead = !!saved.dead;
+  }
+  const ready = [...s.members.values()].filter(m => m.ready && m.character && !m.dead);
+  const anyDead = [...s.members.values()].some(m => m.dead);
+  if (ready.length < 1 || !ready.some(m => !m.ai)) {
+    return { ok: false, error: anyDead ? 'your dead need raising first — the Swashgoblin cleric awaits payment' : 'no ready characters yet' };
+  }
   // Returning heroes (same delve name + hero name) resume their earned levels.
   for (const m of ready) {
     const saved = LEGACY[legacyKey(s, m.name)];
@@ -174,6 +248,15 @@ function startRun(clientId) {
       delveLog(s, `LEGACY RESUMED: ${m.name} returns at level ${h.level} (${h.xp} XP)`);
     }
   }
+  if (s.stash) {   // pub purchases ride along in the party bag
+    for (const [k, q] of Object.entries(s.stash)) {
+      const slot = s.run.inventory.find(x => x.key === k);
+      if (slot) slot.qty += q; else s.run.inventory.push({ key: k, qty: q });
+    }
+    s.stash = null;
+  }
+  const dead = [...s.members.values()].filter(m => m.dead);
+  if (dead.length) delveLog(s, 'LUGGAGE: hauling the dead — ' + dead.map(m => m.name).join(', '));
   s.phase = 'playing';
   s.startedAt = now();
   delveLog(s, `RUN STARTED: party = ${ready.map(m => m.name + ' (' + m.character.cls + (m.ai ? ', AI' : '') + ')').join(', ')}`);
@@ -186,6 +269,7 @@ function action(clientId, act) {
   const r = partyrun.applyAction(s.run, clientId, act);
   flushRunLog(s);
   persistProgress(s);
+  if (s.run && (s.run.phase === 'retreated' || s.run.phase === 'defeated')) enterPub(s);
   return r;
 }
 
@@ -227,6 +311,13 @@ function sessionSnapshotFor(clientId) {
     members: [...s.members.values()].map(m => memberView(m, clientId)),
     spectators: [...s.spectators.values()].map(sp => ({ name: sp.name, icon: sp.icon, isYou: sp.clientId === clientId })),
     run: s.run ? partyrun.publicRun(s.run) : null,
+    pub: s.phase === 'pub' ? {
+      gold: pubPurse(s),
+      stash: s.stash || {},
+      services: Object.entries(PUB_SERVICES).map(([key, v]) => ({ key, label: v.label, gp: v.gp, kind: v.kind })),
+      dead: [...s.members.values()].filter(m => m.dead).map(m => m.name),
+      hurt: [...s.members.values()].filter(m => (m.negLevels || 0) > 0).map(m => ({ name: m.name, negLevels: m.negLevels })),
+    } : null,
   };
 }
 
@@ -256,6 +347,7 @@ function snapshotFor(clientId) {
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
+  _testInternals(clientId) { return sessionOf(clientId); },
 };

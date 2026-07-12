@@ -163,16 +163,56 @@ test('death model: dying below -CON kills; inside it you bleed and can stabilize
   assert.ok(run.log.some(e => /DEAD/.test(e.text)), 'death narrated');
 });
 
-test('death model: temple raise on retreat costs 2 negative levels, persisted', () => {
-  const roll = seededRoller(12);
-  const run = pr.createPartyRun(party('fighter', true), roll);
-  const hero = run.heroes.find(h => h.ownerClientId === 'c1');
-  const maxBefore = hero.maxHp, toHitBefore = hero.weapon.toHit;
-  hero.dead = true; hero.down = true; hero.hp = -20;
-  pr.applyAction(run, 'c2', { type: 'retreat' }, roll);
-  assert.strictEqual(run.phase, 'retreated');
-  assert.ok(!hero.dead && hero.hp === 1, 'temple raised the dead to 1 HP');
-  assert.strictEqual(hero.negLevels, 2, '2 negative levels from Raise Dead');
-  assert.strictEqual(hero.maxHp, Math.max(1, maxBefore - 10), 'max HP -5 per level');
-  assert.strictEqual(hero.weapon.toHit, toHitBefore - 2, 'attack -1 per level');
+test('the Swashgoblin: dead are luggage until a hired cleric raises them (2 neg levels)', () => {
+  const session = require('../src/session');
+  session._reset();
+  const c = session.createDelve({ name: 'PubTester', icon: 'X', delveName: 'pubtest-' + Date.now() });
+  session.setCharacter(c.clientId, { race: 'human', cls: 'fighter' });
+  session.addCompanion(c.clientId, 'Gaspar');
+  session.startRun(c.clientId);
+  const s = session.sessionSnapshotFor(c.clientId);
+  assert.strictEqual(s.phase, 'playing');
+  // Kill the human hero, bank some gold, then retreat (Gaspar's owner acts? retreat is any-member).
+  const runObj = require('../src/session');   // internal access via snapshot only — mutate through partyrun
+  // Reach the live run through the module: action() applies to it; we mutate via the snapshot's identity.
+  // Simpler: retreat first, then assert pub; the dead-luggage path is covered by marking before retreat.
+  const internal = sessionInternals(c.clientId);
+  internal.run.gold = 2000;
+  const hero = internal.run.heroes.find(h => h.ownerClientId === c.clientId);
+  hero.dead = true; hero.down = true; hero.hp = -20; hero.negLevels = 0;
+  session.action(c.clientId, { type: 'retreat' });
+  const pubSnap = session.sessionSnapshotFor(c.clientId);
+  assert.strictEqual(pubSnap.phase, 'pub', 'run end lands the party at the Swashgoblin');
+  assert.ok(pubSnap.pub.gold >= 2000, 'run gold banked: ' + pubSnap.pub.gold);
+  assert.deepStrictEqual(pubSnap.pub.dead, ['PubTester'], 'the dead are hauled as luggage');
+  // A start attempt with the only human dead is refused.
+  const blocked = session.startRun(c.clientId);
+  assert.strictEqual(blocked.ok, false);
+  // Pay the cleric.
+  const raise = session.pubBuy(c.clientId, 'raisedead', 'PubTester');
+  assert.ok(raise.ok, 'raise dead purchased: ' + (raise.error || ''));
+  const after = session.sessionSnapshotFor(c.clientId);
+  assert.deepStrictEqual(after.pub.dead, [], 'nobody dead after the raise');
+  assert.ok(after.pub.hurt.some(h => h.name === 'PubTester' && h.negLevels === 2), '2 negative levels applied');
+  // Restoration cures them.
+  const rest = session.pubBuy(c.clientId, 'restoration', 'PubTester');
+  assert.ok(rest.ok, 'restoration purchased');
+  assert.strictEqual(session.sessionSnapshotFor(c.clientId).pub.hurt.length, 0, 'negative levels cured');
+  // And the party can set out again.
+  assert.ok(session.startRun(c.clientId).ok, 'set out again from the pub');
 });
+
+// The test needs the live run object; session exposes it only via snapshots, so
+// reach it through the module registry the same way sweepAfk does.
+function sessionInternals(clientId) {
+  const session = require('../src/session');
+  let found = null;
+  const orig = session.sweepAfk;
+  // sessionSnapshotFor gives a copy; grab the real run via a temporary hook:
+  // easiest supported path — the snapshot run and the real run share nothing,
+  // so we patch through action('pass') side effects instead. For directness we
+  // use the documented _reset-adjacent seam: sessions are module-private, but
+  // partyrun objects are reachable from the snapshotFor closure only. So we
+  // instead re-require with a helper the module exports for tests.
+  return session._testInternals(clientId);
+}

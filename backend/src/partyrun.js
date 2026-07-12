@@ -459,7 +459,6 @@ function applyAction(run, clientId, action, roll = Math.random) {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     run.phase = 'retreated';
     logEvent(run, `🏳️ The party retreats from the delve — ${run.roomsCleared} room${run.roomsCleared === 1 ? '' : 's'} cleared, ${run.gold} gold carried out. Live to delve again.`, 'urgent');
-    templeRaise(run);
     return { ok: true };
   }
 
@@ -684,20 +683,9 @@ function clearRoom(run, roll = Math.random) {
   logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 
-/** Back on the surface the temple raises anyone who died — PF1 Raise Dead,
- *  2 negative levels each (persist via legacy until a Restoration). */
-function templeRaise(run) {
-  run.heroes.forEach(h => {
-    if (!h.dead) return;
-    h.dead = false; h.down = false; h.stable = false; h.hp = 1;
-    applyNegLevels(h, 2, 'Raise Dead at the surface temple', run);
-  });
-}
-
 function defeat(run) {
   run.phase = 'defeated';
   logEvent(run, 'The party has fallen. The dungeon claims you.', 'urgent');
-  templeRaise(run);   // the surface temple recovers and raises the dead — at a price
 }
 
 function logEvent(run, text, priority, sound) {
