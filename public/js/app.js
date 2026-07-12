@@ -419,7 +419,9 @@
         if (e.sound && e.sound.indexOf('earcon:') !== 0 && !BM.isMuted()) {   // combat/spell SFX (poker's SND pools)
           try { var sfx = new Audio(e.sound); sfx.volume = 0.55; sfx.play().catch(function () {}); } catch (err) {}
         }
-        if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (serialized queue)
+        if (e.priority === 'banter') {                 // companion quip -> their own voice
+          BM.speakAs(e.text.replace(/^\S+\s/, ''), e.voiceId);
+        } else if (e.priority === 'urgent') {          // GM narration -> Ultron voice (serialized queue)
           BM.speakGM(e.text);
           var a = el('announce'); if (a) a.textContent = e.text;
         } else { BM.speak(e.text, e.priority); }

@@ -429,6 +429,40 @@ function startRun(clientId) {
   return { ok: true };
 }
 
+// ── COMBAT BANTER (Tobias 2026-07-11: LLM-generated) ──
+// After each action, scan fresh log lines for a quip-worthy beat (a slaying,
+// a fallen hero). At most ONE quip per round per delve, 60% of the time, from
+// a random living AI companion — generated async and appended when it lands.
+let notifyChange = () => {};
+function setNotify(fn) { notifyChange = fn || (() => {}); }
+function maybeBanter(s) {
+  try {
+    const run = s.run; if (!run) return;
+    const fresh = run.log.filter(e => e.seq > (s._banterSeq || 0));
+    if (!fresh.length) return;
+    s._banterSeq = run.log[run.log.length - 1].seq;
+    const beat = fresh.find(e => /is slain!|is destroyed!|falls!|DEAD —|bleeds out/.test(e.text));
+    if (!beat || s._lastBanterRound === run.round || Math.random() > 0.6) return;
+    const ais = run.heroes.filter(h => h.ai && !h.down);
+    if (!ais.length) return;
+    const speaker = ais[Math.floor(Math.random() * ais.length)];
+    s._lastBanterRound = run.round;
+    const member = [...s.members.values()].find(m => m.name === speaker.name);
+    const { CHARACTER_FLAVOR } = require('./dungeon-port/character_flavor');
+    const flavor = CHARACTER_FLAVOR[speaker.name] || CHARACTER_FLAVOR[speaker.name.split(' ')[0]] || `${speaker.name}, a ${speaker.cls} adventurer.`;
+    const snap = sessionSnapshotFor.length ? null : null;
+    require('./gm').askBanter(speaker.name, flavor, beat.text, { name: s.name, run: partyrun.publicRun(run) })
+      .then(r => {
+        if (!r || !sessions.has(s.id) || s.run !== run) return;
+        run.log.push({ seq: ++run.seq, text: '💬 ' + speaker.name + ': ' + r.text, priority: 'banter', sound: null, voiceId: (member && member.voiceId) || null });
+        flushRunLog(s);
+        saveSession(s);
+        notifyChange();
+      })
+      .catch(() => {});
+  } catch (e) {}
+}
+
 function action(clientId, act) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
   if ((act.type === 'loot_send' || act.type === 'loot_party') && memberIdOf(clientId) !== s.host) {
@@ -438,6 +472,7 @@ function action(clientId, act) {
   flushRunLog(s);
   persistProgress(s);
   if (r.ok && act && act.type === 'descend' && (s.run.phase === 'initiative' || s.run.phase === 'combat')) checkGraves(s);
+  maybeBanter(s);
   if (s.run && s.run.phase === 'defeated') { tpk(s); return r; }
   if (s.run && s.run.phase === 'retreated') enterPub(s);
   saveSession(s);
@@ -457,7 +492,7 @@ function sweepAfk() {
       sessions.delete(s.id); deleteSave(s); changed = true; continue;
     }
     if (s.phase !== 'playing' || !s.run) continue;
-    if (partyrun.sweepAfk(s.run)) { flushRunLog(s); persistProgress(s); changed = true; }
+    if (partyrun.sweepAfk(s.run)) { flushRunLog(s); persistProgress(s); maybeBanter(s); changed = true; }
   }
   return changed;
 }
@@ -544,7 +579,7 @@ restoreSessions();
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
 };

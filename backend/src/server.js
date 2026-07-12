@@ -211,6 +211,9 @@ const server = http.createServer(async (req, res) => {
   return serveStatic(req, res);
 });
 
+// Async events (LLM banter landing) push fresh state to every client.
+session.setNotify(() => { try { broadcast(); } catch (e) {} });
+
 // AFK backstop: an idle human's turn auto-attacks after AFK_MS so the party
 // is never held hostage (poker parity). Sweep every 5s, push state if moved.
 setInterval(() => { try { if (session.sweepAfk()) broadcast(); } catch (e) {} }, 5000).unref();

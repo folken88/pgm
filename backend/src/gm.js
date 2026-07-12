@@ -98,4 +98,27 @@ YOUR LEADER SAYS TO YOU: ${question}` },
   return { text: `${name} says nothing.`, provider: 'none' };
 }
 
-module.exports = { askGM, askCompanion, buildContext };
+/** One SHORT in-character combat quip (a kill, a fallen ally). Fresh from the
+ *  LLM each time (Tobias chose variety over canned lines); callers throttle. */
+async function askBanter(name, flavor, eventDesc, snap) {
+  const messages = [
+    { role: 'system', content: `You ARE ${name}, an adventurer in a Pathfinder dungeon fight.
+PERSONA: ${flavor}
+React to the event with ONE short spoken line — 15 words max, fully in character. No markdown, no quotes, no narration, just the line you say out loud.` },
+    { role: 'user', content: `WHAT JUST HAPPENED: ${eventDesc}
+SITUATION: ${buildContext(snap)}
+Your one-liner:` },
+  ];
+  let text = await tryChat(`${OLLAMA_URL}/api/chat`, { 'Content-Type': 'application/json' },
+    { model: OLLAMA_MODEL, messages, stream: false, keep_alive: '30m', options: { num_predict: 400 } }, 15000);
+  if (text) return { text: text.trim().replace(/^["']|["']$/g, '').slice(0, 160), provider: 'ollama' };
+  if (OPENAI_KEY) {
+    text = await tryChat('https://api.openai.com/v1/chat/completions',
+      { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
+      { model: OPENAI_MODEL, messages, max_tokens: 60 }, 10000);
+    if (text) return { text: text.trim().replace(/^["']|["']$/g, '').slice(0, 160), provider: 'openai' };
+  }
+  return null;
+}
+
+module.exports = { askGM, askCompanion, askBanter, buildContext };
