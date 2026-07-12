@@ -1,23 +1,33 @@
 :root {
-  --bg: #14161c;
-  --panel: #1e2029;
-  --ink: #e8e6df;
-  --muted: #a7a49a;
-  --accent: #d8a24a;
-  --accent-ink: #14161c;
-  --danger: #d8624a;
-  --ok: #6fbf73;
-  --focus: #7cc4ff;
-  --line: #33363f;
+  /* THE GAME TABLE (Tobias 2026-07-12): dark oak, parchment, ink, brass. */
+  --bg: #241407;               /* oak table (textured on body) */
+  --panel: #e9d9ae;            /* parchment sheet */
+  --panel-2: #f2e6c4;          /* fresh page (inputs) */
+  --ink: #2c1c0d;              /* iron-gall ink */
+  --muted: #6d5a3e;            /* faded ink */
+  --accent: #8a2413;           /* wax-seal red */
+  --accent-ink: #f4e9cd;       /* parchment on the seal */
+  --gold: #d9b45c;             /* brass/gilt lettering on wood */
+  --danger: #9c2413;
+  --ok: #3f6d33;
+  --focus: #1d5fa8;
+  --line: #a98d5f;             /* aged leather trim */
+  --wood-edge: #4a2c14;
+  /* textures: pure data-URI turbulence — no assets, no requests */
+  --tex-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  --tex-wood: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='140'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.14' numOctaves='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0'/></filter><rect width='420' height='140' filter='url(%23w)'/></svg>");
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--ink);
+  font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  background:
+    var(--tex-wood),
+    repeating-linear-gradient(93deg, #2b1808 0 34px, #241407 34px 71px, #2f1a09 71px 118px),
+    var(--bg);
+  color: var(--gold);   /* text sitting on bare wood (headers) reads as gilt */
   line-height: 1.55;
   font-size: 18px;
 }
@@ -323,3 +333,90 @@ body:not(.blind-on) main { padding-bottom: 1.5rem; }
 .char-list h3 { margin: 0 0 .4rem; font-size: .95rem; color: var(--accent); }
 .char-card { display: block; width: 100%; text-align: left; margin-bottom: .4rem; padding: .6rem .8rem; font-size: 1rem; border-radius: 10px; }
 .char-card.new { color: var(--muted); }
+
+
+/* ================= THE OLD-SCHOOL TABLE (aesthetic layer only) =================
+   Everything that holds content is a parchment sheet on the oak table; text on
+   sheets is ink, text on bare wood is gilt. No structural/ARIA changes. */
+
+/* Parchment sheets: screens, panels, log, cards, popovers */
+#landing, #create, #skills, #lobby,
+.side-panel, .log, .delve-card, .hero-card, .unit, .bag-item, #pub-panel,
+#char-list .char-card, .choices button, input, select, .send-pick {
+  background-image: var(--tex-grain),
+    radial-gradient(ellipse at 18% 8%, rgba(122,90,42,.16), transparent 55%),
+    radial-gradient(ellipse at 85% 92%, rgba(110,80,36,.20), transparent 50%),
+    linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0,0,0,.45), inset 0 0 24px rgba(120,90,40,.18);
+}
+#landing, #create, #skills, #lobby { border-radius: 6px; padding: 1rem 1.2rem; margin-top: .8rem; }
+.side-panel, .log { border-radius: 4px; }
+.log p { border-bottom: 1px dotted rgba(109,90,62,.35); padding-bottom: .35rem; }
+
+/* Ink hierarchy on parchment */
+#landing h2, #create h2, #skills h2, #lobby h2,
+.side-panel h3, .side-panel h4, #pub-panel h3, #pub-panel h4, .char-list h3 {
+  color: var(--accent);
+  font-variant: small-caps;
+  letter-spacing: .06em;
+  border-bottom: 2px double var(--line);
+  padding-bottom: .25rem;
+}
+label, .tagline { color: var(--muted); }
+.side-panel, .log, .unit, .hero-card, .bag-item { color: var(--ink); }
+.unit .u-hp, .hero-card .hc-meta, .delve-card .dmeta { color: var(--muted); }
+
+/* Bare-wood dwellers: page title + turn banner frame */
+h1 { color: var(--gold); font-variant: small-caps; letter-spacing: .1em; text-shadow: 0 2px 3px rgba(0,0,0,.7); }
+.tagline { color: #b99b62; }
+
+/* Buttons: leather with brass tacks; primary actions get the wax seal */
+button {
+  background-image: var(--tex-grain), linear-gradient(180deg, #6d4a26, #55371a);
+  color: #f2e2bd; border: 1px solid var(--wood-edge); border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,230,180,.25);
+  text-shadow: 0 1px 1px rgba(0,0,0,.5);
+}
+button:hover { filter: brightness(1.12); }
+#start-delve, #chat-send, #lobby-start, #skill-begin, .create-actions button, #signin-btn {
+  background-image: var(--tex-grain), linear-gradient(180deg, #9c2c17, #7a1d0e);
+  border-color: #4a0f06; font-weight: 700;
+}
+#choices button { color: var(--ink); font-family: inherit; }
+#choices button .num { background: var(--accent); color: var(--accent-ink); border-radius: 4px; }
+#choices button.big-roll {
+  background-image: var(--tex-grain), radial-gradient(circle at 50% 35%, #b23a1f, #7a1d0e 75%);
+  color: var(--accent-ink); border: 2px solid #4a0f06;
+  box-shadow: 0 3px 10px rgba(0,0,0,.6), inset 0 0 18px rgba(0,0,0,.35);
+}
+
+/* Inputs read as fresh pages */
+input, select { color: var(--ink); }
+input::placeholder { color: #8a734e; }
+
+/* Battlefield: enemy sheets get a bloodied wax trim, allies a green ribbon */
+.enemy-row .unit { border-color: #7e3324; box-shadow: 0 2px 8px rgba(0,0,0,.45), inset 0 0 0 2px rgba(158,54,32,.25); }
+.ally-row .unit.current, .unit.current { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok); }
+.turn-banner { border: 1px solid var(--wood-edge); border-radius: 6px; font-variant: small-caps; letter-spacing: .04em; }
+.turn-banner.mine { background: var(--ok); color: #f4e9cd; }
+.turn-banner.cleared { background: var(--gold); color: #3a2408; }
+
+/* HP/XP bars: leather track, keep the functional colors */
+.hero-card .hpbar { background: #b39a6b; }
+.hpbar > div { background: var(--ok); }
+.hero-card.critical .hpbar > div { background: var(--danger); }
+
+/* HUD + retreat: brass plaque on the sheet */
+.hud { color: var(--ink); }
+.retreat-btn { background-image: var(--tex-grain), linear-gradient(180deg, #8a5a24, #6b421a); }
+
+/* Focus ring must stay LOUD on parchment (keyboard/blind-adjacent users) */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* Toast + status keep ink-on-parchment */
+#toast { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+.a11y-bar { background: rgba(36,20,7,.92); border-top: 2px solid var(--wood-edge); }
+.a11y-bar button { font-size: .85rem; }
+#status-line { color: var(--gold); }
