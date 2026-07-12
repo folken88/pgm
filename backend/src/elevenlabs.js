@@ -46,7 +46,8 @@ async function resolveVoiceId() {
  *  (companion chat); default = the GM voice. Returns base64 mp3 or null. */
 async function synthesize(text, voiceIdOverride) {
   if (!ENABLED || !text) return null;
-  const clean = String(text).trim().slice(0, 400);
+  // Ear-fix: "vs" must be read as "versus" (visible text keeps the notation).
+  const clean = String(text).replace(/\bvs\.?\b/gi, 'versus').trim().slice(0, 400);
   if (!clean) return null;
   const cacheKey = (voiceIdOverride || 'gm') + '::' + clean;
   if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);

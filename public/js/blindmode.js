@@ -100,9 +100,18 @@
     if (!supportsTTS) { pump(); return; }
     speakUtterance(item.text, false);
   }
+  // Ear-fixes (poker's WORD_FIXES): applied ONLY at speech time — the visible
+  // text keeps its notation. "vs" reads as "versus", not "v s".
+  var WORD_FIXES = [
+    [/\bvs\.?\b/gi, 'versus'],
+  ];
+  function earFix(text) {
+    WORD_FIXES.forEach(function (f) { text = text.replace(f[0], f[1]); });
+    return text;
+  }
   function speakUtterance(text, isRetry) {
     var gen = pumpGen;
-    var u = new SpeechSynthesisUtterance(text);
+    var u = new SpeechSynthesisUtterance(earFix(text));
     u.rate = rate; u.volume = volume; if (voice) u.voice = voice;
     cur = { text: text, isAudio: false, started: false, startedAt: Date.now(), lastAlive: Date.now(), retried: !!isRetry };
     u.onstart = function () { if (cur) { cur.started = true; cur.lastAlive = Date.now(); } };
