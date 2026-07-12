@@ -1,21 +1,24 @@
 :root {
-  /* THE GAME TABLE (Tobias 2026-07-12): dark oak, parchment, ink, brass. */
-  --bg: #241407;               /* oak table (textured on body) */
-  --panel: #e9d9ae;            /* parchment sheet */
-  --panel-2: #f2e6c4;          /* fresh page (inputs) */
-  --ink: #2c1c0d;              /* iron-gall ink */
-  --muted: #6d5a3e;            /* faded ink */
-  --accent: #8a2413;           /* wax-seal red */
-  --accent-ink: #f4e9cd;       /* parchment on the seal */
-  --gold: #d9b45c;             /* brass/gilt lettering on wood */
-  --danger: #9c2413;
-  --ok: #3f6d33;
-  --focus: #1d5fa8;
-  --line: #a98d5f;             /* aged leather trim */
-  --wood-edge: #4a2c14;
-  /* textures: pure data-URI turbulence — no assets, no requests */
-  --tex-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
-  --tex-wood: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='140'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.14' numOctaves='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0'/></filter><rect width='420' height='140' filter='url(%23w)'/></svg>");
+  /* DARKWOOD (Tobias 2026-07-12): ebony table, walnut panels, cream ink,
+     brass fittings. Texture slots are CSS vars — swap --tex-panel/--tex-body
+     for generated images (scripts/gen-textures.js) when a key is available. */
+  --bg: #150c05;               /* ebony table */
+  --panel: #2b1a0d;            /* walnut panel */
+  --panel-2: #38220f;          /* raised walnut (inputs, hover) */
+  --ink: #ecdcb8;              /* warm cream lettering */
+  --muted: #b39a72;            /* faded brass */
+  --accent: #d9b45c;           /* polished brass */
+  --accent-ink: #241304;       /* wood under brass */
+  --gold: #d9b45c;
+  --danger: #c4472e;
+  --ok: #7fb069;
+  --focus: #6fb3ff;
+  --line: #59391c;             /* carved trim */
+  --wood-edge: #0d0703;
+  --tex-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  --tex-wood: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='140'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.011 0.16' numOctaves='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0'/></filter><rect width='420' height='140' filter='url(%23w)'/></svg>");
+  --tex-body: var(--tex-wood);   /* generated-image slots (fallback: SVG grain) */
+  --tex-panel: var(--tex-wood);
 }
 
 * { box-sizing: border-box; }
@@ -24,10 +27,10 @@ body {
   margin: 0;
   font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   background:
-    var(--tex-wood),
-    repeating-linear-gradient(93deg, #2b1808 0 34px, #241407 34px 71px, #2f1a09 71px 118px),
+    var(--tex-body),
+    repeating-linear-gradient(93deg, #1a0f06 0 34px, #150c05 34px 71px, #1e1108 71px 118px),
     var(--bg);
-  color: var(--gold);   /* text sitting on bare wood (headers) reads as gilt */
+  color: var(--ink);
   line-height: 1.55;
   font-size: 18px;
 }
@@ -335,27 +338,26 @@ body:not(.blind-on) main { padding-bottom: 1.5rem; }
 .char-card.new { color: var(--muted); }
 
 
-/* ================= THE OLD-SCHOOL TABLE (aesthetic layer only) =================
-   Everything that holds content is a parchment sheet on the oak table; text on
-   sheets is ink, text on bare wood is gilt. No structural/ARIA changes. */
+/* ================= DARKWOOD TABLE (aesthetic layer only) =================
+   Ebony table, walnut panels, cream lettering, brass fittings. Zero
+   structural/ARIA changes — the blind layer never sees any of this. */
 
-/* Parchment sheets: screens, panels, log, cards, popovers */
+/* Walnut panels: screens, side panels, log, cards, popovers */
 #landing, #create, #skills, #lobby,
 .side-panel, .log, .delve-card, .hero-card, .unit, .bag-item, #pub-panel,
 #char-list .char-card, .choices button, input, select, .send-pick {
-  background-image: var(--tex-grain),
-    radial-gradient(ellipse at 18% 8%, rgba(122,90,42,.16), transparent 55%),
-    radial-gradient(ellipse at 85% 92%, rgba(110,80,36,.20), transparent 50%),
+  background-image: var(--tex-panel),
+    radial-gradient(ellipse at 20% 0%, rgba(120,78,32,.18), transparent 55%),
     linear-gradient(180deg, var(--panel-2), var(--panel));
   color: var(--ink);
   border: 1px solid var(--line);
-  box-shadow: 0 2px 8px rgba(0,0,0,.45), inset 0 0 24px rgba(120,90,40,.18);
+  box-shadow: 0 3px 10px rgba(0,0,0,.65), inset 0 1px 0 rgba(217,180,92,.10), inset 0 0 30px rgba(0,0,0,.45);
 }
 #landing, #create, #skills, #lobby { border-radius: 6px; padding: 1rem 1.2rem; margin-top: .8rem; }
 .side-panel, .log { border-radius: 4px; }
-.log p { border-bottom: 1px dotted rgba(109,90,62,.35); padding-bottom: .35rem; }
+.log p { border-bottom: 1px dotted rgba(179,154,114,.28); padding-bottom: .35rem; }
 
-/* Ink hierarchy on parchment */
+/* Brass lettering hierarchy */
 #landing h2, #create h2, #skills h2, #lobby h2,
 .side-panel h3, .side-panel h4, #pub-panel h3, #pub-panel h4, .char-list h3 {
   color: var(--accent);
@@ -365,58 +367,53 @@ body:not(.blind-on) main { padding-bottom: 1.5rem; }
   padding-bottom: .25rem;
 }
 label, .tagline { color: var(--muted); }
-.side-panel, .log, .unit, .hero-card, .bag-item { color: var(--ink); }
 .unit .u-hp, .hero-card .hc-meta, .delve-card .dmeta { color: var(--muted); }
+h1 { color: var(--gold); font-variant: small-caps; letter-spacing: .1em; text-shadow: 0 2px 4px rgba(0,0,0,.9); }
 
-/* Bare-wood dwellers: page title + turn banner frame */
-h1 { color: var(--gold); font-variant: small-caps; letter-spacing: .1em; text-shadow: 0 2px 3px rgba(0,0,0,.7); }
-.tagline { color: #b99b62; }
-
-/* Buttons: leather with brass tacks; primary actions get the wax seal */
+/* Buttons: dark leather, brass text; primaries get deep-ember red */
 button {
-  background-image: var(--tex-grain), linear-gradient(180deg, #6d4a26, #55371a);
-  color: #f2e2bd; border: 1px solid var(--wood-edge); border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,230,180,.25);
-  text-shadow: 0 1px 1px rgba(0,0,0,.5);
+  background-image: var(--tex-grain), linear-gradient(180deg, #3a2412, #241304);
+  color: var(--ink); border: 1px solid var(--wood-edge); border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,.7), inset 0 1px 0 rgba(217,180,92,.18);
+  text-shadow: 0 1px 1px rgba(0,0,0,.6);
 }
-button:hover { filter: brightness(1.12); }
+button:hover { filter: brightness(1.25); }
 #start-delve, #chat-send, #lobby-start, #skill-begin, .create-actions button, #signin-btn {
-  background-image: var(--tex-grain), linear-gradient(180deg, #9c2c17, #7a1d0e);
-  border-color: #4a0f06; font-weight: 700;
+  background-image: var(--tex-grain), linear-gradient(180deg, #7a2412, #4d1207);
+  border-color: #2a0a03; font-weight: 700; color: #f2dfb8;
 }
-#choices button { color: var(--ink); font-family: inherit; }
 #choices button .num { background: var(--accent); color: var(--accent-ink); border-radius: 4px; }
 #choices button.big-roll {
-  background-image: var(--tex-grain), radial-gradient(circle at 50% 35%, #b23a1f, #7a1d0e 75%);
-  color: var(--accent-ink); border: 2px solid #4a0f06;
-  box-shadow: 0 3px 10px rgba(0,0,0,.6), inset 0 0 18px rgba(0,0,0,.35);
+  background-image: var(--tex-grain), radial-gradient(circle at 50% 35%, #9c3018, #4d1207 75%);
+  color: #f2dfb8; border: 2px solid #2a0a03;
+  box-shadow: 0 4px 12px rgba(0,0,0,.75), inset 0 0 20px rgba(0,0,0,.4);
 }
 
-/* Inputs read as fresh pages */
+/* Inputs: recessed wood, cream text */
 input, select { color: var(--ink); }
-input::placeholder { color: #8a734e; }
+input::placeholder { color: #8f6f46; }
 
-/* Battlefield: enemy sheets get a bloodied wax trim, allies a green ribbon */
-.enemy-row .unit { border-color: #7e3324; box-shadow: 0 2px 8px rgba(0,0,0,.45), inset 0 0 0 2px rgba(158,54,32,.25); }
-.ally-row .unit.current, .unit.current { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok); }
+/* Battlefield: enemies get an ember trim, current actor a brass glow */
+.enemy-row .unit { border-color: #6e2314; box-shadow: 0 3px 10px rgba(0,0,0,.65), inset 0 0 0 2px rgba(158,54,32,.30); }
+.unit.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(217,180,92,.35); }
+.hero-card.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .turn-banner { border: 1px solid var(--wood-edge); border-radius: 6px; font-variant: small-caps; letter-spacing: .04em; }
-.turn-banner.mine { background: var(--ok); color: #f4e9cd; }
-.turn-banner.cleared { background: var(--gold); color: #3a2408; }
+.turn-banner.mine { background: #33531f; color: #eaf4d8; }
+.turn-banner.cleared { background: var(--accent); color: var(--accent-ink); }
 
-/* HP/XP bars: leather track, keep the functional colors */
-.hero-card .hpbar { background: #b39a6b; }
+/* HP/XP bars: dark tracks, functional colors kept */
+.hero-card .hpbar { background: #120a04; }
 .hpbar > div { background: var(--ok); }
 .hero-card.critical .hpbar > div { background: var(--danger); }
 
-/* HUD + retreat: brass plaque on the sheet */
+/* HUD + retreat */
 .hud { color: var(--ink); }
-.retreat-btn { background-image: var(--tex-grain), linear-gradient(180deg, #8a5a24, #6b421a); }
+.retreat-btn { background-image: var(--tex-grain), linear-gradient(180deg, #4d3315, #33200c); }
 
-/* Focus ring must stay LOUD on parchment (keyboard/blind-adjacent users) */
+/* Focus ring stays LOUD on dark wood (keyboard users) */
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-/* Toast + status keep ink-on-parchment */
 #toast { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
-.a11y-bar { background: rgba(36,20,7,.92); border-top: 2px solid var(--wood-edge); }
+.a11y-bar { background: rgba(13,7,3,.94); border-top: 2px solid var(--line); }
 .a11y-bar button { font-size: .85rem; }
 #status-line { color: var(--gold); }
