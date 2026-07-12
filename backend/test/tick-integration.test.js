@@ -4,13 +4,22 @@ const { seededRoller } = require('../src/dice');
 const { createCharacter } = require('../src/characters');
 const pr = require('../src/partyrun');
 
+// Initiative is now the PLAYERS' roll (Tobias 2026-07-11): tests roll it
+// immediately after run creation / each descend so combat proceeds as before.
+function rollInit(run, roll) {
+  if (run.phase !== 'initiative') return;
+  const human = run.heroes.find(h => h.ownerClientId);
+  require('../src/partyrun').applyAction(run, human && human.ownerClientId, { type: 'initiative' }, roll);
+}
+
+
 function party() {
   return [{ clientId: 'c1', icon: '🛡️', character: createCharacter({ name: 'Kara', race: 'human', cls: 'fighter' }) }];
 }
 
 test('a HELD enemy loses its turns (re-save each round) instead of acting forever', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(party(), roll);
+  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true;
   foe.paralyzed = 3; foe.heldDC = 40; foe.fort = 0; foe.reflex = 0;   // will ~0 vs DC 40 — only nat 20 or expiry frees it
@@ -29,7 +38,7 @@ test('a HELD enemy loses its turns (re-save each round) instead of acting foreve
 
 test('a nauseated enemy recovers after its rounds tick down', () => {
   const roll = seededRoller(9);
-  const run = pr.createPartyRun(party(), roll);
+  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true; foe.nauseated = 2;
   let guard = 0;
@@ -43,7 +52,7 @@ test('a nauseated enemy recovers after its rounds tick down', () => {
 
 test('acid DoT from a spell burns the foe at its turn start', () => {
   const roll = seededRoller(2);
-  const run = pr.createPartyRun(party(), roll);
+  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true; foe.hp = 12; foe.maxHp = 12;
   foe.acid = { rounds: 2, dice: 1, die: 6 };

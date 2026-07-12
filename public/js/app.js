@@ -25,6 +25,15 @@
   var SCREENS = ['landing', 'create', 'skills', 'lobby', 'game'];
   function showScreen(id) {
     SCREENS.forEach(function (s) { el(s).hidden = (s !== id); });
+    document.body.classList.toggle('in-game', id === 'game');
+    // The concurrent-delves window docks into the right column during play
+    // (Tobias: side window with other sessions' status), floats elsewhere.
+    var sw = el('side-window');
+    if (sw) {
+      if (!sw._home) sw._home = sw.parentNode;
+      if (id === 'game' && el('loot-panel')) el('loot-panel').appendChild(sw);
+      else if (sw._home && sw.parentNode !== sw._home) sw._home.appendChild(sw);
+    }
     state.mode = id;
     var h = el(id + '-h') || el(id).querySelector('h2');
     if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
@@ -379,14 +388,16 @@
     el('hud-enemy').textContent = ''; el('hud-gold').textContent = 'Gold: ' + run.gold;
     var myTurn = !!(run.turn && run.turn.ownerClientId === state.myId);
     var banner = el('turn-banner'); banner.className = 'turn-banner';
-    if (run.phase === 'combat') {
+    if (run.phase === 'initiative') {
+      banner.textContent = '🎲 Roll for initiative!'; banner.classList.add('mine');
+    } else if (run.phase === 'combat') {
       if (run.turn) { if (myTurn) { banner.textContent = '▶ Your turn — act now!'; banner.classList.add('mine'); } else banner.textContent = 'Waiting for ' + run.turn.name + '…'; }
       else banner.textContent = 'Resolving…';
     } else if (run.phase === 'cleared') { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
     else if (run.phase === 'defeated') { banner.textContent = '☠ The party has fallen.'; banner.classList.add('defeated'); }
     else if (run.phase === 'retreated') { banner.textContent = '🏳️ The party has retreated — gold in hand.'; banner.classList.add('retreated'); }
     var rb = el('retreat-btn');
-    if (rb) rb.hidden = !(state.role === 'player' && (run.phase === 'combat' || run.phase === 'cleared'));
+    if (rb) rb.hidden = !(state.role === 'player' && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative'));
 
     renderBattlefield(run);
     renderPartyPanel(run);
@@ -403,8 +414,9 @@
     log.forEach(function (e) {
       if (e.seq > state.lastSeq) {
         state.lastSeq = e.seq; appendLog(e.text, e.priority);
+        if (e.sound === 'earcon:dice' && e.seq > state.speakFloor) diceEarcon();
         if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak/play
-        if (e.sound && !BM.isMuted()) {                // combat/spell SFX (poker's SND pools)
+        if (e.sound && e.sound.indexOf('earcon:') !== 0 && !BM.isMuted()) {   // combat/spell SFX (poker's SND pools)
           try { var sfx = new Audio(e.sound); sfx.volume = 0.55; sfx.play().catch(function () {}); } catch (err) {}
         }
         if (e.priority === 'urgent') {                 // GM narration -> Ultron voice (serialized queue)
@@ -414,6 +426,13 @@
       }
     });
     renderGameChoices(run, myTurn);
+    if (run.phase === 'initiative') {
+      var initKey = 'init-' + run.roomsCleared;
+      if (state.lastAnnouncedTurn !== initKey) {
+        state.lastAnnouncedTurn = initKey;
+        BM.speak('The GM calls for initiative. Press 1 to roll.', 'urgent');
+      }
+    }
   }
   // Battlefield: enemies across the top, allies just under — INITIATIVE order
   // left→right (run.combatants is already initiative-sorted server-side).
@@ -538,7 +557,9 @@
     var choices = [];
     var spectating = state.role === 'spectator';
     if (spectating) { state.choices = []; el('choices').innerHTML = ''; return; }
-    if (run.phase === 'combat' && myTurn) {
+    if (run.phase === 'initiative') {
+      choices.push({ id: 'initiative', label: '🎲 Roll for initiative!', big: true });
+    } else if (run.phase === 'combat' && myTurn) {
       (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
       ((run.turn && run.turn.spells) || []).forEach(function (s) {
         choices.push({ id: 'cast', spell: s.key, label: 'Cast ' + s.name + (s.uses != null ? ' (' + s.uses + ')' : '') });
@@ -557,6 +578,7 @@
     var nav = el('choices'); nav.innerHTML = '';
     choices.forEach(function (c, i) {
       var b = document.createElement('button'); b.type = 'button';
+      if (c.big) b.className = 'big-roll';
       b.innerHTML = '<span class="num">' + (i + 1) + '</span><span>' + esc(c.label) + '</span>';
       b.addEventListener('click', function () { doGameAction(c); });
       nav.appendChild(b);

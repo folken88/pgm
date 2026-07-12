@@ -71,9 +71,10 @@ function packer(k, v) {
 }
 function unpacker(k, v) { return (v && v.__set) ? new Set(v.__set) : v; }
 function saveSession(s) {
+  s.touchedAt = Date.now();
   try {
     const doc = {
-      id: s.id, name: s.name, phase: s.phase, host: s.host,
+      id: s.id, name: s.name, phase: s.phase, host: s.host, touchedAt: s.touchedAt,
       createdAt: s.createdAt, startedAt: s.startedAt, _logSeq: s._logSeq || 0,
       stash: s.stash || null, corpses: s.corpses || null,
       members: [...s.members.values()],
@@ -90,7 +91,7 @@ function restoreSessions() {
     try {
       const doc = JSON.parse(fs.readFileSync(path.join(SESS_DIR, f), 'utf8'), unpacker);
       const s = {
-        id: doc.id, name: doc.name, phase: doc.phase, host: doc.host,
+        id: doc.id, name: doc.name, phase: doc.phase, host: doc.host, touchedAt: doc.touchedAt || Date.now(),
         createdAt: doc.createdAt, startedAt: doc.startedAt, _logSeq: doc._logSeq || 0,
         stash: doc.stash || null, corpses: doc.corpses || null,
         members: new Map(doc.members.map(m => [m.memberId, m])),
@@ -436,7 +437,7 @@ function action(clientId, act) {
   const r = partyrun.applyAction(s.run, memberIdOf(clientId), act);
   flushRunLog(s);
   persistProgress(s);
-  if (r.ok && act && act.type === 'descend' && s.run.phase === 'combat') checkGraves(s);
+  if (r.ok && act && act.type === 'descend' && (s.run.phase === 'initiative' || s.run.phase === 'combat')) checkGraves(s);
   if (s.run && s.run.phase === 'defeated') { tpk(s); return r; }
   if (s.run && s.run.phase === 'retreated') enterPub(s);
   saveSession(s);
@@ -444,10 +445,17 @@ function action(clientId, act) {
 }
 
 /** AFK sweep across every live delve (server.js runs this on an interval and
- *  broadcasts when anything moved). */
+ *  broadcasts when anything moved). Also GARBAGE-COLLECTS stale saved delves:
+ *  nobody connected + untouched for SESSION_TTL hours (default 72) -> gone. */
+const SESSION_TTL_MS = (parseFloat(process.env.SESSION_TTL_H || '72')) * 3600 * 1000;
 function sweepAfk() {
   let changed = false;
   for (const s of sessions.values()) {
+    const attached = [...clients.values()].some(c => c.sessionId === s.id);
+    if (!attached && Date.now() - (s.touchedAt || s.createdAt || 0) > SESSION_TTL_MS) {
+      delveLog(s, 'DELVE EXPIRED (' + (SESSION_TTL_MS / 3600000) + 'h untouched) — removed');
+      sessions.delete(s.id); deleteSave(s); changed = true; continue;
+    }
     if (s.phase !== 'playing' || !s.run) continue;
     if (partyrun.sweepAfk(s.run)) { flushRunLog(s); persistProgress(s); changed = true; }
   }

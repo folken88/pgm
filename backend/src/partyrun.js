@@ -216,11 +216,12 @@ function spawnRoom(run, roll) {
   });
 
   run.combatants = run.heroes.concat(enemies);
-  run.combatants.forEach(cb => { cb.init = rollDie(20, roll) + cb.initMod; });
-  run.combatants.sort((a, b) => (b.init - a.init) || (b.initMod - a.initMod));
   run.turnIndex = 0;
   run.round = 1;
-  run.phase = 'combat';
+  // INITIATIVE IS THE PLAYERS' ROLL (Tobias 2026-07-11): the GM calls for it,
+  // a player presses the big d20 (choice 1, blind-first), THEN dice hit felt.
+  run.phase = 'initiative';
+  run.turnStartedAt = Date.now();   // AFK sweep rolls for a party that stalls
 
   const seen = enemies.filter(e => e.revealed);
   const hidden = enemies.filter(e => !e.revealed);
@@ -239,6 +240,19 @@ function spawnRoom(run, roll) {
   if (hidden.length) {
     logEvent(run, 'Something you have not seen lurks here — be ready.', 'event');
   }
+}
+
+/** The party rolls initiative: d20 + mod for all, order announced over a dice
+ *  clatter, then the turn loop begins. Any party member may press it. */
+function rollInitiative(run, roll) {
+  run.combatants.forEach(cb => { cb.init = rollDie(20, roll) + cb.initMod; });
+  run.combatants.sort((a, b) => (b.init - a.init) || (b.initMod - a.initMod));
+  const order = run.combatants
+    .filter(c => c.side === 'hero' || c.revealed)
+    .map(c => c.name + ' ' + c.init).join(', ');
+  logEvent(run, '🎲 Initiative! ' + order + '.', 'urgent', 'earcon:dice');
+  run.turnIndex = 0;
+  run.phase = 'combat';
   runUntilHeroTurn(run, roll);
 }
 
@@ -485,7 +499,13 @@ function applyAction(run, clientId, action, roll = Math.random) {
 
   // RETREAT: any party member, any time (not turn-gated) — the party pulls out
   // alive with its gold. Tobias: there must always be a retreat button.
-  if (type === 'retreat' && (run.phase === 'combat' || run.phase === 'cleared')) {
+  if (run.phase === 'initiative' && (type === 'initiative' || type === 'roll')) {
+    if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
+    rollInitiative(run, roll);
+    return { ok: true };
+  }
+
+  if (type === 'retreat' && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative')) {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     run.phase = 'retreated';
     logEvent(run, `🏳️ The party retreats from the delve — ${run.roomsCleared} room${run.roomsCleared === 1 ? '' : 's'} cleared, ${run.gold} gold carried out. Live to delve again.`, 'urgent');
@@ -853,8 +873,14 @@ function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
  *  hostage. Returns true if the run changed. */
 const AFK_MS = parseInt(process.env.AFK_MS || '60000', 10);
 function sweepAfk(run, roll = Math.random) {
-  if (run.phase !== 'combat' || !run.turnStartedAt) return false;
-  if (Date.now() - run.turnStartedAt < AFK_MS) return false;
+  if (!run.turnStartedAt || Date.now() - run.turnStartedAt < AFK_MS) return false;
+  if (run.phase === 'initiative') {
+    logEvent(run, '⏱️ Nobody reaches for the dice — fate rolls for you.', 'event');
+    run.turnStartedAt = null;
+    rollInitiative(run, roll);
+    return true;
+  }
+  if (run.phase !== 'combat') return false;
   const cb = current(run);
   if (!cb || cb.side !== 'hero' || cb.ai || cb.down) return false;
   logEvent(run, `⏱️ ${cb.name} hesitates too long — and attacks on instinct.`, 'event');

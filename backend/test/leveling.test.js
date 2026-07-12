@@ -5,6 +5,15 @@ const { createCharacter, levelUp } = require('../src/characters');
 const pr = require('../src/partyrun');
 const pf1 = require('../src/pf1core');
 
+// Initiative is now the PLAYERS' roll (Tobias 2026-07-11): tests roll it
+// immediately after run creation / each descend so combat proceeds as before.
+function rollInit(run, roll) {
+  if (run.phase !== 'initiative') return;
+  const human = run.heroes.find(h => h.ownerClientId);
+  require('../src/partyrun').applyAction(run, human && human.ownerClientId, { type: 'initiative' }, roll);
+}
+
+
 test('room XP = sum of PF1 xpForCR split evenly across the party', () => {
   const roll = seededRoller(4);
   const run = pr.createPartyRun([

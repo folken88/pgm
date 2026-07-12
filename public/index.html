@@ -105,13 +105,6 @@
     <section id="game" hidden aria-labelledby="game-h">
       <h2 id="game-h" class="visually-hidden">Adventure</h2>
 
-      <div class="hud" aria-label="Status">
-        <span id="hud-hero">—</span>
-        <span id="hud-enemy"></span>
-        <span id="hud-gold">Gold: 0</span>
-        <button id="retreat-btn" type="button" class="retreat-btn" title="Retreat from the delve (keep your gold)">🏳️ Retreat</button>
-      </div>
-
       <div class="game-layout">
         <!-- LEFT: party status panel (blind-navigable via P) -->
         <aside id="party-panel" class="side-panel" aria-label="Party status">
@@ -136,8 +129,15 @@
           </div>
         </div>
 
-        <!-- RIGHT: inventory & treasure -->
-        <aside id="loot-panel" class="side-panel" aria-label="Inventory and treasure">
+        <!-- RIGHT: this run's stats + inventory & treasure -->
+        <aside id="loot-panel" class="side-panel" aria-label="This run, inventory and treasure">
+          <h3>This Run</h3>
+          <div class="hud" aria-label="Status">
+            <span id="hud-hero">—</span>
+            <span id="hud-enemy"></span>
+            <span id="hud-gold">Gold: 0</span>
+            <button id="retreat-btn" type="button" class="retreat-btn" title="Retreat from the delve (keep your gold)">🏳️ Retreat</button>
+          </div>
           <h3>Treasure</h3>
           <p id="gold-line" class="gold-line">Gold: 0</p>
           <div id="bag-list"></div>

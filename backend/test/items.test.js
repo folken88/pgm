@@ -5,6 +5,15 @@ const { createCharacter } = require('../src/characters');
 const items = require('../src/items');
 const pr = require('../src/partyrun');
 
+// Initiative is now the PLAYERS' roll (Tobias 2026-07-11): tests roll it
+// immediately after run creation / each descend so combat proceeds as before.
+function rollInit(run, roll) {
+  if (run.phase !== 'initiative') return;
+  const human = run.heroes.find(h => h.ownerClientId);
+  require('../src/partyrun').applyAction(run, human && human.ownerClientId, { type: 'initiative' }, roll);
+}
+
+
 function humans() {
   return [
     { clientId: 'c1', icon: '🛡️', character: createCharacter({ name: 'Kara', race: 'half-orc', cls: 'fighter' }) },
@@ -29,7 +38,7 @@ test('rollAmount respects the item dice (CLW heals 2..9)', () => {
 
 test('drinking a Cure Light Wounds potion heals the most-wounded ally', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(humans(), roll);
+  const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   run.heroes[0].hp = 1;                       // wound Kara
   run.inventory.push({ key: 'potion_clw', qty: 1, party: true });   // flagged party property (loot rule)
   const turn = pr.publicRun(run).turn;
@@ -42,7 +51,7 @@ test('drinking a Cure Light Wounds potion heals the most-wounded ally', () => {
 
 test('using an item you do not have is rejected and does not burn the turn', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(humans(), roll);
+  const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   const turn = pr.publicRun(run).turn;
   const r = pr.applyAction(run, turn.ownerClientId, { type: 'use', item: 'potion_clw' }, roll);
   assert.strictEqual(r.ok, false);
@@ -50,7 +59,7 @@ test('using an item you do not have is rejected and does not burn the turn', () 
 });
 
 test('publicRun exposes the party inventory', () => {
-  const run = pr.createPartyRun(humans(), seededRoller(4));
+  const run = pr.createPartyRun(humans(), seededRoller(4)); rollInit(run, seededRoller(1004));
   run.inventory.push({ key: 'alchemists_fire', qty: 2, party: true });   // flagged party property (loot rule)
   const inv = pr.publicRun(run).inventory;
   const fire = inv.find(i => i.key === 'alchemists_fire');
@@ -59,7 +68,7 @@ test('publicRun exposes the party inventory', () => {
 
 test('equipping a found weapon swaps the hero\'s weapon', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(humans(), roll);
+  const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   run.phase = 'cleared';                       // equip happens between fights
   run.inventory.push({ key: 'g_greatsword', qty: 1, party: true });   // flagged party property (loot rule)
   const hero = run.heroes.find(h => h.ownerClientId === 'c1');
@@ -71,7 +80,7 @@ test('equipping a found weapon swaps the hero\'s weapon', () => {
 
 test('equipping found armor raises AC and flat-footed AC', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(humans(), roll);
+  const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   run.phase = 'cleared';
   const hero = run.heroes.find(h => h.ownerClientId === 'c1');
   const beforeAc = hero.ac;
@@ -85,7 +94,7 @@ test('equipping found armor raises AC and flat-footed AC', () => {
 
 test('holy water damages undead but fizzles on the living', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(humans(), roll);
+  const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   const turn = pr.publicRun(run).turn;
   const foe = run.combatants.find(c => c.side === 'enemy' && c.revealed && !c.down);
   assert.ok(foe, 'a revealed foe to target');
@@ -102,7 +111,7 @@ test('clearing rooms drops treasure items at least sometimes', () => {
   let gotItem = false;
   for (let s = 1; s <= 60 && !gotItem; s++) {
     const roll = seededRoller(s);
-    const run = pr.createPartyRun(humans(), roll);
+    const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
     let guard = 0;
     while (run.phase === 'combat' && guard++ < 800) {
       const v = pr.publicRun(run); if (!v.turn) break;

@@ -4,6 +4,15 @@ const { seededRoller } = require('../src/dice');
 const { createCharacter } = require('../src/characters');
 const pr = require('../src/partyrun');
 
+// Initiative is now the PLAYERS' roll (Tobias 2026-07-11): tests roll it
+// immediately after run creation / each descend so combat proceeds as before.
+function rollInit(run, roll) {
+  if (run.phase !== 'initiative') return;
+  const human = run.heroes.find(h => h.ownerClientId);
+  require('../src/partyrun').applyAction(run, human && human.ownerClientId, { type: 'initiative' }, roll);
+}
+
+
 test('Summon Undead I raises a minion on the caster initiative that fights for the party', () => {
   const roll = seededRoller(7);
   const run = pr.createPartyRun([
@@ -53,7 +62,7 @@ test('every 5th room is a BOSS room: advanced foe with Boss: prefix and fatter s
   const { seededRoller: sr } = require('../src/dice');
   const { createCharacter: cc } = require('../src/characters');
   const roll = sr(12);
-  const run = pr.createPartyRun([{ clientId: 'c1', icon: '🛡️', character: cc({ name: 'Kara', race: 'human', cls: 'fighter' }) }], roll);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: '🛡️', character: cc({ name: 'Kara', race: 'human', cls: 'fighter' }) }], roll); rollInit(run, roll);
   // Fast-forward: clear 4 rooms by fiat, then descend into room 5.
   for (let i = 0; i < 4; i++) {
     run.combatants.filter(c => c.side === 'enemy' && !c.summoned).forEach(e => { e.hp = 0; });

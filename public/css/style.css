@@ -149,9 +149,25 @@ button { cursor: pointer; }
 .inventory:empty { display: none; }
 .inventory .bag { color: var(--accent); font-weight: 700; }
 
-/* ── Game layout: LEFT party status · MIDDLE battlefield · RIGHT treasure ── */
-.game-layout { display: grid; grid-template-columns: 230px 1fr 230px; gap: .8rem; align-items: start; }
-@media (max-width: 1000px) { .game-layout { grid-template-columns: 1fr; } .side-panel { order: 2; } .battlefield { order: 1; } }
+/* ── Game layout: LEFT party · MIDDLE battlefield (chat at the bottom) ·
+   RIGHT run stats + treasure. In-game the page goes wide (Tobias: use the
+   screen) and the middle column fills the viewport height. ── */
+body.in-game main { max-width: min(1600px, 97vw); padding-bottom: 1rem; }
+body.in-game header .tagline, body.in-game header p { display: none; }
+body.in-game header h1 { font-size: 1.15rem; margin-bottom: .2rem; }
+body.in-game #side-window { position: static; width: auto; max-width: none; margin-top: 1rem; }
+.game-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+.battlefield { display: flex; flex-direction: column; min-height: calc(100vh - 120px); max-height: calc(100vh - 110px); }
+.battlefield .log { flex: 1 1 auto; min-height: 6rem; max-height: none; overflow-y: auto; }
+.battlefield .chat-row { margin-top: .6rem; }
+.side-panel { position: sticky; top: .75rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.hud { display: flex; flex-direction: column; gap: .3rem; align-items: flex-start; margin-bottom: .8rem; }
+#choices button.big-roll {
+  font-size: 1.25rem; font-weight: 800; width: 100%;
+  background: var(--accent); color: var(--accent-ink); border: none;
+  padding: .8rem 1rem; border-radius: 10px;
+}
+@media (max-width: 1000px) { .game-layout { grid-template-columns: 1fr; } .side-panel { order: 2; position: static; max-height: none; } .battlefield { order: 1; min-height: 0; } }
 .side-panel {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: .6rem .7rem; font-size: .9rem;
@@ -205,7 +221,6 @@ button { cursor: pointer; }
 .bag-item button { padding: .2rem .5rem; font-size: .78rem; background: var(--bg); }
 
 /* Concurrent-delves window docks below the layout while in game */
-body.in-game #side-window { position: static; width: auto; max-width: 760px; margin: .8rem auto 6rem; }
 
 /* Combat view */
 .turn-banner {
@@ -229,12 +244,7 @@ body.in-game #side-window { position: static; width: auto; max-width: 760px; mar
 .cstrip li.hurt .hp { color: var(--danger); }
 
 /* HUD */
-.hud {
-  display: flex; flex-wrap: wrap; gap: .5rem 1.1rem;
-  padding: .6rem .8rem; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 10px; margin-bottom: .9rem;
-  font-variant-numeric: tabular-nums;
-}
+/* .hud now lives in the right run panel (see game-layout block) */
 #hud-enemy:not(:empty)::before { content: "⚔ "; color: var(--danger); }
 .retreat-btn { margin-left: auto; background: var(--panel); border: 1px solid var(--danger); color: var(--danger); padding: .3rem .6rem; font-size: .85rem; border-radius: 8px; }
 .turn-banner.retreated { background: var(--panel); color: var(--accent); }
@@ -242,7 +252,7 @@ body.in-game #side-window { position: static; width: auto; max-width: 760px; mar
 /* Log */
 .log {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  padding: .8rem 1rem; min-height: 8rem; max-height: 46vh; overflow-y: auto;
+  padding: .8rem 1rem; min-height: 8rem; overflow-y: auto;
 }
 .log p { margin: .1rem 0 .7rem; }
 .log p.urgent { color: var(--accent); font-weight: 600; }
@@ -250,10 +260,10 @@ body.in-game #side-window { position: static; width: auto; max-width: 760px; mar
 .log p.foe { color: var(--danger); }
 
 /* Choices */
-.choices { display: flex; flex-direction: column; gap: .5rem; margin-top: .9rem; }
+.choices { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; max-height: 11rem; overflow-y: auto; }
 .choices button {
-  text-align: left; display: flex; gap: .6rem; align-items: baseline;
-  padding: .7rem .8rem; font-size: 1.02rem;
+  text-align: left; display: inline-flex; gap: .5rem; align-items: baseline;
+  padding: .5rem .7rem; font-size: .95rem; flex: 0 1 auto;
 }
 .choices .num {
   background: var(--accent-ink); color: var(--accent);
