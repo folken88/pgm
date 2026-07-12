@@ -32,10 +32,13 @@ function persistProgress(s) {
   if (!s.run) return;
   let dirty = false;
   for (const h of s.run.heroes) {
-    if (!h.xp) continue;
+    if (!h.xp && !h.negLevels) continue;
     const k = legacyKey(s, h.name);
     const prev = LEGACY[k] || {};
-    if (prev.xp !== h.xp) { LEGACY[k] = { xp: h.xp, level: h.level || 1, at: Date.now() }; dirty = true; }
+    if (prev.xp !== h.xp || (prev.negLevels || 0) !== (h.negLevels || 0)) {
+      LEGACY[k] = { xp: h.xp, level: h.level || 1, negLevels: h.negLevels || 0, at: Date.now() };
+      dirty = true;
+    }
   }
   if (dirty) saveLegacy();
 }
@@ -159,7 +162,10 @@ function startRun(clientId) {
       m._legacyXp = saved.xp;
     }
   }
-  s.run = partyrun.createPartyRun(ready.map(m => ({ clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai })));
+  s.run = partyrun.createPartyRun(ready.map(m => {
+    const saved = LEGACY[legacyKey(s, m.name)] || {};
+    return { clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai, negLevels: saved.negLevels || 0 };
+  }));
   for (const m of ready) {
     if (!m._legacyXp) continue;
     const h = s.run.heroes.find(x => x.name === m.name);

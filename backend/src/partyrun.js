@@ -25,6 +25,7 @@ function createPartyRun(party, roll = Math.random) {
   const run = { heroes: party.map(heroCombatant), combatants: [], room: null,
     turnIndex: 0, round: 1, phase: 'combat', gold: 0, roomsCleared: 0,
     inventory: [], seq: 0, log: [] };
+  run.heroes.forEach((h, i) => applyPersistedNegLevels(h, party[i].negLevels || 0));
   run.shim = new DungeonShim(run);
   spawnRoom(run, roll);
   return run;
@@ -40,6 +41,32 @@ function takeItem(run, key) {
   if (!slot || slot.qty <= 0) return false;
   slot.qty -= 1;
   if (slot.qty <= 0) run.inventory = run.inventory.filter(s => s.qty > 0);
+  return true;
+}
+
+/** HOUSE RULE (Tobias 2026-07-11): you die when negative HP EXCEEDS your CON
+ *  score — 14 CON dies at −15. Between 0 and −CON you are DYING: unconscious,
+ *  bleeding 1/round until a DC (10 + neg HP) CON check stabilizes you. No
+ *  level loss on death, but revival imposes NEGATIVE LEVELS (PF1 RAW: Raise
+ *  Dead/Reincarnate 2, Breath of Life/Resurrection 1) — −1 attack & −5 max HP
+ *  each, cured only by Restoration. Energy-drain undead inflict them too. */
+function conScore(h) { return (h.abilityScores && h.abilityScores.con) || 10; }
+function isDead(h) { return !!h.dead; }
+function applyNegLevels(h, n, why, run) {
+  if (!n) return;
+  h.negLevels = (h.negLevels || 0) + n;
+  h.maxHp = Math.max(1, h.maxHp - 5 * n);
+  if (h.hp > h.maxHp) h.hp = h.maxHp;
+  if (h.weapon) h.weapon.toHit = (h.weapon.toHit || 0) - n;
+  logEvent(run, `☠️ ${h.name} takes ${n} negative level${n === 1 ? '' : 's'}${why ? ' (' + why + ')' : ''} — weaker until a Restoration.`, 'urgent');
+}
+function cureNegLevels(h, run) {
+  const n = h.negLevels || 0;
+  if (!n) return false;
+  h.negLevels = 0;
+  h.maxHp += 5 * n;
+  if (h.weapon) h.weapon.toHit = (h.weapon.toHit || 0) + n;
+  logEvent(run, `✨ Restoration lifts ${n} negative level${n === 1 ? '' : 's'} from ${h.name}.`, 'urgent');
   return true;
 }
 
@@ -80,6 +107,14 @@ function heroCombatant(p) {
     abilityScores: d.scores, gear: {}, weaponKey: (c.weapon && c.weapon.name || 'dagger').toLowerCase(),
     weapon: pokerWeapon(c.weapon), spellPool: 0, abilityUses: {}, runAbilityUses: {},
   };
+}
+/** Persisted negative levels (legacy) re-applied silently at run start. */
+function applyPersistedNegLevels(h, n) {
+  if (!n) return;
+  h.negLevels = n;
+  h.maxHp = Math.max(1, h.maxHp - 5 * n);
+  if (h.hp > h.maxHp) h.hp = h.maxHp;
+  if (h.weapon) h.weapon.toHit = (h.weapon.toHit || 0) - n;
 }
 function enemyCombatant(e, i) {
   return {
@@ -242,10 +277,30 @@ function tickFor(run, cb, roll) {
 function runUntilHeroTurn(run, roll) {
   let guard = 0;
   while (run.phase === 'combat' && guard++ < 2000) {
-    run.combatants.forEach(c => { if (c.hp <= 0 && !c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; } });
+    run.combatants.forEach(c => {
+      if (c.hp > 0) return;
+      if (c.side === 'hero' && !c.dead && c.hp < -conScore(c)) {
+        c.dead = true; c.down = true;
+        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent');
+      }
+      if (!c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; }
+    });
     if (living(run, 'enemy').length === 0) return clearRoom(run, roll);
     if (living(run, 'hero').length === 0) return defeat(run);
     const cb = current(run);
+    if (cb && cb.side === 'hero' && cb.down && !cb.dead && !cb.stable) {
+      // DYING: bleed 1, then a DC (10 + negative HP) CON check to stabilize.
+      cb.hp -= 1;
+      if (cb.hp < -conScore(cb)) {
+        cb.dead = true;
+        logEvent(run, `💀 ${cb.name} bleeds out — dead at ${cb.hp}.`, 'urgent');
+      } else {
+        const conMod = Math.floor((conScore(cb) - 10) / 2);
+        const check = rollDie(20, roll) + conMod;
+        if (check >= 10 + Math.abs(cb.hp)) { cb.stable = true; logEvent(run, `${cb.name} stabilizes at ${cb.hp}.`, 'event'); }
+        else logEvent(run, `${cb.name} is dying (${cb.hp}). `, 'event');
+      }
+    }
     if (!cb || cb.down) { nextTurn(run); continue; }
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
@@ -278,9 +333,18 @@ function castSpell(run, hero, spellKey, targetId, roll) {
   const ab = kit[slot];
   if (!kitUses(hero, ab)) return { ok: false, error: 'no uses of ' + ab.name + ' left this room' };
   const before = run.seq;
+  const deadBefore = run.heroes.filter(h => h.dead).map(h => h.id);
   try { shim._useAbility(hero, slot, { targetUid: targetId || undefined }); }
   catch (e) { return { ok: false, error: 'the casting fizzles' }; }
   if (run.seq === before) return { ok: false, error: 'that cannot be cast right now' };
+  // PF1 RAW revival costs (Tobias house rules): Raise Dead/Reincarnate = 2
+  // negative levels, Breath of Life/Resurrection = 1. Revived dead come back marked.
+  const REVIVE_COST = { raisedead: 2, reincarnate: 2, breathoflife: 1, resurrection: 1 };
+  if (REVIVE_COST[ab.key]) {
+    run.heroes.forEach(h => {
+      if (deadBefore.includes(h.id) && h.hp > 0) { h.dead = false; h.stable = false; applyNegLevels(h, REVIVE_COST[ab.key], ab.name, run); }
+    });
+  }
   return { ok: true };
 }
 /** Poker kit-cost availability (free/pool/slot/room/run). */
@@ -350,6 +414,7 @@ function aiHeroTurn(run, hero, roll) {
   if (foes.length) heroAttack(run, hero, foes.slice().sort((a, b) => a.hp - b.hp)[0], roll);
 }
 
+const ENERGY_DRAINERS = new Set(['wight', 'shadow', 'vampire', 'vampire_spawn', 'spectre', 'wraith']);
 function enemyTurn(run, enemy, roll) {
   if (!enemy.revealed) {
     enemy.revealed = true;
@@ -357,7 +422,16 @@ function enemyTurn(run, enemy, roll) {
   }
   // THE POKER VILLAIN BRAIN: action economy, maneuvers, specials (heal/shout/
   // shaman casts/hellfire...), fight-defensively. Falls back to a basic swing.
-  try { run.shim._enemyAct(enemy); return; } catch (e) {}
+  // Energy-drain undead: whoever they wounded this turn takes a negative level.
+  const drainer = ENERGY_DRAINERS.has(enemy.key);
+  const hpBefore = drainer ? run.heroes.map(h => h.hp) : null;
+  try {
+    run.shim._enemyAct(enemy);
+    if (drainer) {
+      run.heroes.forEach((h, i) => { if (h.hp < hpBefore[i] && !h.dead) applyNegLevels(h, 1, enemy.name + "'s draining touch", run); });
+    }
+    return;
+  } catch (e) {}
   const targets = living(run, 'hero');
   if (!targets.length) return;
   const target = targets.slice().sort((a, b) => a.hp - b.hp)[0];
@@ -385,6 +459,7 @@ function applyAction(run, clientId, action, roll = Math.random) {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     run.phase = 'retreated';
     logEvent(run, `🏳️ The party retreats from the delve — ${run.roomsCleared} room${run.roomsCleared === 1 ? '' : 's'} cleared, ${run.gold} gold carried out. Live to delve again.`, 'urgent');
+    templeRaise(run);
     return { ok: true };
   }
 
@@ -462,7 +537,7 @@ function useItem(run, user, itemKey, targetId, roll) {
     if (!target) { addItem(run, itemKey); return { ok: false, error: 'no ally to heal' }; }
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + items.rollAmount(item, roll));
-    if (target.hp > 0) target.down = false;
+    if (target.hp > 0 && !target.dead) { target.down = false; target.stable = false; }
     logEvent(run, `${user.name} uses ${item.name} on ${target.name}, healing ${target.hp - before}. (${target.hp}/${target.maxHp} HP.)`, 'event', SFX.pick(SFX.SND.flesh, roll));
     return { ok: true };
   }
@@ -590,11 +665,15 @@ function clearRoom(run, roll = Math.random) {
   awardRoomXp(run);
   run.gold += run.room.reward.gp;
   run.roomsCleared += 1;
-  run.heroes.forEach(h => {           // short rest: revive downed + heal to half
+  run.heroes.forEach(h => {           // short rest: the dying recover; the DEAD do not
+    if (h.dead) return;
     const half = Math.ceil(h.maxHp / 2);
     if (h.hp < half) h.hp = half;
-    h.down = false;
+    h.down = false; h.stable = false;
   });
+  if (run.heroes.some(h => h.dead)) {
+    logEvent(run, `The party carries the fallen — only revival magic (or the surface temple) can bring them back.`, 'event');
+  }
   // Treasure: gold, plus ~60% of the time an item from the early-treasure table.
   let found = `${run.room.reward.gp} gold`;
   if (rollDie(100, roll) <= 60) {
@@ -605,7 +684,21 @@ function clearRoom(run, roll = Math.random) {
   logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 
-function defeat(run) { run.phase = 'defeated'; logEvent(run, 'The party has fallen. The dungeon claims you.', 'urgent'); }
+/** Back on the surface the temple raises anyone who died — PF1 Raise Dead,
+ *  2 negative levels each (persist via legacy until a Restoration). */
+function templeRaise(run) {
+  run.heroes.forEach(h => {
+    if (!h.dead) return;
+    h.dead = false; h.down = false; h.stable = false; h.hp = 1;
+    applyNegLevels(h, 2, 'Raise Dead at the surface temple', run);
+  });
+}
+
+function defeat(run) {
+  run.phase = 'defeated';
+  logEvent(run, 'The party has fallen. The dungeon claims you.', 'urgent');
+  templeRaise(run);   // the surface temple recovers and raises the dead — at a price
+}
 
 function logEvent(run, text, priority, sound) {
   run.log.push({ seq: ++run.seq, text, priority: priority || 'event', sound: sound || null });
@@ -639,11 +732,15 @@ function publicRun(run) {
       art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
+      dead: !!c.dead, negLevels: c.negLevels || 0,
       level: c.level || null, xp: c.xp || 0, cls: c.cls || null,
       xpNext: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).next : null,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
-      conditions: condList(c).concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
+      conditions: condList(c)
+        .concat(c.dead ? ['DEAD'] : (c.down && c.side === 'hero') ? [c.stable ? 'stable (' + c.hp + ')' : 'dying (' + c.hp + ')'] : [])
+        .concat(c.negLevels ? [c.negLevels + ' negative level' + (c.negLevels === 1 ? '' : 's')] : [])
+        .concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
       // Split views for the blind B (buffs) / D (debuffs) readouts (poker keymap).
       buffs: (c.buffs && ((c.buffs.toHit || 0) + (c.buffs.ac || 0) + (c.buffs.deflect || 0) + (c.buffs.save || 0)) > 0 ? ['blessed'] : [])
         .concat(c.precast && c.precast.length ? c.precast : []),

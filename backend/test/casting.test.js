@@ -145,3 +145,34 @@ test('AFK sweep: an idle human turn auto-attacks after the timeout', () => {
   const fresh = run.log.slice(before).map(e => e.text).join(' | ');
   assert.match(fresh, /hesitates too long/, 'instinct-attack narrated: ' + fresh);
 });
+
+test('death model: dying below -CON kills; inside it you bleed and can stabilize', () => {
+  const roll = seededRoller(7);
+  const run = pr.createPartyRun(party('fighter', true), roll);
+  let rooms = 0;
+  while (run.phase !== 'combat' && rooms++ < 8) {
+    if (!pr.applyAction(run, 'c1', { type: 'descend' }, roll).ok) break;
+  }
+  const hero = run.heroes.find(h => h.ownerClientId === 'c1');
+  const con = (hero.abilityScores && hero.abilityScores.con) || 10;
+  // Straight to past the threshold: dead.
+  hero.hp = -(con + 1);
+  for (const c of run.combatants) if (c.side === 'enemy') { c.hp = 200; c.maxHp = 200; }
+  pr.applyAction(run, 'c2', { type: 'pass' }, roll);
+  assert.ok(hero.dead, 'hero at ' + hero.hp + ' with CON ' + con + ' is DEAD');
+  assert.ok(run.log.some(e => /DEAD/.test(e.text)), 'death narrated');
+});
+
+test('death model: temple raise on retreat costs 2 negative levels, persisted', () => {
+  const roll = seededRoller(12);
+  const run = pr.createPartyRun(party('fighter', true), roll);
+  const hero = run.heroes.find(h => h.ownerClientId === 'c1');
+  const maxBefore = hero.maxHp, toHitBefore = hero.weapon.toHit;
+  hero.dead = true; hero.down = true; hero.hp = -20;
+  pr.applyAction(run, 'c2', { type: 'retreat' }, roll);
+  assert.strictEqual(run.phase, 'retreated');
+  assert.ok(!hero.dead && hero.hp === 1, 'temple raised the dead to 1 HP');
+  assert.strictEqual(hero.negLevels, 2, '2 negative levels from Raise Dead');
+  assert.strictEqual(hero.maxHp, Math.max(1, maxBefore - 10), 'max HP -5 per level');
+  assert.strictEqual(hero.weapon.toHit, toHitBefore - 2, 'attack -1 per level');
+});
