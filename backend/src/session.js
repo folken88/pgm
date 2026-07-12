@@ -296,7 +296,7 @@ function enterPub(s) {
   pubBank(s, s.run.gold || 0);
   for (const h of s.run.heroes) {
     const m = [...s.members.values()].find(x => x.name === h.name);
-    if (m) { m.dead = !!h.dead; m.negLevels = h.negLevels || 0; }
+    if (m) { m.dead = !!h.dead; m.negLevels = h.negLevels || 0; m.pack = h.pack || m.pack || []; }
     const k = legacyKey(s, h.name);
     LEGACY[k] = Object.assign({}, LEGACY[k], { dead: !!h.dead, negLevels: h.negLevels || 0, at: Date.now() });
   }
@@ -398,6 +398,12 @@ function startRun(clientId) {
     }
     s.stash = null;
   }
+  for (const m of ready) {   // personal packs ride between runs
+    if (!m.pack || !m.pack.length) continue;
+    const h = s.run.heroes.find(x => x.name === m.name);
+    if (h) h.pack = m.pack.map(x => Object.assign({}, x));
+  }
+  s.run.hostId = s.host;   // the leader may use pile loot directly (self-send implied)
   const dead = [...s.members.values()].filter(m => m.dead);
   if (dead.length) delveLog(s, 'LUGGAGE: hauling the dead — ' + dead.map(m => m.name).join(', '));
   s.phase = 'playing';
@@ -410,6 +416,9 @@ function startRun(clientId) {
 
 function action(clientId, act) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
+  if ((act.type === 'loot_send' || act.type === 'loot_party') && memberIdOf(clientId) !== s.host) {
+    return { ok: false, error: 'only the party leader divides the loot' };
+  }
   const r = partyrun.applyAction(s.run, memberIdOf(clientId), act);
   flushRunLog(s);
   persistProgress(s);

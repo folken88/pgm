@@ -36,6 +36,22 @@ function addItem(run, key, qty) {
   if (slot) slot.qty += (qty || 1);
   else run.inventory.push({ key, qty: qty || 1 });
 }
+/** Consume ONE of `key` this hero may use: their own pack first, then any
+ *  pile slot marked party property (take-at-will). Unflagged pile loot is
+ *  the leader's to divide — nobody can use it straight off the ground. */
+function takeUsable(run, hero, key) {
+  const pk = (hero.pack || []).find(s2 => s2.key === key && s2.qty > 0);
+  if (pk) { pk.qty -= 1; hero.pack = hero.pack.filter(s2 => s2.qty > 0); return true; }
+  const isLeader = run.hostId && hero.ownerClientId === run.hostId;
+  const slot = run.inventory.find(s2 => s2.key === key && (s2.party || isLeader) && s2.qty > 0);
+  if (slot) { slot.qty -= 1; if (slot.qty <= 0) run.inventory = run.inventory.filter(s2 => s2.qty > 0); return true; }
+  return false;
+}
+function giveToPack(hero, key, qty) {
+  hero.pack = hero.pack || [];
+  const slot = hero.pack.find(s2 => s2.key === key);
+  if (slot) slot.qty += (qty || 1); else hero.pack.push({ key, qty: qty || 1 });
+}
 function takeItem(run, key) {
   const slot = run.inventory.find(s => s.key === key);
   if (!slot || slot.qty <= 0) return false;
@@ -399,6 +415,19 @@ function summonTurn(run, minion, roll) {
 }
 
 function aiHeroTurn(run, hero, roll) {
+  // Take-at-will (Tobias): an AI companion low on blood helps itself to a
+  // party-property healing potion before acting.
+  if (hero.hp > 0 && hero.hp <= hero.maxHp * 0.45) {
+    const hasOwn = (hero.pack || []).some(s2 => items.ITEM_BY_KEY[s2.key] && items.ITEM_BY_KEY[s2.key].effect && items.ITEM_BY_KEY[s2.key].effect.kind === 'heal');
+    if (!hasOwn) {
+      const slot = run.inventory.find(s2 => s2.party && s2.qty > 0 && items.ITEM_BY_KEY[s2.key] && items.ITEM_BY_KEY[s2.key].effect && items.ITEM_BY_KEY[s2.key].effect.kind === 'heal');
+      if (slot) {
+        slot.qty -= 1; if (slot.qty <= 0) run.inventory = run.inventory.filter(s2 => s2.qty > 0);
+        giveToPack(hero, slot.key, 1);
+        logEvent(run, `${hero.name} takes ${items.ITEM_BY_KEY[slot.key].name} from the party loot.`, 'event');
+      }
+    }
+  }
   // Potion fallback first (poker AI heals via spells; the party bag is PGM's).
   const allies = run.combatants.filter(c => c.side === 'hero');
   const badlyHurt = allies.some(c => !c.down && c.hp <= c.maxHp / 3) || allies.some(c => c.down);
@@ -459,6 +488,35 @@ function applyAction(run, clientId, action, roll = Math.random) {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     run.phase = 'retreated';
     logEvent(run, `🏳️ The party retreats from the delve — ${run.roomsCleared} room${run.roomsCleared === 1 ? '' : 's'} cleared, ${run.gold} gold carried out. Live to delve again.`, 'urgent');
+    return { ok: true };
+  }
+
+  // ── PARTY LOOT (Tobias): leader sends, leader flags party property,
+  // anyone takes what is flagged. Free actions, not turn-gated.
+  if (type === 'loot_send' || type === 'loot_party' || type === 'loot_take') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero && type === 'loot_take') return { ok: false, error: 'not a party member' };
+    const slot = run.inventory.find(s2 => s2.key === action.item && s2.qty > 0);
+    if (!slot) return { ok: false, error: 'the pile has none of that' };
+    const nm = items.ITEM_BY_KEY[slot.key] ? items.ITEM_BY_KEY[slot.key].name : slot.key;
+    if (type === 'loot_send') {
+      const to = run.heroes.find(h => h.id === action.target || (h.name || '').toLowerCase() === String(action.target || '').toLowerCase());
+      if (!to) return { ok: false, error: 'send to whom?' };
+      slot.qty -= 1; if (slot.qty <= 0) run.inventory = run.inventory.filter(s2 => s2.qty > 0);
+      giveToPack(to, slot.key || action.item, 1);
+      logEvent(run, `${nm} goes to ${to.name}'s pack.`, 'event');
+      return { ok: true };
+    }
+    if (type === 'loot_party') {
+      slot.party = !slot.party;
+      logEvent(run, `${nm} is ${slot.party ? 'now PARTY PROPERTY — anyone may take it' : 'back in the pile, leader to divide'}.`, 'event');
+      return { ok: true };
+    }
+    // loot_take
+    if (!slot.party) return { ok: false, error: 'that is not party property — the leader divides the pile' };
+    slot.qty -= 1; if (slot.qty <= 0) run.inventory = run.inventory.filter(s2 => s2.qty > 0);
+    giveToPack(hero, action.item, 1);
+    logEvent(run, `${hero.name} takes ${nm} from the party loot.`, 'event');
     return { ok: true };
   }
 
@@ -529,11 +587,11 @@ function healTarget(run, targetId) {
 function useItem(run, user, itemKey, targetId, roll) {
   const item = items.ITEM_BY_KEY[itemKey];
   if (!item) return { ok: false, error: 'no such item' };
-  if (!takeItem(run, itemKey)) return { ok: false, error: 'the party has none of that' };
+  if (!takeUsable(run, user, itemKey)) return { ok: false, error: 'not in your pack — ask the leader to send it, or take party property first' };
   const e = item.effect;
   if (e.kind === 'heal') {
     const target = healTarget(run, targetId);
-    if (!target) { addItem(run, itemKey); return { ok: false, error: 'no ally to heal' }; }
+    if (!target) { giveToPack(user, itemKey); return { ok: false, error: 'no ally to heal' }; }
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + items.rollAmount(item, roll));
     if (target.hp > 0 && !target.dead) { target.down = false; target.stable = false; }
@@ -542,7 +600,7 @@ function useItem(run, user, itemKey, targetId, roll) {
   }
   if (e.kind === 'throw') {
     const target = pickTarget(run, targetId);
-    if (!target) { addItem(run, itemKey); return { ok: false, error: 'no visible target' }; }
+    if (!target) { giveToPack(user, itemKey); return { ok: false, error: 'no visible target' }; }
     if (e.vsUndead && !(target.creature && target.creature.undead)) {
       logEvent(run, `${user.name} throws ${item.name} at ${target.name}, but it splashes harmlessly — no effect on the living.`, 'event');
       return { ok: true };
@@ -597,11 +655,11 @@ function heroAttack(run, hero, target, roll) {
 function equipItem(run, hero, itemKey) {
   const item = items.ITEM_BY_KEY[itemKey];
   if (!item || item.type !== 'gear') return { ok: false, error: 'not equippable' };
-  if (!takeItem(run, itemKey)) return { ok: false, error: 'the party does not have that' };
+  if (!takeUsable(run, hero, itemKey)) return { ok: false, error: 'not in your pack — ask the leader to send it, or take party property first' };
   const c = hero.character;
   if (item.gearType === 'weapon') {
     const w = pf1.weapons.WEAPON_BY_NAME[item.weaponName];
-    if (!w) { addItem(run, itemKey); return { ok: false, error: 'unknown weapon' }; }
+    if (!w) { giveToPack(hero, itemKey); return { ok: false, error: 'unknown weapon' }; }
     c.weapon = pokerWeapon(w); hero.weapon = c.weapon; c.weaponName = item.short || item.name;
     logEvent(run, `${hero.name} equips the ${item.name}.`, 'event');
   } else {                                    // armor
@@ -729,6 +787,10 @@ function publicRun(run) {
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
       dead: !!c.dead, negLevels: c.negLevels || 0,
+      pack: c.side === 'hero' ? (c.pack || []).map(s2 => {
+        const it = items.ITEM_BY_KEY[s2.key] || { name: s2.key, icon: '?', type: 'misc' };
+        return { key: s2.key, name: it.name, icon: it.icon, type: it.type, verb: it.verb || 'equip', kind: it.effect ? it.effect.kind : null, qty: s2.qty };
+      }) : null,
       level: c.level || null, xp: c.xp || 0, cls: c.cls || null,
       xpNext: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).next : null,
       current: cb ? c.id === cb.id : false,
@@ -745,11 +807,11 @@ function publicRun(run) {
     })),
     enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),
     inventory: run.inventory.map(s => {
-      const it = items.ITEM_BY_KEY[s.key];
+      const it = items.ITEM_BY_KEY[s.key] || { name: s.key, short: '', icon: '?', type: 'misc' };
       return {
         key: s.key, name: it.name, short: it.short, icon: it.icon,
         type: it.type, verb: it.verb || 'equip', gearType: it.gearType || null,
-        kind: it.effect ? it.effect.kind : null, qty: s.qty,
+        kind: it.effect ? it.effect.kind : null, qty: s.qty, party: !!s.party,
       };
     }),
     turn,

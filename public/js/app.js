@@ -439,23 +439,84 @@
     });
   }
 
-  // RIGHT: inventory & treasure with contextual actions.
+  // RIGHT: the PARTY LOOT PILE (leader sends / flags party property; flagged
+  // items are take-at-will) + YOUR PACK (your own usable items).
+  function lootAction(type, item, target) {
+    api('/api/session/action', { clientId: state.clientId, action: type, item: item, target: target })
+      .then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot.', 'urgent'); });
+  }
+  function myPack() { var h = myHero(); return (h && h.pack) || []; }
   function renderLootPanel(run) {
     el('gold-line').textContent = 'Gold: ' + (run.gold || 0);
     var box = el('bag-list'); box.innerHTML = '';
     var inv = run.inventory || [];
-    if (!inv.length) { box.innerHTML = '<p class="delve-empty">The bag is empty.</p>'; return; }
+    var pack = myPack();
+    var isHost = state.you && state.you.youAreHost;
     var myTurn = !!(run.turn && run.turn.ownerClientId === state.myId);
-    inv.forEach(function (i) {
-      var row = document.createElement('div'); row.className = 'bag-item';
-      var actBtn = '';
-      if (i.type === 'gear' && run.phase === 'cleared' && state.role === 'player') actBtn = '<button data-act="equip">Equip</button>';
-      else if (i.type === 'consumable' && myTurn) actBtn = '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
-      row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.short || i.name) + ' ×' + i.qty + '</span>' + actBtn;
-      var b = row.querySelector('button');
-      if (b) b.addEventListener('click', function () { doGameAction({ id: b.dataset.act, item: i.key, label: i.name }); });
-      box.appendChild(row);
-    });
+    var isPlayer = state.role === 'player';
+    if (!inv.length && !pack.length) { box.innerHTML = '<p class="delve-empty">No loot yet.</p>'; return; }
+
+    if (inv.length) {
+      var ph = document.createElement('h4'); ph.textContent = 'Party pile'; box.appendChild(ph);
+      var heroes = run.combatants.filter(function (c) { return c.side === 'hero' && !c.summoned; });
+      inv.forEach(function (i) {
+        var row = document.createElement('div'); row.className = 'bag-item' + (i.party ? ' is-party' : '');
+        var btns = '';
+        if (i.party && isPlayer) btns += '<button data-act="loot_take">Take</button>';
+        if (isHost) {
+          btns += '<button data-act="loot_party">' + (i.party ? 'Unmark' : 'Party') + '</button>';
+          btns += '<button data-act="send-open">Send</button>';
+        }
+        row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.short || i.name) + ' ×' + i.qty
+          + (i.party ? ' <em>(party property)</em>' : '') + '</span>' + btns;
+        row.querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (b.dataset.act === 'send-open') {
+              var pick = row.querySelector('.send-pick');
+              if (pick) { pick.remove(); return; }
+              pick = document.createElement('div'); pick.className = 'send-pick';
+              heroes.forEach(function (h) {
+                var hb = document.createElement('button');
+                hb.textContent = String.fromCodePoint(0x2192) + ' ' + h.name;
+                hb.addEventListener('click', function () { lootAction('loot_send', i.key, h.id); });
+                pick.appendChild(hb);
+              });
+              row.appendChild(pick);
+            } else lootAction(b.dataset.act, i.key);
+          });
+        });
+        box.appendChild(row);
+      });
+    }
+
+    if (pack.length) {
+      var kh = document.createElement('h4'); kh.textContent = 'Your pack'; box.appendChild(kh);
+      pack.forEach(function (i) {
+        var row = document.createElement('div'); row.className = 'bag-item';
+        var actBtn = '';
+        if (i.type === 'gear' && run.phase === 'cleared' && isPlayer) actBtn = '<button data-act="equip">Equip</button>';
+        else if (i.type === 'consumable' && myTurn) actBtn = '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
+        row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.name) + ' ×' + i.qty + '</span>' + actBtn;
+        var b = row.querySelector('button');
+        if (b) b.addEventListener('click', function () { doGameAction({ id: b.dataset.act, item: i.key, label: i.name }); });
+        box.appendChild(row);
+      });
+    }
+  }
+  // What THIS hero may consume right now: their pack + party-flagged pile
+  // items (+ the whole pile for the leader — dividing to yourself is implied).
+  function matchLoot(name) {
+    var run = myRun(); if (!run) return null;
+    name = name.replace(/\b(the|a|an|of)\b/g, '').trim().toLowerCase();
+    return (run.inventory || []).find(function (i) {
+      return i.name.toLowerCase().indexOf(name) >= 0 || (i.short || '').toLowerCase().indexOf(name) >= 0 || i.key.indexOf(name.replace(/\s+/g, '_')) >= 0;
+    }) || null;
+  }
+  function usableItems(run) {
+    var isHost = state.you && state.you.youAreHost;
+    var pile = (run.inventory || []).filter(function (i) { return i.party || isHost; });
+    var seen = {};
+    return myPack().concat(pile).filter(function (i) { if (seen[i.key]) return false; seen[i.key] = true; return true; });
   }
   function renderGameChoices(run, myTurn) {
     var choices = [];
@@ -466,12 +527,12 @@
       ((run.turn && run.turn.spells) || []).forEach(function (s) {
         choices.push({ id: 'cast', spell: s.key, label: 'Cast ' + s.name + (s.uses != null ? ' (' + s.uses + ')' : '') });
       });
-      (run.inventory || []).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
+      usableItems(run).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
         choices.push({ id: 'use', item: i.key, label: (i.verb === 'drink' ? 'Drink ' : 'Throw ') + (i.short || i.name) });
       });
       choices.push({ id: 'pass', label: 'Hold action' });
     } else if (run.phase === 'cleared') {
-      (run.inventory || []).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
+      usableItems(run).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
         choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
       });
       choices.push({ id: 'descend', label: 'Descend deeper' });
@@ -668,6 +729,29 @@
       var gname = t.replace(/\b(equip|wield|wear|don|the|a|an)\b/g, '').trim();
       var eq = gname && eqs.find(function (c) { return c.label.toLowerCase().indexOf(gname) >= 0; });
       return doGameAction(eq || eqs[0]);
+    }
+    // PARTY LOOT by voice/chat (blind-first): "loot" reads the pile+pack,
+    // "take flask", "send potion to gaspar", "mark greatsword party".
+    if (/^(loot|pile|inventory|items)$/.test(t)) {
+      var run2 = myRun(); var inv2 = (run2 && run2.inventory) || []; var pk2 = myPack();
+      var pileTxt = inv2.length ? 'Pile: ' + inv2.map(function (i) { return i.name + ' times ' + i.qty + (i.party ? ', party property' : ''); }).join('; ') : 'The pile is empty';
+      var packTxt = pk2.length ? '. Your pack: ' + pk2.map(function (i) { return i.name + ' times ' + i.qty; }).join('; ') + '.' : '. Your pack is empty.';
+      return BM.speak(pileTxt + packTxt, 'urgent');
+    }
+    var mSend = t.match(/^(?:send|give)\s+(.+?)\s+to\s+([a-z' ]+)$/);
+    if (mSend) {
+      var it1 = matchLoot(mSend[1]); if (!it1) return BM.speak('No ' + mSend[1] + ' in the pile.', 'urgent');
+      return lootAction('loot_send', it1.key, mSend[2].trim());
+    }
+    var mMark = t.match(/^(?:mark|flag)\s+(.+?)(?:\s+(?:as\s+)?party(?:\s+property)?)?$/);
+    if (/^(?:mark|flag)\s/.test(t) && mMark) {
+      var it2 = matchLoot(mMark[1]); if (!it2) return BM.speak('No ' + mMark[1] + ' in the pile.', 'urgent');
+      return lootAction('loot_party', it2.key);
+    }
+    var mTake = t.match(/^(?:take|grab|claim)\s+(.+)$/);
+    if (mTake) {
+      var it3 = matchLoot(mTake[1]); if (!it3) return BM.speak('No ' + mTake[1] + ' in the pile.', 'urgent');
+      return lootAction('loot_take', it3.key);
     }
     if (/\b(retreat|withdraw|fall back)\b/.test(t)) return doRetreat();
     if (/\b(descend|deeper|continue|next|onward)\b/.test(t)) return chooseById('descend');

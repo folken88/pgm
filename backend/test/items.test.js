@@ -31,7 +31,7 @@ test('drinking a Cure Light Wounds potion heals the most-wounded ally', () => {
   const roll = seededRoller(4);
   const run = pr.createPartyRun(humans(), roll);
   run.heroes[0].hp = 1;                       // wound Kara
-  run.inventory.push({ key: 'potion_clw', qty: 1 });
+  run.inventory.push({ key: 'potion_clw', qty: 1, party: true });   // flagged party property (loot rule)
   const turn = pr.publicRun(run).turn;
   assert.ok(turn, 'a human has the turn');
   const r = pr.applyAction(run, turn.ownerClientId, { type: 'use', item: 'potion_clw' }, roll);
@@ -51,7 +51,7 @@ test('using an item you do not have is rejected and does not burn the turn', () 
 
 test('publicRun exposes the party inventory', () => {
   const run = pr.createPartyRun(humans(), seededRoller(4));
-  run.inventory.push({ key: 'alchemists_fire', qty: 2 });
+  run.inventory.push({ key: 'alchemists_fire', qty: 2, party: true });   // flagged party property (loot rule)
   const inv = pr.publicRun(run).inventory;
   const fire = inv.find(i => i.key === 'alchemists_fire');
   assert.ok(fire && fire.qty === 2 && fire.verb === 'throw');
@@ -61,7 +61,7 @@ test('equipping a found weapon swaps the hero\'s weapon', () => {
   const roll = seededRoller(4);
   const run = pr.createPartyRun(humans(), roll);
   run.phase = 'cleared';                       // equip happens between fights
-  run.inventory.push({ key: 'g_greatsword', qty: 1 });
+  run.inventory.push({ key: 'g_greatsword', qty: 1, party: true });   // flagged party property (loot rule)
   const hero = run.heroes.find(h => h.ownerClientId === 'c1');
   const r = pr.applyAction(run, 'c1', { type: 'equip', item: 'g_greatsword' }, roll);
   assert.ok(r.ok, 'equip succeeded');
@@ -75,7 +75,7 @@ test('equipping found armor raises AC and flat-footed AC', () => {
   run.phase = 'cleared';
   const hero = run.heroes.find(h => h.ownerClientId === 'c1');
   const beforeAc = hero.ac;
-  run.inventory.push({ key: 'g_chainshirt', qty: 1 });   // +4 armor
+  run.inventory.push({ key: 'g_chainshirt', qty: 1, party: true });   // flagged party property (loot rule)   // +4 armor
   pr.applyAction(run, 'c1', { type: 'equip', item: 'g_chainshirt' }, roll);
   const dex = hero.character.derived.mods.dex || 0;
   assert.strictEqual(hero.ac, 10 + dex + 4, 'AC recomputed with chain shirt');
@@ -91,7 +91,7 @@ test('holy water damages undead but fizzles on the living', () => {
   assert.ok(foe, 'a revealed foe to target');
   // Living target: fizzle, no damage.
   foe.creature.undead = false;
-  run.inventory.push({ key: 'holy_water', qty: 1 });
+  run.inventory.push({ key: 'holy_water', qty: 1, party: true });   // flagged party property (loot rule)
   const beforeLiving = foe.hp;
   pr.applyAction(run, turn.ownerClientId, { type: 'use', item: 'holy_water', target: foe.id }, roll);
   assert.strictEqual(foe.hp, beforeLiving, 'no effect on the living');
@@ -112,4 +112,32 @@ test('clearing rooms drops treasure items at least sometimes', () => {
     if (run.phase === 'cleared' && run.inventory.length > 0) gotItem = true;
   }
   assert.ok(gotItem, 'some cleared room dropped an item');
+});
+
+test('party loot: leader sends, flags party property, member takes; non-leader denied', () => {
+  const session = require('../src/session');
+  session._reset();
+  const a = session.createDelve({ name: 'Leader', icon: 'X', delveName: 'loot-test' });
+  session.setCharacter(a.clientId, { race: 'human', cls: 'fighter' });
+  const b = session.joinDelve(a.sessionId, { name: 'Grunt', icon: 'X', role: 'player' });
+  session.setCharacter(b.clientId, { race: 'human', cls: 'fighter' });
+  session.startRun(a.clientId);
+  const s = session._testInternals(a.clientId);
+  s.run.inventory.push({ key: 'potion_clw', qty: 2 });
+  // Non-leader may not divide.
+  const denied = session.action(b.clientId, { type: 'loot_send', item: 'potion_clw', target: 'Grunt' });
+  assert.strictEqual(denied.ok, false);
+  assert.match(denied.error, /leader/);
+  // Grunt can't take unflagged pile loot either.
+  const early = session.action(b.clientId, { type: 'loot_take', item: 'potion_clw' });
+  assert.strictEqual(early.ok, false);
+  // Leader sends one to Grunt...
+  assert.ok(session.action(a.clientId, { type: 'loot_send', item: 'potion_clw', target: 'Grunt' }).ok);
+  const grunt = s.run.heroes.find(h => h.name === 'Grunt');
+  assert.strictEqual((grunt.pack || []).find(x => x.key === 'potion_clw').qty, 1, 'in the pack');
+  // ...and flags the rest as party property; Grunt takes at will.
+  assert.ok(session.action(a.clientId, { type: 'loot_party', item: 'potion_clw' }).ok);
+  assert.ok(session.action(b.clientId, { type: 'loot_take', item: 'potion_clw' }).ok);
+  assert.strictEqual(grunt.pack.find(x => x.key === 'potion_clw').qty, 2, 'took the flagged one too');
+  assert.ok(!s.run.inventory.some(x => x.key === 'potion_clw'), 'pile emptied');
 });
