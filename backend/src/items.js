@@ -25,6 +25,14 @@ const CONSUMABLES = [
 
 // GEAR — found weapons (weaponName must exist in pf1core WEAPON_BY_NAME) and
 // armor (acBonus replaces the wearer's armor bonus). Equipped between fights.
+// Spell COMPONENTS (Tobias 2026-07-11): expensive-component spells cost their
+// component's PF1 price at the Swashgoblin — unless you FOUND one below and
+// hung on to it, in which case only the casting fee is due.
+const COMPONENTS = [
+  { key: 'diamond', name: 'Flawless Diamond (5,000gp)', short: 'Raise Dead component', icon: String.fromCodePoint(0x1F48E), type: 'component', component: 'raisedead' },
+  { key: 'diamond_dust', name: 'Diamond Dust (100gp)', short: 'Restoration component', icon: String.fromCodePoint(0x2728), type: 'component', component: 'restoration' },
+];
+
 const GEAR = [
   { key: 'g_longsword', name: 'Longsword', short: 'longsword', type: 'gear', gearType: 'weapon', icon: '🗡️', value: 15, weight: 3, weaponName: 'longsword' },
   { key: 'g_battleaxe', name: 'Battle Axe', short: 'battle axe', type: 'gear', gearType: 'weapon', icon: '🪓', value: 10, weight: 3, weaponName: 'battle axe' },
@@ -35,7 +43,7 @@ const GEAR = [
   { key: 'g_chainshirt', name: 'Chain Shirt', short: 'chain shirt', type: 'gear', gearType: 'armor', icon: '🛡️', value: 100, weight: 1, acBonus: 4 },
 ];
 
-const ALL = CONSUMABLES.concat(GEAR);
+const ALL = CONSUMABLES.concat(GEAR).concat(COMPONENTS);
 const ITEM_BY_KEY = Object.fromEntries(ALL.map(i => [i.key, i]));
 const TOTAL_WEIGHT = ALL.reduce((s, i) => s + i.weight, 0);
 
@@ -52,4 +60,5 @@ function rollAmount(item, roll = Math.random) {
   return Math.max(1, rollDice(e.count, e.sides, roll) + (e.bonus || 0));
 }
 
-module.exports = { CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };
+module.exports = {
+  COMPONENTS, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };

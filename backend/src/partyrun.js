@@ -680,6 +680,14 @@ function clearRoom(run, roll = Math.random) {
     addItem(run, key, 1);
     found += ` and ${items.ITEM_BY_KEY[key].name}`;
   }
+  // RARE component finds (Tobias): hang on to these — a found diamond makes a
+  // future Raise Dead cheap. Deeper rooms are likelier to hide one.
+  const depth = run.roomsCleared;
+  if (rollDie(100, roll) <= Math.min(12, 3 + depth)) {
+    const comp = rollDie(100, roll) <= 30 ? 'diamond' : 'diamond_dust';
+    addItem(run, comp, 1);
+    found += ` — and tucked in a niche, ${items.ITEM_BY_KEY[comp].name}!`;
+  }
   logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 

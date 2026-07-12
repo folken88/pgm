@@ -58,6 +58,64 @@ const MAX_PARTY = 8;        // humans + AI companions per delve
 const MAX_SPECTATORS = 10;
 const ICONS = ['🧙','🧝','🛡️','⚔️','🏹','🗡️','🪓','🔮','🐉','🐺','🦅','💀','👑','🎭','🕯️','⚗️'];
 
+// ── Savable/resumable delves (Tobias 2026-07-11): every live delve is written
+// to data/sessions/<id>.json after each meaningful change and restored on boot.
+// Sets serialize as {__set:[...]}; the run's shim is rebuilt on load.
+const SESS_DIR = path.join(DATA_DIR, 'sessions');
+try { fs.mkdirSync(SESS_DIR, { recursive: true }); } catch (e) {}
+function sessFile(s) { return path.join(SESS_DIR, s.id + '.json'); }
+function packer(k, v) {
+  if (v instanceof Set) return { __set: [...v] };
+  if (k === 'shim') return undefined;
+  return v;
+}
+function unpacker(k, v) { return (v && v.__set) ? new Set(v.__set) : v; }
+function saveSession(s) {
+  try {
+    const doc = {
+      id: s.id, name: s.name, phase: s.phase, host: s.host,
+      createdAt: s.createdAt, startedAt: s.startedAt, _logSeq: s._logSeq || 0,
+      stash: s.stash || null, corpses: s.corpses || null,
+      members: [...s.members.values()],
+      run: s.run ? Object.assign({}, s.run, { shim: undefined }) : null,
+    };
+    fs.writeFileSync(sessFile(s), JSON.stringify(doc, packer));
+  } catch (e) { try { console.warn('[session] save failed', s.id, e.message); } catch (e2) {} }
+}
+function deleteSave(s) { try { fs.unlinkSync(sessFile(s)); } catch (e) {} }
+function restoreSessions() {
+  let files = [];
+  try { files = fs.readdirSync(SESS_DIR).filter(f => f.endsWith('.json')); } catch (e) { return; }
+  for (const f of files) {
+    try {
+      const doc = JSON.parse(fs.readFileSync(path.join(SESS_DIR, f), 'utf8'), unpacker);
+      const s = {
+        id: doc.id, name: doc.name, phase: doc.phase, host: doc.host,
+        createdAt: doc.createdAt, startedAt: doc.startedAt, _logSeq: doc._logSeq || 0,
+        stash: doc.stash || null, corpses: doc.corpses || null,
+        members: new Map(doc.members.map(m => [m.memberId, m])),
+        spectators: new Map(), run: doc.run || null,
+      };
+      if (s.run) {
+        // combatants/heroes were serialized as separate copies of the same
+        // objects — re-link heroes to the combatant instances by id.
+        const byId = new Map(s.run.combatants.map(c => [c.id, c]));
+        s.run.heroes = s.run.heroes.map(h => byId.get(h.id) || h);
+        s.run.shim = new (require('./pokerdungeon/shim').DungeonShim)(s.run);
+        s.run.turnStartedAt = Date.now();   // don't AFK-fire on a freshly restored delve
+      }
+      const n = parseInt(String(s.id).replace(/\D/g, ''), 10) || 0;
+      if (n >= sid) sid = n + 1;
+      for (const m of s.members.values()) {
+        const mn = parseInt(String(m.memberId).replace(/\D/g, ''), 10) || 0;
+        if (mn >= seq) seq = mn + 1;
+      }
+      sessions.set(s.id, s);
+      console.log('[session] restored delve ' + s.id + ' "' + s.name + '" (' + s.phase + ')');
+    } catch (e) { try { console.warn('[session] restore failed for', f, e.message); } catch (e2) {} }
+  }
+}
+
 const sessions = new Map();   // sessionId -> delve
 const clients = new Map();    // clientId -> { sessionId, role }
 let seq = 0, sid = 0;
@@ -77,7 +135,7 @@ function createDelve({ name, icon, delveName }) {
   const clientId = newClientId();
   s.host = clientId;
   s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
-  clients.set(clientId, { sessionId: id, role: 'player' });
+  clients.set(clientId, { sessionId: id, role: 'player', memberId: clientId });
   sessions.set(id, s);
   delveLog(s, `DELVE CREATED "${s.name}" by ${name} ${icon}`);
   return { ok: true, clientId, sessionId: id };
@@ -88,11 +146,23 @@ function joinDelve(sessionId, { name, icon, role }) {
   if (!s) return { ok: false, error: 'That delve no longer exists.' };
   name = cleanName(name); icon = cleanIcon(icon);
   if (role === 'player') {
-    if (s.phase !== 'lobby') return { ok: false, error: 'That delve has already set out — you can spectate.', canSpectate: true, sessionId };
+    // RESUME: a saved/live delve can be re-entered by the SAME hero name if
+    // that seat is a human currently unclaimed (server restarted, tab closed).
+    if (s.phase !== 'lobby') {
+      const seat = [...s.members.values()].find(m => !m.ai && m.name.toLowerCase() === name.toLowerCase());
+      const claimed = seat && [...clients.values()].some(c => c.sessionId === s.id && c.memberId === seat.memberId);
+      if (seat && !claimed) {
+        const clientId = newClientId();
+        clients.set(clientId, { sessionId, role: 'player', memberId: seat.memberId });
+        delveLog(s, `PLAYER RECLAIMED SEAT: ${seat.name}`);
+        return { ok: true, clientId, sessionId, role: 'player', reclaimed: true };
+      }
+      return { ok: false, error: 'That delve has already set out — you can spectate. (Party members can rejoin under their own name.)', canSpectate: true, sessionId };
+    }
     if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'That party is full.', canSpectate: true, sessionId };
     const clientId = newClientId();
     s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
-    clients.set(clientId, { sessionId, role: 'player' });
+    clients.set(clientId, { sessionId, role: 'player', memberId: clientId });
     delveLog(s, `PLAYER JOINED: ${name}`);
     return { ok: true, clientId, sessionId, role: 'player' };
   }
@@ -107,10 +177,15 @@ function sessionOf(clientId) {
   const c = clients.get(clientId);
   return c ? sessions.get(c.sessionId) : null;
 }
+/** The stable in-run identity for a client (survives reclaim after resume). */
+function memberIdOf(clientId) {
+  const c = clients.get(clientId);
+  return (c && c.memberId) || clientId;
+}
 
 function setCharacter(clientId, charInput) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
-  const m = s.members.get(clientId); if (!m) return { ok: false, error: 'not a player' };
+  const m = s.members.get(memberIdOf(clientId)); if (!m) return { ok: false, error: 'not a player' };
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
   m.ready = true;
@@ -119,7 +194,7 @@ function setCharacter(clientId, charInput) {
 
 function addCompanion(clientId, nameOrIndex) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
-  if (s.host !== clientId) return { ok: false, error: 'only the host adds companions' };
+  if (s.host !== memberIdOf(clientId)) return { ok: false, error: 'only the host adds companions' };
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'party is full' };
   // The POKER CAST by name; numeric index falls back to the legacy presets.
@@ -153,12 +228,22 @@ function removeCompanion(clientId, memberId) {
 // are hauled along like luggage until a hired cleric raises them (2 negative
 // levels, PF1), Restoration and potions are for sale. Prices are tunable —
 // RAW where affordable, mates' rates where RAW would empty every purse forever.
+// Expensive-component rule (Tobias 2026-07-11): the service price is casting
+// fee + the PF1 component price; BRING the component (found in the dungeon,
+// carried in the stash) and you pay only the casting fee.
 const PUB_SERVICES = {
   potion_clw:  { label: 'Potion of Cure Light Wounds', gp: 50,  kind: 'stash', item: 'potion_clw' },
   potion_cmw:  { label: 'Potion of Cure Moderate Wounds', gp: 300, kind: 'stash', item: 'potion_cmw' },
-  restoration: { label: 'Restoration (cure negative levels)', gp: 380, kind: 'restoration' },
-  raisedead:   { label: 'Hire a cleric: Raise Dead', gp: 1000, kind: 'raise' },
+  restoration: { label: 'Restoration (cure negative levels)', gp: 380, withComponent: 280, component: 'diamond_dust', kind: 'restoration' },
+  raisedead:   { label: 'Hire a cleric: Raise Dead', gp: 5450, withComponent: 450, component: 'diamond', kind: 'raise' },
 };
+/** Price after components: consume one from the stash if it covers the spell. */
+function priceFor(s, svc) {
+  if (svc.component && s.stash && (s.stash[svc.component] || 0) > 0) {
+    return { gp: svc.withComponent, useComponent: svc.component };
+  }
+  return { gp: svc.gp, useComponent: null };
+}
 function pubKey(s) { return ('pub::' + s.name).toLowerCase(); }
 function pubPurse(s) { return (LEGACY[pubKey(s)] && LEGACY[pubKey(s)].gold) || 0; }
 function pubBank(s, delta) {
@@ -166,6 +251,45 @@ function pubBank(s, delta) {
   LEGACY[k] = { gold: Math.max(0, pubPurse(s) + delta), at: Date.now() };
   saveLegacy();
 }
+// ── GRAVES (Tobias 2026-07-11): a TPK is FINAL for that delve — the delve is
+// dead and the characters are LOST, unless another party later reaches the
+// same depth, finds the corpses (and their loot), and pays to raise them.
+const GRAVES_FILE = path.join(DATA_DIR, 'graves.json');
+let GRAVES = [];
+try { GRAVES = JSON.parse(fs.readFileSync(GRAVES_FILE, 'utf8')); } catch (e) {}
+function saveGraves() { try { fs.writeFileSync(GRAVES_FILE, JSON.stringify(GRAVES)); } catch (e) {} }
+function tpk(s) {
+  const run = s.run;
+  GRAVES.push({
+    delve: s.name, depth: run.roomsCleared + 1, gold: run.gold || 0,
+    heroes: run.heroes.filter(h => !h.ai).map(h => ({ name: h.name, level: h.level || 1, xp: h.xp || 0, negLevels: h.negLevels || 0 })),
+    at: Date.now(),
+  });
+  saveGraves();
+  for (const h of run.heroes) {
+    if (h.ai) continue;
+    const k = legacyKey(s, h.name);
+    LEGACY[k] = Object.assign({}, LEGACY[k], { dead: true, lost: true, at: Date.now() });
+  }
+  saveLegacy();
+  delveLog(s, 'TPK at depth ' + (run.roomsCleared + 1) + ' — the delve dies with them. Corpses + ' + (run.gold || 0) + 'gp await a braver party.');
+  sessions.delete(s.id);
+  deleteSave(s);
+}
+/** A descending party may stumble on an earlier TPK at this depth. */
+function checkGraves(s) {
+  const depth = s.run.roomsCleared + 1;
+  const i = GRAVES.findIndex(g => g.depth === depth && g.delve !== s.name);
+  if (i < 0) return;
+  const g = GRAVES.splice(i, 1)[0];
+  saveGraves();
+  s.run.gold += g.gold;
+  s.corpses = (s.corpses || []).concat(g.heroes.map(h => Object.assign({ delve: g.delve }, h)));
+  const names = g.heroes.map(h => h.name).join(', ');
+  s.run.log.push({ seq: ++s.run.seq, text: String.fromCodePoint(0x1FAA6) + ' Among the bones: the lost party of "' + g.delve + '" — ' + names + '. You recover their ' + g.gold + ' gold and take up the corpses. A cleric could yet raise them.', priority: 'urgent', sound: null });
+  delveLog(s, 'GRAVE FOUND: recovered ' + names + ' of "' + g.delve + '" (+' + g.gold + 'gp)');
+}
+
 /** A run just ended — the party staggers back to the Swashgoblin. */
 function enterPub(s) {
   if (!s.run) return;
@@ -176,6 +300,10 @@ function enterPub(s) {
     const k = legacyKey(s, h.name);
     LEGACY[k] = Object.assign({}, LEGACY[k], { dead: !!h.dead, negLevels: h.negLevels || 0, at: Date.now() });
   }
+  // Everything still in the party bag comes home to the stash — found
+  // components especially ("you'd hang on to it in case you needed a raise").
+  s.stash = s.stash || {};
+  for (const slot of (s.run.inventory || [])) s.stash[slot.key] = (s.stash[slot.key] || 0) + slot.qty;
   saveLegacy();
   s.phase = 'pub';
   delveLog(s, 'PARTY AT THE SWASHGOBLIN: purse ' + pubPurse(s) + 'gp, dead: ' + ([...s.members.values()].filter(m => m.dead).map(m => m.name).join(', ') || 'none'));
@@ -183,28 +311,43 @@ function enterPub(s) {
 function pubBuy(clientId, serviceKey, targetName) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'pub') return { ok: false, error: 'you are not at the Swashgoblin' };
   const svc = PUB_SERVICES[serviceKey]; if (!svc) return { ok: false, error: 'the barkeep has never heard of that' };
-  if (pubPurse(s) < svc.gp) return { ok: false, error: 'not enough gold — the purse holds ' + pubPurse(s) + 'gp' };
+  const price = priceFor(s, svc);
+  if (pubPurse(s) < price.gp) return { ok: false, error: 'not enough gold — the purse holds ' + pubPurse(s) + 'gp' + (svc.component && !price.useComponent ? ' (a ' + svc.component.replace('_', ' ') + ' would make it ' + svc.withComponent + 'gp)' : '') };
+  const spendComponent = () => { if (price.useComponent) { s.stash[price.useComponent] -= 1; if (s.stash[price.useComponent] <= 0) delete s.stash[price.useComponent]; } };
   if (svc.kind === 'stash') {
-    pubBank(s, -svc.gp);
+    pubBank(s, -price.gp);
     s.stash = s.stash || {};
     s.stash[svc.item] = (s.stash[svc.item] || 0) + 1;
     delveLog(s, 'PUB: bought ' + svc.label + ' (' + svc.gp + 'gp)');
     return { ok: true, text: svc.label + ' added to the party stash.' };
   }
   const m = [...s.members.values()].find(x => x.name.toLowerCase() === String(targetName || '').toLowerCase());
-  if (!m) return { ok: false, error: 'no party member by that name' };
+  if (!m && svc.kind !== 'raise') return { ok: false, error: 'no party member by that name' };
   if (svc.kind === 'restoration') {
     if (!(m.negLevels > 0)) return { ok: false, error: m.name + ' has no negative levels' };
-    pubBank(s, -svc.gp);
+    pubBank(s, -price.gp); spendComponent();
     m.negLevels = 0;
     LEGACY[legacyKey(s, m.name)] = Object.assign({}, LEGACY[legacyKey(s, m.name)], { negLevels: 0, at: Date.now() });
     saveLegacy();
     delveLog(s, 'PUB: Restoration on ' + m.name + ' (' + svc.gp + 'gp)');
     return { ok: true, text: 'The cleric chants — ' + m.name + ' stands straighter. Negative levels gone.' };
   }
+  if (svc.kind === 'raise' && !m) {
+    // Not one of ours — maybe a recovered corpse from a fallen delve.
+    const ci = (s.corpses || []).findIndex(c2 => c2.name.toLowerCase() === String(targetName || '').toLowerCase());
+    if (ci < 0) return { ok: false, error: 'no party member or recovered corpse by that name' };
+    const corpse = s.corpses.splice(ci, 1)[0];
+    pubBank(s, -price.gp); spendComponent();
+    const k = (corpse.delve + '::' + corpse.name).toLowerCase();
+    LEGACY[k] = Object.assign({}, LEGACY[k], { dead: false, lost: false, xp: corpse.xp, level: corpse.level, negLevels: (corpse.negLevels || 0) + 2, at: Date.now() });
+    saveLegacy();
+    saveSession(s);
+    delveLog(s, 'PUB: raised recovered adventurer ' + corpse.name + ' of "' + corpse.delve + '" (' + price.gp + 'gp)');
+    return { ok: true, text: corpse.name + ' of "' + corpse.delve + '" breathes again — free to delve anew under that banner, two negative levels the wiser.' };
+  }
   if (svc.kind === 'raise') {
     if (!m.dead) return { ok: false, error: m.name + ' is not dead' };
-    pubBank(s, -svc.gp);
+    pubBank(s, -price.gp); spendComponent();
     m.dead = false;
     m.negLevels = (m.negLevels || 0) + 2;   // PF1 Raise Dead
     LEGACY[legacyKey(s, m.name)] = Object.assign({}, LEGACY[legacyKey(s, m.name)], { dead: false, negLevels: m.negLevels, at: Date.now() });
@@ -217,7 +360,7 @@ function pubBuy(clientId, serviceKey, targetName) {
 
 function startRun(clientId) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
-  if (!s.members.has(clientId)) return { ok: false, error: 'only a player can start' };
+  if (!s.members.has(memberIdOf(clientId))) return { ok: false, error: 'only a player can start' };
   for (const m of s.members.values()) {   // legacy dead flag follows the hero
     const saved = LEGACY[legacyKey(s, m.name)] || {};
     if (saved.dead != null && m.dead == null) m.dead = !!saved.dead;
@@ -259,6 +402,7 @@ function startRun(clientId) {
   if (dead.length) delveLog(s, 'LUGGAGE: hauling the dead — ' + dead.map(m => m.name).join(', '));
   s.phase = 'playing';
   s.startedAt = now();
+  saveSession(s);
   delveLog(s, `RUN STARTED: party = ${ready.map(m => m.name + ' (' + m.character.cls + (m.ai ? ', AI' : '') + ')').join(', ')}`);
   flushRunLog(s);
   return { ok: true };
@@ -266,10 +410,13 @@ function startRun(clientId) {
 
 function action(clientId, act) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'playing' || !s.run) return { ok: false, error: 'no run' };
-  const r = partyrun.applyAction(s.run, clientId, act);
+  const r = partyrun.applyAction(s.run, memberIdOf(clientId), act);
   flushRunLog(s);
   persistProgress(s);
-  if (s.run && (s.run.phase === 'retreated' || s.run.phase === 'defeated')) enterPub(s);
+  if (r.ok && act && act.type === 'descend' && s.run.phase === 'combat') checkGraves(s);
+  if (s.run && s.run.phase === 'defeated') { tpk(s); return r; }
+  if (s.run && s.run.phase === 'retreated') enterPub(s);
+  saveSession(s);
   return r;
 }
 
@@ -286,13 +433,20 @@ function sweepAfk() {
 
 function leave(clientId) {
   const s = sessionOf(clientId);
+  const mid = memberIdOf(clientId);
   clients.delete(clientId);
   if (!s) return;
-  s.members.delete(clientId);
   s.spectators.delete(clientId);
-  // A delve with no human members left is abandoned.
-  const humans = [...s.members.values()].filter(m => !m.ai).length;
-  if (humans === 0 && s.spectators.size === 0) sessions.delete(s.id);
+  if (s.phase === 'lobby') {
+    // Lobby seats are cheap — dropping out empties them.
+    s.members.delete(mid);
+    const humans = [...s.members.values()].filter(m => !m.ai).length;
+    if (humans === 0 && s.spectators.size === 0) { sessions.delete(s.id); deleteSave(s); }
+    return;
+  }
+  // A live delve (playing / at the pub) is SAVED, not abandoned — the seat
+  // stays and can be reclaimed by name (Tobias: delves are resumable).
+  saveSession(s);
 }
 
 function memberView(m, clientId) {
@@ -306,15 +460,20 @@ function sessionSnapshotFor(clientId) {
   const c = clients.get(clientId); if (!c) return null;
   const s = sessions.get(c.sessionId); if (!s) return null;
   return {
-    id: s.id, name: s.name, phase: s.phase, role: c.role, youAreHost: s.host === clientId,
+    id: s.id, name: s.name, phase: s.phase, role: c.role,
+    youAreHost: s.host === memberIdOf(clientId), yourMemberId: memberIdOf(clientId),
     counts: { party: partySize(s), maxParty: MAX_PARTY, spectators: s.spectators.size, maxSpectators: MAX_SPECTATORS },
-    members: [...s.members.values()].map(m => memberView(m, clientId)),
+    members: [...s.members.values()].map(m => memberView(m, memberIdOf(clientId))),
     spectators: [...s.spectators.values()].map(sp => ({ name: sp.name, icon: sp.icon, isYou: sp.clientId === clientId })),
     run: s.run ? partyrun.publicRun(s.run) : null,
     pub: s.phase === 'pub' ? {
       gold: pubPurse(s),
       stash: s.stash || {},
-      services: Object.entries(PUB_SERVICES).map(([key, v]) => ({ key, label: v.label, gp: v.gp, kind: v.kind })),
+      services: Object.entries(PUB_SERVICES).map(([key, v]) => {
+        const pr2 = priceFor(s, v);
+        return { key, label: v.label, gp: pr2.gp, fullGp: v.gp, component: v.component || null, usingComponent: !!pr2.useComponent, kind: v.kind };
+      }),
+      corpses: (s.corpses || []).map(c2 => ({ name: c2.name, delve: c2.delve, level: c2.level })),
       dead: [...s.members.values()].filter(m => m.dead).map(m => m.name),
       hurt: [...s.members.values()].filter(m => (m.negLevels || 0) > 0).map(m => ({ name: m.name, negLevels: m.negLevels })),
     } : null,
@@ -344,10 +503,12 @@ function snapshotFor(clientId) {
   return { you: clientId ? sessionSnapshotFor(clientId) : null, sessions: allSummaries() };
 }
 
+restoreSessions();
+
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, pubBuy, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, saveSession, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
 };

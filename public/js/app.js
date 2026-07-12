@@ -120,6 +120,7 @@
     renderSideWindow(state.sessions);
     state.you = payload.you;
     if (!state.you) return;
+    state.myId = state.you.yourMemberId || state.clientId;
     if (state.you.phase === 'playing' && state.you.run) {
       if (state.mode !== 'game') enterGame();
       renderGame(state.you);
@@ -149,7 +150,7 @@
         : ('Forming · ' + s.partySize + ' joined · ' + time);
       var canAct = !state.clientId;
       var actions = canAct
-        ? '<div class="dactions">' + (s.phase === 'lobby' ? '<button data-join="' + s.id + '">Join</button>' : '') + '<button data-watch="' + s.id + '">Watch</button></div>'
+        ? '<div class="dactions">' + (s.phase === 'lobby' ? '<button data-join="' + s.id + '">Join</button>' : '<button data-join="' + s.id + '">Rejoin</button>') + '<button data-watch="' + s.id + '">Watch</button></div>'
         : '';
       card.innerHTML = '<div class="dtitle"><span>' + esc(s.name) + '</span><span class="dphase">' + s.phase + '</span></div>'
         + '<div class="dmeta">' + meta + '</div>'
@@ -181,6 +182,7 @@
     api('/api/session/join', { sessionId: sessionId, name: name, icon: state.icon, role: role }).then(function (r) {
       if (!r.ok) { el('join-error').textContent = r.error + (r.canSpectate ? ' (You can watch instead.)' : ''); BM.speak(r.error, 'urgent'); return; }
       afterJoin(r, r.role);
+      if (r.reclaimed) { BM.speak('Welcome back — resuming your seat.', 'event'); return; }   // SSE routes to the live game/pub
       if (r.role === 'player') enterCreate();
       else { showScreen('lobby'); state.you = r.snapshot; renderLobby(r.snapshot); BM.speak('You are watching ' + r.snapshot.name + '.', 'event'); }
     });
@@ -312,10 +314,11 @@
       box.setAttribute('aria-label', 'The Swashgoblin');
       el('lobby').insertBefore(box, el('lobby-start'));
     }
-    var pub = you.pub || { gold: 0, services: [], dead: [], hurt: [], stash: {} };
+    var pub = you.pub || { gold: 0, services: [], dead: [], hurt: [], stash: {}, corpses: [] };
     var html = '<h3>🍺 The Swashgoblin</h3>'
       + '<p id="pub-gold" aria-live="polite">Party purse: <strong>' + pub.gold + ' gold</strong>.'
       + (pub.dead.length ? ' Hauled in like luggage: ' + pub.dead.map(esc).join(', ') + '.' : '')
+      + ((pub.corpses || []).length ? ' Recovered from the deep: ' + pub.corpses.map(function (c2) { return esc(c2.name) + ' of “' + esc(c2.delve) + '”'; }).join(', ') + '.' : '')
       + (pub.hurt.length ? ' Weakened: ' + pub.hurt.map(function (h) { return esc(h.name) + ' (' + h.negLevels + ' neg)'; }).join(', ') + '.' : '') + '</p>';
     html += '<div class="pub-services">';
     pub.services.forEach(function (svc) {
@@ -324,7 +327,9 @@
       } else if (svc.kind === 'restoration') {
         pub.hurt.forEach(function (h) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(h.name) + '">Restoration: ' + esc(h.name) + ' - ' + svc.gp + 'g</button>'; });
       } else if (svc.kind === 'raise') {
-        pub.dead.forEach(function (n) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(n) + '">Raise ' + esc(n) + ' - ' + svc.gp + 'g</button>'; });
+        var tag = svc.usingComponent ? ' (using your diamond)' : '';
+        pub.dead.forEach(function (n) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(n) + '">Raise ' + esc(n) + ' - ' + svc.gp + 'g' + tag + '</button>'; });
+        (pub.corpses || []).forEach(function (c2) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(c2.name) + '">Raise ' + esc(c2.name) + ' of “' + esc(c2.delve) + '” - ' + svc.gp + 'g' + tag + '</button>'; });
       }
     });
     html += '</div>';
@@ -356,7 +361,7 @@
     var run = you.run;
     el('hud-hero').textContent = you.name + ' — Room ' + (run.roomsCleared + 1) + ' · Rd ' + run.round;
     el('hud-enemy').textContent = ''; el('hud-gold').textContent = 'Gold: ' + run.gold;
-    var myTurn = !!(run.turn && run.turn.ownerClientId === state.clientId);
+    var myTurn = !!(run.turn && run.turn.ownerClientId === state.myId);
     var banner = el('turn-banner'); banner.className = 'turn-banner';
     if (run.phase === 'combat') {
       if (run.turn) { if (myTurn) { banner.textContent = '▶ Your turn — act now!'; banner.classList.add('mine'); } else banner.textContent = 'Waiting for ' + run.turn.name + '…'; }
@@ -404,7 +409,7 @@
       d.className = 'unit' + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && c.hp <= c.maxHp / 3 ? ' hurt' : '');
       d.innerHTML = (c.art ? '<img class="u-art" src="' + c.art + '" alt="" loading="lazy" />'
                           : '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>')
-        + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.clientId ? ' ✦' : '') + '</div>'
+        + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.myId ? ' ✦' : '') + '</div>'
         + '<div class="u-hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP') + '</div>'
         + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
       if (c.side === 'enemy' && !c.down) { d.style.cursor = 'pointer'; d.title = 'Click to attack / target'; d.addEventListener('click', function () {
@@ -426,7 +431,7 @@
         + (pct <= 33 ? ' critical' : pct <= 66 ? ' hurt' : '');
       var slots = c.slots ? Object.entries(c.slots).map(function (kv) { return 'L' + kv[0] + '×' + kv[1]; }).join(' ') : '';
       card.innerHTML = '<div class="hc-name">' + (c.art ? '<img class="hc-art" src="' + c.art + '" alt="" loading="lazy" />' : (c.icon || '')) + ' ' + esc(c.name)
-        + (c.ownerClientId === state.clientId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
+        + (c.ownerClientId === state.myId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
         + '<div class="hpbar"><div style="width:' + pct + '%"></div></div>'
         + '<div class="hc-meta">' + (c.level ? 'L' + c.level + ' · ' : '') + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
         + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '');
@@ -440,7 +445,7 @@
     var box = el('bag-list'); box.innerHTML = '';
     var inv = run.inventory || [];
     if (!inv.length) { box.innerHTML = '<p class="delve-empty">The bag is empty.</p>'; return; }
-    var myTurn = !!(run.turn && run.turn.ownerClientId === state.clientId);
+    var myTurn = !!(run.turn && run.turn.ownerClientId === state.myId);
     inv.forEach(function (i) {
       var row = document.createElement('div'); row.className = 'bag-item';
       var actBtn = '';
@@ -503,7 +508,7 @@
   function myRun() { return state.you && state.you.run; }
   function myHero() {
     var run = myRun(); if (!run) return null;
-    return run.combatants.find(function (c) { return c.ownerClientId === state.clientId; }) || null;
+    return run.combatants.find(function (c) { return c.ownerClientId === state.myId; }) || null;
   }
   function registerBlindInfo() {
     BM.registerInfo({
@@ -512,7 +517,7 @@
         return (run.enemies || []).map(function (e) { return { id: e.id, key: e.id, label: e.name + ', ' + e.hp + ' HP' }; });
       },
       spells: function () {
-        var run = myRun(); if (!run || !run.turn || run.turn.ownerClientId !== state.clientId) return [];
+        var run = myRun(); if (!run || !run.turn || run.turn.ownerClientId !== state.myId) return [];
         return (run.turn.spells || []).map(function (s) { return { key: s.key, label: s.name + (s.uses != null ? ', ' + s.uses + ' left' : ', at will') }; });
       },
       targetFoe: function (id) {

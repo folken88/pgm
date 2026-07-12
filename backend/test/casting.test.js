@@ -178,6 +178,7 @@ test('the Swashgoblin: dead are luggage until a hired cleric raises them (2 neg 
   // Simpler: retreat first, then assert pub; the dead-luggage path is covered by marking before retreat.
   const internal = sessionInternals(c.clientId);
   internal.run.gold = 2000;
+  internal.run.inventory.push({ key: 'diamond', qty: 1 });   // found a Raise Dead component below
   const hero = internal.run.heroes.find(h => h.ownerClientId === c.clientId);
   hero.dead = true; hero.down = true; hero.hp = -20; hero.negLevels = 0;
   session.action(c.clientId, { type: 'retreat' });
@@ -188,9 +189,13 @@ test('the Swashgoblin: dead are luggage until a hired cleric raises them (2 neg 
   // A start attempt with the only human dead is refused.
   const blocked = session.startRun(c.clientId);
   assert.strictEqual(blocked.ok, false);
-  // Pay the cleric.
+  // The found diamond makes the raise affordable: 450g casting fee, not 5450.
+  const svc = pubSnap.pub.services.find(x => x.key === 'raisedead');
+  assert.strictEqual(svc.gp, 450, 'component discount advertised: ' + JSON.stringify(svc));
+  assert.ok(svc.usingComponent, 'diamond in the stash is being used');
   const raise = session.pubBuy(c.clientId, 'raisedead', 'PubTester');
   assert.ok(raise.ok, 'raise dead purchased: ' + (raise.error || ''));
+  assert.ok(!(session.sessionSnapshotFor(c.clientId).pub.stash.diamond > 0), 'the diamond was consumed');
   const after = session.sessionSnapshotFor(c.clientId);
   assert.deepStrictEqual(after.pub.dead, [], 'nobody dead after the raise');
   assert.ok(after.pub.hurt.some(h => h.name === 'PubTester' && h.negLevels === 2), '2 negative levels applied');
@@ -216,3 +221,65 @@ function sessionInternals(clientId) {
   // instead re-require with a helper the module exports for tests.
   return session._testInternals(clientId);
 }
+
+test('TPK kills the delve; a later party recovers the corpses and can raise them', () => {
+  const session = require('../src/session');
+  session._reset();
+  // Party 1 wipes at depth 1.
+  const a = session.createDelve({ name: 'Doomed', icon: 'X', delveName: 'doomed-run' });
+  session.setCharacter(a.clientId, { race: 'human', cls: 'fighter' });
+  session.startRun(a.clientId);
+  const s1 = session._testInternals(a.clientId);
+  s1.run.gold = 77;
+  const doomed = s1.run.heroes.find(h => h.ownerClientId === a.clientId);
+  doomed.hp = -30; doomed.dead = true; doomed.down = true;
+  s1.run.phase = 'defeated';
+  session.action(a.clientId, { type: 'pass' });   // any action routes the defeated run through tpk()
+  assert.strictEqual(session.sessionSnapshotFor(a.clientId), null, 'the doomed delve is GONE');
+  // Party 2 descends to the same depth and finds them.
+  const b = session.createDelve({ name: 'Finder', icon: 'X', delveName: 'finder-run' });
+  session.setCharacter(b.clientId, { race: 'human', cls: 'fighter' });
+  session.startRun(b.clientId);
+  const s2 = session._testInternals(b.clientId);
+  s2.run.phase = 'cleared';                       // fast-forward: clear room 0, descend to depth 1... graves match depth roomsCleared+1
+  session.action(b.clientId, { type: 'descend' });
+  const snap = session.sessionSnapshotFor(b.clientId);
+  const foundLine = snap.run.log.some(e => /lost party of "doomed-run"/i.test(e.text));
+  assert.ok(foundLine, 'grave discovery narrated: ' + snap.run.log.slice(-3).map(e => e.text).join(' | '));
+  assert.ok(s2.run.gold >= 77, 'their gold recovered');
+  assert.ok((s2.corpses || []).some(c => c.name === 'Doomed'), 'corpse carried');
+  // Home to the pub — raise the stranger.
+  s2.run.gold += 10000;
+  session.action(b.clientId, { type: 'retreat' });
+  const raise = session.pubBuy(b.clientId, 'raisedead', 'Doomed');
+  assert.ok(raise.ok, 'raised the recovered adventurer: ' + (raise.error || ''));
+  assert.match(raise.text, /doomed-run/i);
+});
+
+test('a live delve saves to disk and restores with a working engine', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const session = require('../src/session');
+  session._reset();
+  const c = session.createDelve({ name: 'Saver', icon: 'X', delveName: 'save-test' });
+  session.setCharacter(c.clientId, { race: 'human', cls: 'fighter' });
+  session.startRun(c.clientId);
+  const s = session._testInternals(c.clientId);
+  const file = path.join(process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data'), 'sessions', s.id + '.json');
+  assert.ok(fs.existsSync(file), 'session file written on start: ' + file);
+  const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.strictEqual(doc.phase, 'playing');
+  assert.ok(doc.run && doc.run.combatants.length >= 2, 'run serialized with combatants');
+  assert.ok(!doc.run.shim, 'shim excluded from the save');
+  // Restore path: rebuild a run from the doc the way restoreSessions does.
+  const { DungeonShim } = require('../src/pokerdungeon/shim');
+  const run = doc.run;
+  const byId = new Map(run.combatants.map(x => [x.id, x]));
+  run.heroes = run.heroes.map(h => byId.get(h.id) || h);
+  run.heroes.forEach(h => { if (h.perceived && h.perceived.__set) h.perceived = new Set(h.perceived.__set); });
+  run.shim = new DungeonShim(run);
+  const pr2 = require('../src/partyrun');
+  const r = pr2.applyAction(run, run.heroes[0].ownerClientId, { type: 'pass' });
+  assert.ok(r.ok || /turn/.test(r.error || ''), 'restored run accepts actions: ' + (r.error || 'ok'));
+  fs.unlinkSync(file);
+});
