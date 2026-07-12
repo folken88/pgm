@@ -622,4 +622,5 @@ module.exports = {
   startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
+  _devSetPurse(s, gold) { LEGACY[pubKey(s)] = { gold: Math.max(0, gold), at: Date.now() }; saveLegacy(); },
 };

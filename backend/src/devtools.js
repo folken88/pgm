@@ -217,7 +217,11 @@ async function runCmd(who, cmd) {
     const nl = require('./pf1core').xp.levelFromXp(h.xp);
     return done({ gaveXp: amt, xp: h.xp, levelWouldBe: nl, note: 'clear a room to apply the level-up' });
   }
-  if (verb === 'gold') { run.gold = parseInt(parts[1], 10) || 0; return done({ gold: run.gold }); }
+  if (verb === 'gold') {
+    const amt = parseInt(parts[1], 10) || 0;
+    if (sess.phase === 'pub') { session._devSetPurse(sess, amt); return { ok: true, said: ['pub purse set to ' + amt + 'g'] }; }
+    run.gold = amt; return done({ gold: run.gold });
+  }
   if (verb === 'kill') {
     const t = parts[1] ? findCombatant(run, parts.slice(1).join(' '), 'enemy') : run.combatants.find(c => c.side === 'enemy' && !c.down);
     if (!t) return fail('no living foe');

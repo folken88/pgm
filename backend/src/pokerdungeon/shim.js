@@ -95,8 +95,12 @@ class DungeonShim {
   _fmtBonus(n) { return (n >= 0 ? '+' : '') + n; }
 
   // ── Loadout/char gates: PGM allows the class kit wholesale (no poker DB) ──
+  // NOTE: _charAllows is provided by the abilities.js mixin — signature
+  // (ability, member), matching m.trueNick/nickname. Do NOT redefine it here;
+  // a shim version with a different arg order silently un-gates char abilities
+  // (Jason's Force Push leaked into every kit, 2026-07-12). Call it as
+  // _charAllows(ability, member) everywhere.
   _computeCastable(m) { m.castableKeys = null; }
-  _charAllows(m, ab) { return !ab.char || String(ab.char).toLowerCase() === String(m.playerId || m.name || '').toLowerCase(); }
   _loadoutAllows(m, ab) { return true; }
   _blackTentaclesTick() {}
 }

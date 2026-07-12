@@ -897,7 +897,7 @@ function publicRun(run) {
         && run.heroes.some(h => (h.negLevels || 0) > 0 && !h.dead)) {
       kit = kit.concat([{ key: 'restoration', name: 'Restoration', icon: String.fromCodePoint(0x2728), cost: 'slot', slvl: 4 }]);
     }
-    const spells = kit.filter(ab => ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(cb, ab))).map(ab => ({
+    const spells = kit.filter(ab => ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(ab, cb))).map(ab => ({
       key: ab.key, name: ab.name, icon: ab.icon, cost: ab.cost || null, slvl: ab.slvl || null,
       isSpell: !!(ab.slvl || ab.cost === 'slot' || ab.cost === 'pool'),
       uses: ab.cost === 'pool' ? cb.spellPool
@@ -920,7 +920,7 @@ function publicRun(run) {
       return { remaining: null, max: null };
     };
     const kitAll = (((kdFull && kdFull.abilities) || [])
-      .filter(ab => { try { return run.shim._charAllows(cb, ab); } catch (e) { return true; } })
+      .filter(ab => { try { return run.shim._charAllows(ab, cb); } catch (e) { return true; } })
       .map(ab => {
         const r = remainingOf(ab);
         return {

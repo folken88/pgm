@@ -7,6 +7,7 @@ const assert = require('node:assert');
 const treasure = require('../src/treasure');
 const items = require('../src/items');
 const { artFor } = require('../src/art');
+const { createCharacter } = require('../src/characters');
 
 test('treasure prose: coin + gems + art become ONE total; magic items named', () => {
   // hand-built hoard: 100 coin + a 1000gp emerald + a 250gp tapestry + a potion
@@ -28,4 +29,19 @@ test('enemy art resolves by MON key (matches portrait filenames)', () => {
   for (const k of ['kobold', 'goblin', 'wight', 'dire_rat']) {
     assert.ok(artFor(k), k + ' portrait resolves');
   }
+});
+
+test('char-gated abilities are filtered from other heroes’ action bars', () => {
+  const pr = require('../src/partyrun');
+  const { seededRoller } = require('../src/dice');
+  const roll = seededRoller(5);
+  function feats(name) {
+    const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name, race: 'human', cls: 'cleric' }) }], roll);
+    pr.applyAction(run, 'c1', { type: 'initiative' }, roll);
+    const h = run.heroes[0]; run.turnIndex = run.combatants.indexOf(h); run.phase = 'combat';
+    return pr.publicRun(run).turn.kit.abilities.filter(a => !a.isSpell).map(a => a.key);
+  }
+  // Force Push is char:'Jason' — a generic cleric must NOT see it; Jason must.
+  assert.ok(!feats('Cleric').includes('forcepush'), 'generic cleric does not get Jason’s Force Push');
+  assert.ok(feats('Jason').includes('forcepush'), 'Jason keeps his Force Push');
 });
