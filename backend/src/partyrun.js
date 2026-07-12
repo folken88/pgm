@@ -810,7 +810,8 @@ function publicRun(run) {
       kit = kit.concat([{ key: 'restoration', name: 'Restoration', icon: String.fromCodePoint(0x2728), cost: 'slot', slvl: 4 }]);
     }
     const spells = kit.filter(ab => ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(cb, ab))).map(ab => ({
-      key: ab.key, name: ab.name, icon: ab.icon,
+      key: ab.key, name: ab.name, icon: ab.icon, cost: ab.cost || null, slvl: ab.slvl || null,
+      isSpell: !!(ab.slvl || ab.cost === 'slot' || ab.cost === 'pool'),
       uses: ab.cost === 'pool' ? cb.spellPool
           : ab.cost === 'slot' ? ((cb.slots || {})[ab.slvl || 1] || 0)
           : ab.cost === 'room' ? (cb.abilityUses && cb.abilityUses[ab.key] !== undefined ? cb.abilityUses[ab.key] : 1)

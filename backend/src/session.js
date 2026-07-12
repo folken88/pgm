@@ -176,7 +176,21 @@ function joinDelve(sessionId, { name, icon, role }) {
 
 function sessionOf(clientId) {
   const c = clients.get(clientId);
-  return c ? sessions.get(c.sessionId) : null;
+  if (c) return sessions.get(c.sessionId) || null;
+  // AUTO-REBIND after a server restart (Tobias hit this live): the browser
+  // still holds its old clientId, and restored sessions still carry that id
+  // as a memberId. If the seat is unclaimed, silently re-attach — the player
+  // never notices the restart.
+  for (const s of sessions.values()) {
+    const seat = s.members.get(clientId);
+    if (!seat || seat.ai) continue;
+    const claimed = [...clients.values()].some(x => x.sessionId === s.id && x.memberId === clientId);
+    if (claimed) continue;
+    clients.set(clientId, { sessionId: s.id, role: 'player', memberId: clientId });
+    delveLog(s, 'SEAT AUTO-REBOUND after restart: ' + seat.name + ' (' + clientId + ')');
+    return s;
+  }
+  return null;
 }
 /** The stable in-run identity for a client (survives reclaim after resume). */
 function memberIdOf(clientId) {

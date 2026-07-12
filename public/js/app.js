@@ -564,7 +564,10 @@
     } else if (run.phase === 'combat' && myTurn) {
       (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
       ((run.turn && run.turn.spells) || []).forEach(function (s) {
-        choices.push({ id: 'cast', spell: s.key, label: 'Cast ' + s.name + (s.uses != null ? ' (' + s.uses + ')' : '') });
+        // Poker semantics: only SPELLS are "cast" — class abilities (Power
+        // Attack, Rage, stances) are simply used/toggled by name.
+        var label = (s.isSpell ? 'Cast ' + s.name : s.name) + (s.uses != null ? ' (' + s.uses + ')' : '');
+        choices.push({ id: 'cast', spell: s.key, label: label });
       });
       usableItems(run).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
         choices.push({ id: 'use', item: i.key, label: (i.verb === 'drink' ? 'Drink ' : 'Throw ') + (i.short || i.name) });
@@ -602,7 +605,9 @@
     if (choice.target) body.target = choice.target;
     if (choice.item) body.item = choice.item;
     if (choice.spell) body.spell = choice.spell;
-    api('/api/session/action', body).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot do that.', 'urgent'); });
+    api('/api/session/action', body).then(function (r) {
+      if (!r.ok) { BM.speak(r.error || 'Cannot do that.', 'urgent'); BM.toast(r.error || 'Cannot do that.'); }
+    }).catch(function () { BM.toast('Connection hiccup — try again.'); });
   }
 
   // ---------- blind-mode info providers (poker keymap: A/E/K/C/H/X/B) ----------
