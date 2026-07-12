@@ -80,3 +80,25 @@ test('a delve with no human members left is cleaned up', () => {
   session.leave(host.clientId);
   assert.strictEqual(session.allSummaries().length, 0, 'abandoned delve removed');
 });
+
+test('accounts: sign in once, delves follow the account, build remembered', () => {
+  const accounts = require('../src/accounts');
+  const session = require('../src/session');
+  session._reset();
+  const uniq = 'acct' + process.pid + Date.now();
+  // First sign-in registers; same password signs back in; wrong one refused.
+  const a = accounts.signIn(uniq, 'hunter2');
+  assert.ok(a.ok && a.created && a.token, 'account created');
+  const again = accounts.signIn(uniq, 'hunter2');
+  assert.ok(again.ok && !again.created && again.token === a.token, 'same token on return');
+  assert.strictEqual(accounts.signIn(uniq, 'wrong').ok, false, 'wrong password refused');
+  // A delve created with the account is discoverable + build remembered.
+  const c = session.createDelve({ name: uniq, icon: 'X', delveName: 'acct-delve-' + uniq, account: a.name });
+  session.setCharacter(c.clientId, { race: 'dwarf', cls: 'cleric' });
+  session.startRun(c.clientId);
+  const mine = session.delvesForAccount(uniq);
+  assert.strictEqual(mine.length, 1, 'delve associated: ' + JSON.stringify(mine));
+  assert.strictEqual(mine[0].phase, 'playing');
+  const me = accounts.byToken(a.token);
+  assert.deepStrictEqual(me.character, { race: 'dwarf', cls: 'cleric' }, 'build remembered for next visit');
+});

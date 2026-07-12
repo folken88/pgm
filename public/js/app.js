@@ -87,6 +87,23 @@
     window.addEventListener('beforeunload', function () {
       if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
     });
+    // Accounts: sign in / auto-resume from the remembered token.
+    el('signin-btn').addEventListener('click', doSignIn);
+    el('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSignIn(); } });
+    var savedToken = null;
+    try { savedToken = localStorage.getItem('pgmToken'); } catch (e) {}
+    if (savedToken) {
+      api('/api/auth/me', { token: savedToken }).then(function (r) {
+        if (!r.ok) return;
+        state.token = savedToken; state.account = r.name;
+        el('handle').value = r.name;
+        el('signin-status').textContent = 'Signed in as ' + r.name;
+        if (r.character) state.rememberedBuild = r.character;
+        var live = (r.delves || []).filter(function (d) { return d.phase !== 'lobby'; });
+        var msg = 'Welcome back, ' + r.name + '.' + (live.length ? ' You have ' + live.length + ' delve' + (live.length === 1 ? '' : 's') + ' waiting — use Rejoin in the delves panel.' : '');
+        BM.speak(msg, 'event'); BM.toast(msg);
+      });
+    }
     connectSSE(null);
     setTimeout(function () {
       BM.speak('Welcome to Personal Game Master. Enter your name and pick an icon, then start a new delve, or join an active delve from the panel. Hold space or the microphone to speak.', 'event');
@@ -179,16 +196,31 @@
   }
 
   // ---------- start / join a delve ----------
+  function doSignIn() {
+    var name = el('handle').value.trim(); var pw = el('pw').value;
+    if (!name) { BM.speak('Enter your name first.', 'urgent'); el('handle').focus(); return; }
+    if (!pw) { BM.speak('Enter a password to be remembered.', 'urgent'); el('pw').focus(); return; }
+    api('/api/auth/signin', { name: name, password: pw }).then(function (r) {
+      if (!r.ok) { el('signin-status').textContent = r.error; BM.speak(r.error, 'urgent'); return; }
+      state.token = r.token; state.account = r.name;
+      try { localStorage.setItem('pgmToken', r.token); } catch (e) {}
+      if (r.character) state.rememberedBuild = r.character;
+      var msg = (r.created ? 'Account created. ' : '') + 'Signed in as ' + r.name + ' — you will be remembered here.';
+      el('signin-status').textContent = 'Signed in as ' + r.name;
+      el('pw').value = '';
+      BM.speak(msg, 'urgent'); BM.toast(msg);
+    });
+  }
   function startDelve() {
     var name = requireName(); if (!name) return;
-    api('/api/session/create', { name: name, icon: state.icon, delveName: el('delve-name').value.trim() }).then(function (r) {
+    api('/api/session/create', { name: name, icon: state.icon, delveName: el('delve-name').value.trim(), token: state.token }).then(function (r) {
       if (!r.ok) return BM.speak(r.error || 'Could not start.', 'urgent');
       afterJoin(r, 'player'); enterCreate();
     });
   }
   function joinDelveAs(sessionId, role) {
     var name = requireName(); if (!name) return;
-    api('/api/session/join', { sessionId: sessionId, name: name, icon: state.icon, role: role }).then(function (r) {
+    api('/api/session/join', { sessionId: sessionId, name: name, icon: state.icon, role: role, token: state.token }).then(function (r) {
       if (!r.ok) { el('join-error').textContent = r.error + (r.canSpectate ? ' (You can watch instead.)' : ''); BM.speak(r.error, 'urgent'); return; }
       afterJoin(r, r.role);
       if (r.reclaimed) { BM.speak('Welcome back — resuming your seat.', 'event'); return; }   // SSE routes to the live game/pub
@@ -203,6 +235,13 @@
 
   // ---------- create character ----------
   function enterCreate() {
+    if (state.rememberedBuild) {
+      try {
+        el('race').value = state.rememberedBuild.race;
+        el('cls').value = state.rememberedBuild.cls;
+        BM.speak('Your last build is prefilled: ' + state.rememberedBuild.race + ' ' + state.rememberedBuild.cls + '. Change it or continue.', 'event');
+      } catch (e) {}
+    }
     showScreen('create');
     var nf = el('name').closest('.field'); if (nf) nf.hidden = true;
     BM.speak('Choose your race and class, then your skills.', 'event');

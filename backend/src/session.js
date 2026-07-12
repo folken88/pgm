@@ -11,6 +11,7 @@ const characters = require('./characters');
 const partyrun = require('./partyrun');
 const { COMPANIONS } = require('./content');
 const cast = require('./cast');
+const accounts = require('./accounts');
 
 // ── Full per-delve text logs (Tobias: keep them for analysis/troubleshooting) ──
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
@@ -127,30 +128,33 @@ function cleanIcon(i) { return ICONS.includes(i) ? i : ICONS[0]; }
 function newClientId() { return 'c' + (++seq); }
 function partySize(s) { return s.members.size; }
 
-function createDelve({ name, icon, delveName }) {
+function createDelve({ name, icon, delveName, account }) {
   name = cleanName(name); icon = cleanIcon(icon);
+  const accountId = account ? accounts.keyOf(account) : null;
   const id = 's' + (++sid);
   const s = { id, name: cleanName(delveName) !== 'Someone' && delveName ? cleanName(delveName) : name + "'s Delve",
     phase: 'lobby', host: null, members: new Map(), spectators: new Map(),
     run: null, createdAt: now(), startedAt: null };
   const clientId = newClientId();
   s.host = clientId;
-  s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
+  s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false, accountId });
   clients.set(clientId, { sessionId: id, role: 'player', memberId: clientId });
   sessions.set(id, s);
   delveLog(s, `DELVE CREATED "${s.name}" by ${name} ${icon}`);
   return { ok: true, clientId, sessionId: id };
 }
 
-function joinDelve(sessionId, { name, icon, role }) {
+function joinDelve(sessionId, { name, icon, role, account }) {
   const s = sessions.get(sessionId);
   if (!s) return { ok: false, error: 'That delve no longer exists.' };
   name = cleanName(name); icon = cleanIcon(icon);
+  const accountId = account ? accounts.keyOf(account) : null;
   if (role === 'player') {
     // RESUME: a saved/live delve can be re-entered by the SAME hero name if
     // that seat is a human currently unclaimed (server restarted, tab closed).
     if (s.phase !== 'lobby') {
-      const seat = [...s.members.values()].find(m => !m.ai && m.name.toLowerCase() === name.toLowerCase());
+      const seat = [...s.members.values()].find(m => !m.ai
+        && ((accountId && m.accountId === accountId) || m.name.toLowerCase() === name.toLowerCase()));
       const claimed = seat && [...clients.values()].some(c => c.sessionId === s.id && c.memberId === seat.memberId);
       if (seat && !claimed) {
         const clientId = newClientId();
@@ -162,7 +166,7 @@ function joinDelve(sessionId, { name, icon, role }) {
     }
     if (partySize(s) >= MAX_PARTY) return { ok: false, error: 'That party is full.', canSpectate: true, sessionId };
     const clientId = newClientId();
-    s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false });
+    s.members.set(clientId, { memberId: clientId, clientId, name, icon, character: null, ready: false, ai: false, accountId });
     clients.set(clientId, { sessionId, role: 'player', memberId: clientId });
     delveLog(s, `PLAYER JOINED: ${name}`);
     return { ok: true, clientId, sessionId, role: 'player' };
@@ -204,6 +208,8 @@ function setCharacter(clientId, charInput) {
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
   m.ready = true;
+  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls });
+  saveSession(s);
   return { ok: true };
 }
 
@@ -583,6 +589,18 @@ function allSummaries() {
   });
 }
 
+/** All live delves this account has a seat in (for welcome-back resume). */
+function delvesForAccount(accountName) {
+  const k = accounts.keyOf(accountName);
+  if (!k) return [];
+  const out = [];
+  for (const s of sessions.values()) {
+    const seat = [...s.members.values()].find(m => m.accountId === k);
+    if (seat) out.push({ sessionId: s.id, delveName: s.name, phase: s.phase, heroName: seat.name });
+  }
+  return out;
+}
+
 /** The per-client SSE payload: your delve + everyone's summaries. */
 function snapshotFor(clientId) {
   return { you: clientId ? sessionSnapshotFor(clientId) : null, sessions: allSummaries() };
@@ -593,7 +611,7 @@ restoreSessions();
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
 };

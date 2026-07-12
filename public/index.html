@@ -33,6 +33,13 @@
         <input id="delve-name" type="text" autocomplete="off" placeholder="e.g. The Swaginators" />
       </div>
       <div class="landing-actions">
+        <div class="signin-row">
+          <label for="pw" class="visually-hidden">Password (optional — sign in to be remembered)</label>
+          <input id="pw" type="password" autocomplete="current-password" maxlength="64"
+            placeholder="Password (optional — to be remembered)" aria-label="Password, optional. Sign in to be remembered across visits." />
+          <button id="signin-btn" type="button">Sign in</button>
+          <span id="signin-status" aria-live="polite"></span>
+        </div>
         <button type="button" id="start-delve">⚔️ Start a new delve</button>
       </div>
       <p class="muted-line">…or join or watch an active delve from the panel on the right. →</p>

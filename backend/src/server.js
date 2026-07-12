@@ -25,6 +25,7 @@ const game = require('./game');
 const session = require('./session');
 const eleven = require('./elevenlabs');
 const gm = require('./gm');
+const accounts = require('./accounts');
 const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
@@ -140,16 +141,30 @@ const server = http.createServer(async (req, res) => {
     return Object.assign({}, r, { snapshot: session.sessionSnapshotFor(r.clientId || clientId) });
   }
 
+  // ── Accounts: one call signs in OR registers; /me resumes from a token ──
+  if (url === '/api/auth/signin' && req.method === 'POST') {
+    const body = await readBody(req);
+    return sendJSON(res, 200, accounts.signIn(body.name, body.password));
+  }
+  if (url === '/api/auth/me' && req.method === 'POST') {
+    const body = await readBody(req);
+    const a = accounts.byToken(String(body.token || ''));
+    if (!a) return sendJSON(res, 200, { ok: false });
+    return sendJSON(res, 200, { ok: true, name: a.name, character: a.character || null, delves: session.delvesForAccount(a.name) });
+  }
+
   if (url === '/api/session/create' && req.method === 'POST') {
     const body = await readBody(req);
-    const r = session.createDelve({ name: body.name, icon: body.icon, delveName: body.delveName });
+    const acct = accounts.byToken(String(body.token || ''));
+    const r = session.createDelve({ name: body.name, icon: body.icon, delveName: body.delveName, account: acct && acct.name });
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r));
   }
 
   if (url === '/api/session/join' && req.method === 'POST') {
     const body = await readBody(req);
-    const r = session.joinDelve(body.sessionId, { name: body.name, icon: body.icon, role: body.role });
+    const acctJ = accounts.byToken(String(body.token || ''));
+    const r = session.joinDelve(body.sessionId, { name: body.name, icon: body.icon, role: body.role, account: acctJ && acctJ.name });
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 409, sessionResult(r));
   }
