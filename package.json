@@ -4,7 +4,7 @@
   "description": "Personal Game Master — solo/multiplayer PF1 procedural dungeon crawl with blind-first accessibility.",
   "private": true,
   "scripts": {
-    "test": "node --test",
+    "test": "node --test --import ./backend/test/_isolate.js",
     "sync-pf1core": "bash scripts/sync-pf1core.sh"
   },
   "license": "UNLICENSED"

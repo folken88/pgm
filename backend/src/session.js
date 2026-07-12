@@ -356,7 +356,14 @@ function pubBuy(clientId, serviceKey, targetName) {
     delveLog(s, 'PUB: bought ' + svc.label + ' (' + svc.gp + 'gp)');
     return { ok: true, text: svc.label + ' added to the party stash.' };
   }
-  const m = [...s.members.values()].find(x => x.name.toLowerCase() === String(targetName || '').toLowerCase());
+  // Target: named member, else auto-pick the one who needs THIS service (a
+  // hurt member for restoration, a dead one for raise) so "pub buy restoration"
+  // with no name just works, and the refusal reads sensibly when nobody needs it.
+  let m = targetName
+    ? [...s.members.values()].find(x => x.name.toLowerCase() === String(targetName).toLowerCase())
+    : (svc.kind === 'restoration' ? [...s.members.values()].find(x => (x.negLevels || 0) > 0)
+      : svc.kind === 'raise' ? [...s.members.values()].find(x => x.dead) : null);
+  if (svc.kind === 'restoration' && !m) return { ok: false, error: 'nobody in the party carries negative levels' };
   if (!m && svc.kind !== 'raise') return { ok: false, error: 'no party member by that name' };
   if (svc.kind === 'restoration') {
     if (!(m.negLevels > 0)) return { ok: false, error: m.name + ' has no negative levels' };

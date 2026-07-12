@@ -11,6 +11,10 @@
 const pf1 = require('../pf1core');
 const { fighterFeats } = require('../pf1core/pf1data/feats');
 const RACES = require('../pf1core/pf1data/races');
+// Dice + weapon helpers the mixins import at their own module level — the
+// shim's own ported methods (_evadeIncoming/_fireShieldRetaliate/_isDualWielding)
+// need them in this scope too.
+const { weaponOf, dRoll, dRollN } = require('./game/combat');
 
 // ── Constants poker's factories expect (values lifted from Dungeon.js) ──
 const ABILITY_MOD = 4, CAST_MOD = 4;
