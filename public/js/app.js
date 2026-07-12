@@ -555,7 +555,8 @@
         + (c.ownerClientId === state.myId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
         + '<div class="hpbar"><div style="width:' + pct + '%"></div></div>'
         + '<div class="hc-meta">' + (c.level ? 'L' + c.level + ' · ' : '') + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
-        + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '');
+        + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '')
+        + (c.queued ? '<div class="hc-queued">⏳ queued: ' + esc(c.queued) + '</div>' : '');
       box.appendChild(card);
     });
   }
@@ -676,8 +677,20 @@
     } else if (run.phase !== 'combat') {
       bar.innerHTML = '<button class="ab-btn" data-dact="leave">' + String.fromCodePoint(0x21A9) + ' Return to start</button>';
     } else if (!kit) {
+      // OFF-TURN: another combatant is acting. You may PRE-LOAD a swing/hold —
+      // it fires the instant your turn arrives (poker action queue). Abilities
+      // queue on your own turn only (kit not sent off-turn yet).
       var actor = run.turn ? run.turn.name : 'The enemy';
-      bar.innerHTML = '<span class="ab-status">' + esc(actor) + ' is acting' + String.fromCharCode(8230) + '</span>';
+      var mine2 = run.combatants.filter(function (c) { return c.side === 'hero' && c.ownerClientId === state.myId; })[0];
+      var canQueue = mine2 && !mine2.down && !mine2.dead;
+      var qhtml = '<span class="ab-status">' + esc(actor) + ' is acting' + String.fromCharCode(8230) +
+        (canQueue ? ' <span class="ab-uses" title="Pick a move now — it fires the moment your turn begins.">' + String.fromCodePoint(0x23F3) + ' clicks queue</span>' : '') + '</span>';
+      if (canQueue) {
+        qhtml += '<button class="ab-btn ab-primary" data-dact="attack">' + String.fromCodePoint(0x2694, 0xFE0F) + ' Queue attack</button>';
+        qhtml += '<button class="ab-btn ab-ghost" data-dact="pass">' + String.fromCodePoint(0x23F8, 0xFE0F) + ' Queue hold</button>';
+        if (mine2.queued) qhtml += '<span class="ab-queued">' + String.fromCodePoint(0x23F3) + ' queued: ' + esc(mine2.queued) + '</span>';
+      }
+      bar.innerHTML = qhtml;
     } else {
       var slotSummary = Object.keys(kit.slots || {}).sort().map(function (L) { return L + ':' + kit.slots[L].remaining; }).join(' ');
       var html = '<span class="ab-status">' + String.fromCodePoint(0x2694, 0xFE0F) + ' Your turn' + (slotSummary ? ' <span class="ab-uses">' + String.fromCodePoint(0x2728) + slotSummary + '</span>' : '') + '</span>';
@@ -808,6 +821,7 @@
     if (choice.spell) body.spell = choice.spell;
     api('/api/session/action', body).then(function (r) {
       if (!r.ok) { BM.speak(r.error || 'Cannot do that.', 'urgent'); BM.toast(r.error || 'Cannot do that.'); return; }
+      if (r.queued) { BM.speak('Queued: ' + (r.label || 'action') + '. It fires when your turn comes.', 'urgent'); BM.toast('⏳ Queued: ' + (r.label || 'action')); }
       // Render from the response NOW — never sit waiting on the SSE push
       // (a severed stream after a deploy left the screen frozen for Tobias).
       if (r.snapshot) onState({ you: r.snapshot, sessions: state.sessions });

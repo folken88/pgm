@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PGM — QA Cockpit</title>
+<style>
+  body { margin: 0; font-family: "Palatino Linotype", Georgia, serif; background: #150c05; color: #ecdcb8; font-size: 15px; }
+  header { padding: .6rem 1rem; background: #2b1a0d; border-bottom: 2px solid #59391c; display: flex; gap: 1rem; align-items: baseline; }
+  h1 { font-size: 1.1rem; margin: 0; color: #d9b45c; font-variant: small-caps; }
+  .muted { color: #b39a72; font-size: .85rem; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; padding: .8rem; }
+  .panel { background: #2b1a0d; border: 1px solid #59391c; border-radius: 6px; padding: .6rem .8rem; }
+  .panel h2 { font-size: .95rem; margin: 0 0 .4rem; color: #d9b45c; font-variant: small-caps; border-bottom: 1px solid #59391c; padding-bottom: .2rem; }
+  .delve { border: 1px solid #59391c; border-radius: 5px; padding: .4rem .5rem; margin-bottom: .5rem; background: #1e1108; }
+  .delve .dtitle { color: #d9b45c; font-weight: 700; }
+  .cmb { display: flex; gap: .5rem; align-items: center; padding: .15rem 0; }
+  .cmb .nm { min-width: 9rem; }
+  .cmb.foe .nm { color: #d99; }
+  .cmb.cur { background: rgba(217,180,92,.15); border-radius: 3px; }
+  .cmb.down { opacity: .5; }
+  .bar { display: inline-block; width: 90px; height: 8px; background: #120a04; border-radius: 4px; overflow: hidden; vertical-align: middle; }
+  .bar > i { display: block; height: 100%; background: #7fb069; }
+  .bar.hurt > i { background: #c4472e; }
+  .chip { font-size: .72rem; background: #59391c; border-radius: 3px; padding: 0 .3rem; margin-left: .2rem; }
+  .chip.q { background: #7a4d0e; color: #f2dfb8; }
+  #log { font-family: ui-monospace, Menlo, monospace; font-size: 12px; height: 44vh; overflow-y: auto; background: #120a04; border-radius: 4px; padding: .4rem .5rem; white-space: pre-wrap; }
+  #log .u { color: #d9b45c; } #log .e { color: #ecdcb8; }
+  .console { display: flex; gap: .4rem; margin-top: .4rem; }
+  .console input { flex: 1; background: #38220f; color: #ecdcb8; border: 1px solid #59391c; border-radius: 5px; padding: .45rem .6rem; font: inherit; }
+  .console input.who { flex: 0 0 6rem; }
+  button { background: #6d4a26; color: #f2e2bd; border: 1px solid #0d0703; border-radius: 5px; padding: .45rem .7rem; font: inherit; cursor: pointer; }
+  button:hover { filter: brightness(1.2); }
+  #out { font-family: ui-monospace, monospace; font-size: 12px; max-height: 30vh; overflow-y: auto; margin-top: .4rem; background: #120a04; border-radius: 4px; padding: .4rem .5rem; white-space: pre-wrap; }
+  .quick { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+  .quick button { font-size: .82rem; padding: .3rem .5rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚗️ PGM QA Cockpit</h1>
+  <span class="muted">real server · dev backdoor · drives every function through real code paths</span>
+  <span class="muted" id="tick" style="margin-left:auto"></span>
+</header>
+<main>
+  <section class="panel">
+    <h2>Live delves</h2>
+    <div id="delves"><p class="muted">No dev seats yet. Try: <code>create fighter</code> (who = A).</p></div>
+    <h2 style="margin-top:.8rem">Console</h2>
+    <div class="console">
+      <input class="who" id="who" value="A" title="which seat" />
+      <input id="cmd" placeholder="command  e.g.  create fighter · join A cleric · start · roll · attack · cast bless" autocomplete="off" />
+      <button id="send">Run</button>
+    </div>
+    <div class="quick" id="quick"></div>
+    <div id="out"></div>
+  </section>
+  <section class="panel">
+    <h2>Log <span class="muted" id="logname"></span></h2>
+    <div id="log"></div>
+  </section>
+</main>
+<script>
+  var api = function (cmd, who) {
+    return fetch('/api/dev/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ who: who || who0(), cmd: cmd }) }).then(function (r) { return r.json(); });
+  };
+  function who0() { return document.getElementById('who').value.trim() || 'A'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+  var QUICK = ['roll', 'attack', 'pass', 'descend', 'retreat', 'cantrip', 'state', 'hero', 'kit', 'roster', 'kill', 'set hp 3'];
+  var qbox = document.getElementById('quick');
+  QUICK.forEach(function (q) { var b = document.createElement('button'); b.textContent = q; b.onclick = function () { run(q); }; qbox.appendChild(b); });
+
+  function run(cmd) {
+    var out = document.getElementById('out');
+    api(cmd).then(function (r) {
+      var head = (r.ok ? '✓ ' : '✗ ') + who0() + ' » ' + cmd;
+      var body = (r.error ? '  ' + r.error : '') + (r.said && r.said.length ? '\n  ' + r.said.map(esc).join('\n  ') : '') + (r.text ? '\n  ' + esc(r.text) : '');
+      out.textContent = head + body + '\n\n' + out.textContent;
+      refresh();
+    });
+  }
+  document.getElementById('send').onclick = function () { var c = document.getElementById('cmd').value.trim(); if (c) { run(c); document.getElementById('cmd').value = ''; } };
+  document.getElementById('cmd').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('send').click(); });
+
+  var lastLogId = null;
+  function refresh() {
+    fetch('/api/dev/inspect').then(function (r) { return r.json(); }).then(function (delves) {
+      var box = document.getElementById('delves');
+      if (!delves.length) { box.innerHTML = '<p class="muted">No dev seats yet.</p>'; return; }
+      box.innerHTML = delves.map(function (d) {
+        var run = d.run;
+        var head = '<div class="dtitle">' + esc(d.name) + ' <span class="muted">[' + esc(d.seats.join(', ')) + ']</span> — ' + esc(d.phase) + (run ? ' · depth ' + run.depth + ' · rd ' + run.round + ' · ' + run.gold + 'g' + (run.turn ? ' · turn: ' + esc(run.turn) : '') : '') + '</div>';
+        var rows = run ? run.combatants.map(function (c) {
+          var pct = Math.round(100 * c.hp / Math.max(1, c.maxHp));
+          return '<div class="cmb ' + (c.side === 'enemy' ? 'foe' : '') + (c.current ? ' cur' : '') + (c.down ? ' down' : '') + '">' +
+            '<span class="nm">' + (c.current ? '▶ ' : '') + esc(c.name) + (c.ai ? ' 🤖' : '') + '</span>' +
+            '<span class="bar' + (pct < 35 ? ' hurt' : '') + '"><i style="width:' + pct + '%"></i></span> ' +
+            '<span class="muted">' + c.hp + '/' + c.maxHp + ' AC' + c.ac + '</span>' +
+            (c.dead ? '<span class="chip">DEAD</span>' : c.down ? '<span class="chip">down</span>' : '') +
+            (c.conditions || []).map(function (x) { return '<span class="chip">' + esc(x) + '</span>'; }).join('') +
+            (c.queued ? '<span class="chip q">⏳' + esc(c.queued) + '</span>' : '') +
+            '</div>';
+        }).join('') : '';
+        var pub = d.pub ? '<div class="muted">Swashgoblin — purse ' + d.pub.gold + 'g' + (d.pub.dead && d.pub.dead.length ? ' · dead: ' + d.pub.dead.map(esc).join(', ') : '') + '</div>' : '';
+        return '<div class="delve">' + head + rows + pub + '</div>';
+      }).join('');
+      // log from the first delve with a run
+      var withRun = delves.filter(function (d) { return d.run; });
+      if (withRun.length) {
+        var d = withRun[0];
+        document.getElementById('logname').textContent = '— ' + d.name;
+        document.getElementById('log').innerHTML = d.run.log.map(function (e) { return '<span class="' + (e.priority === 'urgent' ? 'u' : 'e') + '">' + esc(e.text) + '</span>'; }).join('\n');
+      }
+    }).catch(function () {});
+    document.getElementById('tick').textContent = new Date().toLocaleTimeString();
+  }
+  refresh();
+  setInterval(refresh, 2000);
+</script>
+</body>
+</html>

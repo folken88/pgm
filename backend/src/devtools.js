@@ -71,6 +71,7 @@ async function runCmd(who, cmd) {
     const s2 = clientId ? session._testInternals(clientId) : null;
     return Object.assign({ ok: true, said: say(s2 && s2.run, seq0), state: summary(s2) }, extra);
   };
+  const played = (r) => r.ok ? done(r.queued ? { queued: true, label: r.label, said: ['⏳ queued: ' + r.label + ' (fires on your turn)'] } : undefined) : fail(r.error);
   const fail = (error) => ({ ok: false, error });
 
   // ── lifecycle ──
@@ -91,7 +92,44 @@ async function runCmd(who, cmd) {
     const s2 = session._testInternals(clientId);
     return { ok: true, said: say(s2.run, 0), state: summary(s2) };
   }
-  if (!clientId || !sess) return fail(`no delve for "${who}" — start with: new <cls> [race] [with Comp,Comp]`);
+  // Multi-seat party (drive several humans on the real server): create -> join -> addai -> start.
+  if (verb === 'create') {
+    const c = session.createDelve({ name: who, icon: '🧪', delveName: 'party-' + who + '-' + Math.floor(Math.random() * 1e6) });
+    if (!c.ok) return fail(c.error);
+    players.set(who, c.clientId); clientId = c.clientId;
+    const sc = session.setCharacter(clientId, { race: parts[2] || 'human', cls: parts[1] || 'fighter' });
+    return sc.ok ? { ok: true, said: [who + ' hosts a delve (' + (parts[2] || 'human') + ' ' + (parts[1] || 'fighter') + ') - waiting in lobby. join/addai/start.'], state: summary(session._testInternals(clientId)) } : fail('setCharacter: ' + sc.error);
+  }
+  if (verb === 'join') {
+    const hostCid = players.get(parts[1]);
+    if (!hostCid) return fail('no host "' + parts[1] + '" - create one first');
+    const j = session.joinDelve(session.sessionSnapshotFor(hostCid).id, { name: who, icon: '⚗️', role: 'player' });
+    if (!j.ok) return fail('join: ' + j.error);
+    players.set(who, j.clientId); clientId = j.clientId;
+    const sc = session.setCharacter(clientId, { race: parts[3] || 'human', cls: parts[2] || 'fighter' });
+    return sc.ok ? { ok: true, said: [who + ' joined ' + parts[1] + "'s party (" + (parts[3] || 'human') + ' ' + (parts[2] || 'fighter') + ').'], state: summary(session._testInternals(clientId)) } : fail('setCharacter: ' + sc.error);
+  }
+  if (verb === 'addai') {
+    if (!clientId) return fail('"' + who + '" has no delve');
+    const a = session.addCompanion(clientId, parts.slice(1).join(' '));
+    return a.ok ? { ok: true, said: ['companion ' + parts.slice(1).join(' ') + ' added.'], state: summary(sess) } : fail(a.error);
+  }
+  if (verb === 'start') {
+    if (!clientId) return fail('"' + who + '" has no delve');
+    const st = session.startRun(clientId);
+    if (!st.ok) return fail(st.error);
+    return { ok: true, said: say(session._testInternals(clientId).run, 0), state: summary(session._testInternals(clientId)) };
+  }
+  if (verb === 'roster') {
+    const rows = [];
+    for (const [w, cid] of players) {
+      const snap = session.sessionSnapshotFor(cid); const r = snap && snap.run;
+      const mine = r && r.combatants.find(c => c.ownerClientId === snap.yourMemberId);
+      rows.push(w + ': "' + (snap ? snap.name : '?') + '" ' + (snap ? snap.phase : 'gone') + (r ? ' turn=' + (r.turn ? r.turn.name : r.phase) + (mine ? ' me=' + mine.hp + '/' + mine.maxHp + (mine.queued ? ' ⏳' + mine.queued : '') : '') : ''));
+    }
+    return { ok: true, said: rows.length ? rows : ['no dev seats yet'] };
+  }
+  if (!clientId || !sess) return fail('no delve for "' + who + '" - new <cls>, or create/join/start for a party');
 
   // ── real play actions (the exact paths players use) ──
   const ACT = {
@@ -101,21 +139,18 @@ async function runCmd(who, cmd) {
     retreat: () => session.action(clientId, { type: 'retreat' }),
     cantrip: () => session.action(clientId, { type: 'cantrip' }),
   };
-  if (ACT[verb]) { const r = ACT[verb](); return r.ok ? done() : fail(r.error); }
+  if (ACT[verb]) { return played(ACT[verb]()); }
   if (verb === 'attack') {
     const t = findCombatant(run, parts.slice(1).join(' '), 'enemy');
-    const r = session.action(clientId, { type: 'attack', target: t && t.id });
-    return r.ok ? done() : fail(r.error);
+    return played(session.action(clientId, { type: 'attack', target: t && t.id }));
   }
   if (verb === 'cast') {
     const t = findCombatant(run, parts.slice(2).join(' '), null);
-    const r = session.action(clientId, { type: 'cast', spell: parts[1], target: t && t.id });
-    return r.ok ? done() : fail(r.error);
+    return played(session.action(clientId, { type: 'cast', spell: parts[1], target: t && t.id }));
   }
   if (verb === 'use') {
     const t = findCombatant(run, parts.slice(2).join(' '), null);
-    const r = session.action(clientId, { type: 'use', item: parts[1], target: t && t.id });
-    return r.ok ? done() : fail(r.error);
+    return played(session.action(clientId, { type: 'use', item: parts[1], target: t && t.id }));
   }
   if (verb === 'equip') { const r = session.action(clientId, { type: 'equip', item: parts[1] }); return r.ok ? done() : fail(r.error); }
   if (verb === 'loot') {
@@ -191,4 +226,29 @@ async function runCmd(who, cmd) {
   return fail('unknown command — see docs/DEV-BACKDOOR.md');
 }
 
-module.exports = { ENABLED, runCmd };
+/** Full live state of every dev seat's delve - feeds the /dev QA dashboard. */
+function inspect() {
+  const seen = new Map();
+  for (const [w, cid] of players) {
+    const snap = session.sessionSnapshotFor(cid);
+    if (!snap) continue;
+    if (!seen.has(snap.id)) seen.set(snap.id, { seats: [], snap });
+    seen.get(snap.id).seats.push(w);
+  }
+  return [...seen.values()].map(({ snap, seats }) => {
+    const r = snap.run;
+    return {
+      id: snap.id, name: snap.name, phase: snap.phase, seats, pub: snap.pub || null,
+      run: r ? {
+        phase: r.phase, round: r.round, gold: r.gold, depth: r.roomsCleared + 1, turn: r.turn ? r.turn.name : null,
+        combatants: r.combatants.filter(c => c.side === 'hero' || c.revealed).map(c => ({
+          name: c.name, side: c.side, hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac,
+          down: c.down, dead: c.dead, ai: c.ai, current: c.current, conditions: c.conditions || [], queued: c.queued || null,
+        })),
+        log: (r.log || []).slice(-50),
+      } : null,
+    };
+  });
+}
+
+module.exports = { ENABLED, runCmd, inspect };

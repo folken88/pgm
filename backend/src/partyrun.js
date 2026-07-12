@@ -324,6 +324,7 @@ function runUntilHeroTurn(run, roll) {
         logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent');
       }
       if (!c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; }
+      if (c.side === 'hero') c.queuedAction = null;   // dying/dead wipes the pre-load
     });
     if (living(run, 'enemy').length === 0) return clearRoom(run, roll);
     if (living(run, 'hero').length === 0) return defeat(run);
@@ -345,7 +346,21 @@ function runUntilHeroTurn(run, roll) {
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // conditions cost the turn
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'enemy' && cb.dominated > 0) { dominatedTurn(run, cb, roll); nextTurn(run); continue; }
-    if (cb.side === 'hero' && !cb.ai) { run.turnStartedAt = Date.now(); logEvent(run, `It is ${cb.name}'s turn.`, 'event'); return; }
+    if (cb.side === 'hero' && !cb.ai) {
+      // A pre-loaded action fires the instant your turn arrives (poker parity).
+      // On success its own applyAction advances the loop; a fizzle hands the
+      // turn back to you live.
+      if (cb.queuedAction) {
+        const q = cb.queuedAction; cb.queuedAction = null;
+        logEvent(run, `⏳ ${cb.name}'s pre-loaded ${q.label} triggers!`, 'event');
+        const r = applyAction(run, cb.ownerClientId, q.action, roll);
+        if (r && r.ok) return;   // resolved + loop continued inside applyAction
+        logEvent(run, `⏳ ${cb.name}'s queued ${q.label} fizzled${r && r.error ? ` (${r.error})` : ''} — act now.`, 'event');
+      }
+      run.turnStartedAt = Date.now();
+      logEvent(run, `It is ${cb.name}'s turn.`, 'event');
+      return;
+    }
     if (cb.side === 'hero') aiHeroTurn(run, cb, roll);   // ai companion
     else enemyTurn(run, cb, roll);
     nextTurn(run);
@@ -607,8 +622,28 @@ function applyAction(run, clientId, action, roll = Math.random) {
   if (run.phase !== 'combat') return { ok: false, error: 'no action available now' };
 
   const cb = current(run);
-  if (!cb || cb.side !== 'hero' || cb.ai) return { ok: false, error: 'wait for your turn' };
-  if (cb.ownerClientId !== clientId) return { ok: false, error: 'it is ' + cb.name + "'s turn, not yours" };
+  if (!cb || cb.side !== 'hero' || cb.ai) {
+    // ── ACTION QUEUE (poker parity): pre-load a move for when your turn comes.
+    // Fires automatically the moment the loop reaches you; a later queue
+    // REPLACES the earlier pick (last one wins). Only real turn-actions queue.
+    const mine = run.heroes.find(h => h.ownerClientId === clientId);
+    if (mine && !mine.down && !mine.dead && mine.hp > 0 && ['attack', 'cast', 'use', 'pass'].includes(type)) {
+      const label = type === 'attack' ? 'attack' : type === 'cast' ? (action.spell || 'a spell') : type === 'use' ? (action.item || 'an item') : 'hold';
+      mine.queuedAction = { action: Object.assign({}, action), label };
+      return { ok: true, queued: true, label };
+    }
+    return { ok: false, error: 'wait for your turn' };
+  }
+  if (cb.ownerClientId !== clientId) {
+    const mine = run.heroes.find(h => h.ownerClientId === clientId);
+    if (mine && !mine.down && !mine.dead && mine.hp > 0 && ['attack', 'cast', 'use', 'pass'].includes(type)) {
+      const label = type === 'attack' ? 'attack' : type === 'cast' ? (action.spell || 'a spell') : type === 'use' ? (action.item || 'an item') : 'hold';
+      mine.queuedAction = { action: Object.assign({}, action), label };
+      return { ok: true, queued: true, label };
+    }
+    return { ok: false, error: 'it is ' + cb.name + "'s turn, not yours" };
+  }
+  cb.queuedAction = null;   // acting live clears any stale pre-load of your own
 
   if (type === 'attack') {
     const target = pickTarget(run, action.target);
@@ -887,6 +922,7 @@ function publicRun(run) {
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
       dead: !!c.dead, negLevels: c.negLevels || 0,
+      queued: c.queuedAction ? c.queuedAction.label : null,
       pack: c.side === 'hero' ? (c.pack || []).map(s2 => {
         const it = items.ITEM_BY_KEY[s2.key] || { name: s2.key, icon: '?', type: 'misc' };
         return { key: s2.key, name: it.name, icon: it.icon, type: it.type, verb: it.verb || 'equip', kind: it.effect ? it.effect.kind : null, qty: s2.qty };

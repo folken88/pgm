@@ -31,3 +31,19 @@ Example full sweep (what a playtest should look like):
     give potion_clw → loot party potion_clw → loot take potion_clw →
     use potion_clw → equip … → descend → roll → retreat →
     pub sell gem_… → pub buy raisedead <name> → setout
+
+## Multi-seat parties + the /dev QA cockpit (2026-07-12)
+Testing multiplayer (e.g. the action queue) needs several humans in ONE party:
+    create <cls> [race]          who hosts a delve, stays in lobby
+    join <hostWho> <cls> [race]  who joins hostWho's party as a 2nd+ human
+    addai <Name>                 host adds an AI companion
+    start                        host starts the run
+    roster                       every dev seat: delve, phase, whose turn, ⏳queue
+Then drive each seat by its `who`. Off-turn attack/cast/use/pass QUEUE (⏳),
+firing when that seat's turn arrives (poker action queue).
+
+THE COCKPIT: open http://<host>/dev (DEV_BACKDOOR=1 only). A live dashboard —
+all dev delves, combatants with HP bars / condition + ⏳ chips, the log, a
+command console, and quick-action buttons. Claude drives via /api/dev/cmd;
+a sighted human can watch/click the same board. /api/dev/inspect returns the
+full live state as JSON.

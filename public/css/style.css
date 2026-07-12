@@ -447,3 +447,7 @@ body:not(.blind-on) #choices {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
+
+/* Action queue (poker parity): pre-load chips */
+.ab-queued { color: var(--accent); font-size: .85rem; font-variant: small-caps; margin-left: .3rem; }
+.hero-card .hc-queued { color: var(--accent); font-size: .78rem; font-variant: small-caps; }

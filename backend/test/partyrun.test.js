@@ -40,14 +40,18 @@ test('a party run starts in combat with heroes + enemies in initiative order', (
   }
 });
 
-test('turn-gating: only the current human may act', () => {
+test('turn-gating: the current human acts live; another party member QUEUES', () => {
   const roll = seededRoller(4);
   const run = pr.createPartyRun(humans(), roll); rollInit(run, roll);
   const v = pr.publicRun(run);
   assert.ok(v.turn, 'a human has the turn');
   const other = v.turn.ownerClientId === 'c1' ? 'c2' : 'c1';
-  assert.strictEqual(pr.applyAction(run, other, { type: 'pass' }, roll).ok, false, 'not your turn');
-  assert.strictEqual(pr.applyAction(run, v.turn.ownerClientId, { type: 'pass' }, roll).ok, true);
+  // Off-turn party members no longer bounce — they pre-load (action queue).
+  const q = pr.applyAction(run, other, { type: 'pass' }, roll);
+  assert.ok(q.ok && q.queued, 'off-turn action queues');
+  // A non-member (no hero) still cannot act.
+  assert.strictEqual(pr.applyAction(run, 'stranger', { type: 'pass' }, roll).ok, false, 'non-member refused');
+  assert.strictEqual(pr.applyAction(run, v.turn.ownerClientId, { type: 'pass' }, roll).ok, true, 'current acts live');
 });
 
 test('publicRun never exposes an unrevealed (hidden) enemy', () => {

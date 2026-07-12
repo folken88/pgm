@@ -149,6 +149,18 @@ const server = http.createServer(async (req, res) => {
 
   // ── DEV BACKDOOR (DEV_BACKDOOR=1 only; never in prod compose): drive every
   // play function through the real action paths — Tobias 2026-07-12. ──
+  if (url === '/api/dev/inspect' && req.method === 'GET') {
+    if (!devtools.ENABLED) return sendJSON(res, 404, { error: 'unknown endpoint' });
+    return sendJSON(res, 200, devtools.inspect());
+  }
+  if (url === '/dev' && req.method === 'GET') {
+    if (!devtools.ENABLED) { res.writeHead(404); return res.end('Not found'); }
+    return fs.readFile(path.join(PUBLIC_DIR, 'dev.html'), (e, buf) => {
+      if (e) { res.writeHead(404); return res.end('Not found'); }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(buf);
+    });
+  }
   if (url === '/api/dev/cmd' && req.method === 'POST') {
     if (!devtools.ENABLED) return sendJSON(res, 404, { error: 'unknown endpoint' });
     const body = await readBody(req);
