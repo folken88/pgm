@@ -91,11 +91,15 @@ test('a cleric AI companion casts Cure on a badly hurt ally instead of swinging'
     if (!pr.applyAction(run, 'c1', { type: 'descend' }, roll).ok) break;
   }
   assert.strictEqual(run.phase, 'combat', 'found a room where combat holds');
-  kara.hp = 2;                                       // badly hurt
-  // The foe must survive long enough for Mira's heal decision to matter.
+  // Sturdy scenario: enemy melee is REAL now (post shim-hole fix) — both
+  // heroes get big HP pools so the kobold can't wipe them mid-test, and Kara
+  // sits far below the heal threshold.
+  const mira = run.heroes.find(h => h.name === 'Mira');
+  kara.maxHp = 80; kara.hp = 5;                      // badly hurt
+  mira.maxHp = 80; mira.hp = 80;
   for (const c of run.combatants) if (c.side === 'enemy') { c.hp = 200; c.maxHp = 200; }
-  // "💚 Mira casts Cure Light Wounds — Kara heals 8 (10/12)." (or channel wording)
-  const HEAL = /Mira[^]*?(Cure|channel|heal)[^]*?Kara heals/i;
+  // Cure names the target; Channel heals the whole party — both count.
+  const HEAL = /Mira[^]*?Cure[^]*?Kara heals|Mira channels positive/i;
   // Let the loop run a few of Kara's turns (passing) so Mira acts.
   let guard = 0;
   while (guard++ < 8 && run.phase === 'combat' && !run.log.some(e => HEAL.test(e.text))) {

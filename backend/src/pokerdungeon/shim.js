@@ -113,6 +113,71 @@ Object.assign(
 let _summonSeq = 0;
 Object.assign(DungeonShim.prototype, {
   /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
+  // ── Methods the mixins call that the shim lacked (found 2026-07-12 by a
+  // call-diff after the silent enemyTurn catch hid a per-hit throw; verbatim
+  // ports from poker Dungeon.js unless noted) ──
+  // Mirror Image + Displacement + incorporeal: does an incoming attack on this
+  // hero get soaked or slip through? True = fully negated (Dungeon.js:1764).
+  _evadeIncoming(target, attacker) {
+    if (target.images > 0) {
+      target.images -= 1;
+      this._note(`\u{1FA9E} the blow strikes a mirror image of ${target.nickname} — it pops! (${target.images} left)`, null);
+      return true;
+    }
+    if (target.displaced && dRoll(2) === 1) {
+      this._note(`\u{1F32B}\uFE0F ${target.nickname} is displaced — the attack passes through empty air!`, null);
+      return true;
+    }
+    if (target.ghost && dRoll(2) === 1) {
+      this._note(`\u{1F47B} the blow passes THROUGH ${target.nickname} — incorporeal!`, null);
+      return true;
+    }
+    return false;
+  },
+  // Fire Shield: a foe landing a melee hit on the warded hero is scorched (D:1782).
+  _fireShieldRetaliate(target, e) {
+    if (!target.fireShield || !(e && e.hp > 0)) return;
+    const fs = target.fireShield;
+    const dealt = this._dmgE(e, dRollN(1, fs.die || 6) + (fs.bonus || 1), 'fire');
+    this._note(`\u{1F525} ${e.name} is scorched by ${target.nickname}'s Fire Shield for ${dealt} fire!`, null, { side: 'enemy' });
+  },
+  // TWF/flurry detection (D: _isDualWielding, verbatim incl. monk flurry).
+  _isDualWielding(m) {
+    const w = m.weapon || weaponOf(m.gear, m.weaponKey);
+    if (m.cls === 'monk' && w && !w.ranged) return true;
+    const sneak = ['rogue', 'ninja', 'slayer'].includes(m.cls);
+    return !!(w && (w.dual || (sneak && (m.weaponKey === 'dagger' || m.weaponKey === 'kukri'))));
+  },
+  // Lowest living party level anchors encounter CR (D:613).
+  _minLevel() {
+    const party = this.members.filter(m => !m.left && m.hp > 0);
+    if (!party.length) return 1;
+    return Math.max(1, Math.min(...party.map(m => m.level || 1)));
+  },
+  // Order of the Flame: a GLORIOUS crit daunts the room (D:_dauntingSuccess).
+  _isFlameCavalier(m) {
+    if (!m || m.cls !== 'cavalier') return false;
+    return (m.trueNick || m.nickname || m.playerId || '').toLowerCase() === 'lord gweyir';
+  },
+  _dauntingSuccess(m) {
+    if (!this._isFlameCavalier(m) || (m.level || 1) < 8 || m._dauntedRoom) return;
+    m._dauntedRoom = true;
+    let n = 0;
+    for (const e of this.enemies.filter(x => x.hp > 0)) { e.prayed = Math.max(e.prayed || 0, 2); n++; }
+    if (n) this._note(`\u{1F631} ${m.nickname}'s GLORIOUS critical DAUNTS the room — ${n} foe${n > 1 ? 's' : ''} quail!`, null);
+  },
+  // Bot backup ranged weapon (char-gated pistols, else a light crossbow) (D:359).
+  _backupRangedKey(m) {
+    const BY_CHAR = { 'el guapo': 'guapopistol', gaspar: 'gasparpistols' };
+    return BY_CHAR[(m.playerId || '').toLowerCase()] || 'lightcrossbow';
+  },
+  // PGM stubs: leveling/death/recruiting are PGM-owned systems.
+  _applyDeathPenalty() {},
+  _levelGains() { return ''; },
+  _recruitableFn() { return []; },
+  addMember() { return { ok: false, error: 'PGM parties are fixed at the lobby' }; },
+  roomName() { return 'pgm:' + (this.run && this.run.roomsCleared + 1 || 0); },
+
   _makeEnemyPGM(base, boss, elite) {
     const e = this._makeEnemy(base, !!boss, elite || 0);
     e.id = e.uid; e.side = 'enemy'; e.down = false; e.revealed = true;

@@ -497,11 +497,12 @@ function enemyTurn(run, enemy, roll) {
   const hpBefore = drainer ? run.heroes.map(h => h.hp) : null;
   try {
     run.shim._enemyAct(enemy);
+    if (process.env.DRAIN_DEBUG) console.log('[drain-dbg]', enemy.name, 'drainer=', drainer, 'hpBefore=', hpBefore, 'hpNow=', run.heroes.map(h=>h.hp));
     if (drainer) {
       run.heroes.forEach((h, i) => { if (h.hp < hpBefore[i] && !h.dead) applyNegLevels(h, 1, enemy.name + "'s draining touch", run); });
     }
     return;
-  } catch (e) {}
+  } catch (e) { if (process.env.DRAIN_DEBUG) console.log('[enemyAct THREW]', enemy.name, e.message, String(e.stack||'').split(String.fromCharCode(10))[1]); }
   const targets = living(run, 'hero');
   if (!targets.length) return;
   const target = targets.slice().sort((a, b) => a.hp - b.hp)[0];
