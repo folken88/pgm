@@ -158,7 +158,10 @@ body.in-game header h1 { font-size: 1.15rem; margin-bottom: .2rem; }
 body.in-game #side-window { position: static; width: auto; max-width: none; margin-top: 1rem; }
 .game-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
 .battlefield { display: flex; flex-direction: column; min-height: calc(100vh - 120px); max-height: calc(100vh - 110px); }
-.battlefield .log { flex: 1 1 auto; min-height: 6rem; max-height: none; overflow-y: auto; }
+  /* flex-basis 0 + min-height 0: the log takes ONLY the leftover space and
+     scrolls internally — it can never shove choices/chat below the fold. */
+.battlefield .log { flex: 1 1 0; min-height: 4rem; max-height: none; overflow-y: auto; }
+.battlefield > :not(.log) { flex-shrink: 0; }
 .battlefield .chat-row { margin-top: .6rem; }
 .side-panel { position: sticky; top: .75rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
 .hud { display: flex; flex-direction: column; gap: .3rem; align-items: flex-start; margin-bottom: .8rem; }
