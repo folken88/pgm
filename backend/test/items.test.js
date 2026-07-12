@@ -141,3 +141,40 @@ test('party loot: leader sends, flags party property, member takes; non-leader d
   assert.strictEqual(grunt.pack.find(x => x.key === 'potion_clw').qty, 2, 'took the flagged one too');
   assert.ok(!s.run.inventory.some(x => x.key === 'potion_clw'), 'pile emptied');
 });
+
+test('PF1 treasure: RAW-scale hoards, sellable valuables, +1 weapon enhancement', () => {
+  const treasure = require('../src/treasure');
+  const pf1 = require('../src/pf1core');
+  const { seededRoller } = require('../src/dice');
+  // CR-10-worth of XP yields a RAW-scale hoard (5450 medium, +-30%).
+  const t10 = treasure.rollTreasure(pf1.xp.xpForCR(10), pf1.xp.xpForCR, seededRoller(2));
+  const total = t10.coins + t10.drops.reduce((s, d) => s + (require('../src/items').ITEM_BY_KEY[d.key].value || 0), 0);
+  assert.ok(total >= 5450 * 0.65 && total <= 5450 * 1.4, 'CR10 hoard near RAW value: ' + total);
+  // Equipping a +1 longsword adds the enhancement to hit and damage.
+  const pr2 = require('../src/partyrun');
+  const { createCharacter } = require('../src/characters');
+  const roll = seededRoller(3);
+  const run = pr2.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'Mag', race: 'human', cls: 'fighter' }) }], roll);
+  const hero = run.heroes[0];
+  const plainToHit = hero.weapon.toHit || 0;
+  run.inventory.push({ key: 'g_longsword_p1', qty: 1, party: true });
+  run.phase = 'cleared';
+  const r = pr2.applyAction(run, 'c1', { type: 'equip', item: 'g_longsword_p1' }, roll);
+  assert.ok(r.ok, 'equipped: ' + (r.error || ''));
+  assert.strictEqual(hero.weapon.enh, 1, 'enhancement carried');
+  assert.ok(hero.weapon.toHit >= plainToHit, '+1 to hit applied: ' + hero.weapon.toHit);
+  assert.strictEqual(hero.weapon.dmgBonus >= 1, true, '+1 damage applied');
+  // Selling a gem at the pub banks its full value.
+  const session = require('../src/session');
+  session._reset();
+  const c = session.createDelve({ name: 'Seller', icon: 'X', delveName: 'sell-test' });
+  session.setCharacter(c.clientId, { race: 'human', cls: 'fighter' });
+  session.startRun(c.clientId);
+  const s = session._testInternals(c.clientId);
+  s.run.inventory.push({ key: 'gem_emerald', qty: 1 });
+  session.action(c.clientId, { type: 'retreat' });
+  const before = session.sessionSnapshotFor(c.clientId).pub.gold;
+  const sold = session.pubSell(c.clientId, 'gem_emerald');
+  assert.ok(sold.ok, 'gem sold: ' + (sold.error || ''));
+  assert.strictEqual(session.sessionSnapshotFor(c.clientId).pub.gold, before + 1000, 'emerald = 1000gp banked');
+});

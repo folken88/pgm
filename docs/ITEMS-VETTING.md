@@ -146,3 +146,14 @@ value) — NOT yet decided, listed only as talking points:_
 - _Cursed items_
 - _Artifacts (minor & major)_
 - _Item crafting / creation feats_
+
+## 2026-07-11 — PF1 RAW treasure tables live (Tobias decisions)
+- Economy: **PF1 RAW values** (Core Table 12-5, Medium track) per room's
+  effective encounter CR, ±30%. Coins → run gold → party purse.
+- VETTED this slice: coins; **gems** (10/50/100/500/1000gp tiers, treasure.js);
+  **art objects** (30–1500gp); potions (existing); **+1/+2 weapons & armor**
+  (real enhancement math on equip); spell components (diamond, diamond dust).
+- Gems/art sell at FULL value at the Swashgoblin; gear sells at half.
+- UNVETTED (diverted → equal-value gems, ~1-in-6 of magic slots, narrated in
+  the ambient log + counted): wands, scrolls, rings, wondrous items. Next
+  slices: scrolls/wands (single-use casts through the transplanted engine).

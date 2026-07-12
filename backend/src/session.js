@@ -308,6 +308,20 @@ function enterPub(s) {
   s.phase = 'pub';
   delveLog(s, 'PARTY AT THE SWASHGOBLIN: purse ' + pubPurse(s) + 'gp, dead: ' + ([...s.members.values()].filter(m => m.dead).map(m => m.name).join(', ') || 'none'));
 }
+/** Sell a stash item (gems/art at full value, gear at half) into the purse. */
+function pubSell(clientId, itemKey) {
+  const s = sessionOf(clientId); if (!s || s.phase !== 'pub') return { ok: false, error: 'you are not at the Swashgoblin' };
+  if (!s.stash || !(s.stash[itemKey] > 0)) return { ok: false, error: 'nothing like that in the stash' };
+  const it = require('./items').ITEM_BY_KEY[itemKey];
+  if (!it || !it.value) return { ok: false, error: 'the barkeep will not buy that' };
+  const price = it.type === 'valuable' ? it.value : Math.floor(it.value / 2);
+  s.stash[itemKey] -= 1; if (s.stash[itemKey] <= 0) delete s.stash[itemKey];
+  pubBank(s, price);
+  saveSession(s);
+  delveLog(s, 'PUB: sold ' + it.name + ' for ' + price + 'gp');
+  return { ok: true, text: it.name + ' sold for ' + price + ' gold. Purse: ' + pubPurse(s) + '.' };
+}
+
 function pubBuy(clientId, serviceKey, targetName) {
   const s = sessionOf(clientId); if (!s || s.phase !== 'pub') return { ok: false, error: 'you are not at the Swashgoblin' };
   const svc = PUB_SERVICES[serviceKey]; if (!svc) return { ok: false, error: 'the barkeep has never heard of that' };
@@ -478,6 +492,11 @@ function sessionSnapshotFor(clientId) {
     pub: s.phase === 'pub' ? {
       gold: pubPurse(s),
       stash: s.stash || {},
+      stashView: Object.entries(s.stash || {}).map(([k, q]) => {
+        const it = require('./items').ITEM_BY_KEY[k] || { name: k, type: 'misc' };
+        const sell = it.value ? (it.type === 'valuable' ? it.value : Math.floor(it.value / 2)) : 0;
+        return { key: k, name: it.name, qty: q, type: it.type, sellGp: sell };
+      }),
       services: Object.entries(PUB_SERVICES).map(([key, v]) => {
         const pr2 = priceFor(s, v);
         return { key, label: v.label, gp: pr2.gp, fullGp: v.gp, component: v.component || null, usingComponent: !!pr2.useComponent, kind: v.kind };
@@ -517,7 +536,7 @@ restoreSessions();
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, pubBuy, saveSession, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
 };

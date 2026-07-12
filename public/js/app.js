@@ -333,9 +333,25 @@
       }
     });
     html += '</div>';
-    var stashKeys = Object.keys(pub.stash || {});
-    if (stashKeys.length) html += '<p>Stash for the next delve: ' + stashKeys.map(function (k) { return k + ' ×' + pub.stash[k]; }).join(', ') + '</p>';
+    var sv = pub.stashView || [];
+    if (sv.length) {
+      html += '<h4>Party stash</h4><div class="pub-stash">';
+      sv.forEach(function (it) {
+        html += '<span class="stash-item">' + esc(it.name) + ' ×' + it.qty
+          + (it.sellGp ? ' <button data-sell="' + it.key + '">Sell ' + it.sellGp + 'g</button>' : '') + '</span> ';
+      });
+      html += '</div>';
+    }
     box.innerHTML = html;
+    box.querySelectorAll('[data-sell]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        api('/api/pub/sell', { clientId: state.clientId, item: b.getAttribute('data-sell') })
+          .then(function (r) {
+            BM.speak(r.ok ? (r.text || 'Sold.') : (r.error || 'No sale.'), 'urgent');
+            if (r.ok && r.snapshot) { state.you = r.snapshot; renderLobby(r.snapshot); renderPub(r.snapshot); }
+          });
+      });
+    });
     box.querySelectorAll('[data-svc]').forEach(function (b) {
       b.addEventListener('click', function () {
         api('/api/pub/buy', { clientId: state.clientId, service: b.getAttribute('data-svc'), target: b.getAttribute('data-target') || undefined })

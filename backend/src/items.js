@@ -33,6 +33,18 @@ const COMPONENTS = [
   { key: 'diamond_dust', name: 'Diamond Dust (100gp)', short: 'Restoration component', icon: String.fromCodePoint(0x2728), type: 'component', component: 'restoration' },
 ];
 
+// MAGIC GEAR (vetted slice, Tobias 2026-07-11): +1/+2 weapons and armor at
+// RAW prices (enh bonus applies to hit/damage or AC on equip).
+const MAGIC_GEAR = [
+  { key: 'g_longsword_p1', name: '+1 Longsword', short: '+1 longsword', type: 'gear', gearType: 'weapon', icon: '⚔️', value: 2315, weaponName: 'longsword', enh: 1 },
+  { key: 'g_greatsword_p1', name: '+1 Greatsword', short: '+1 greatsword', type: 'gear', gearType: 'weapon', icon: '⚔️', value: 2350, weaponName: 'greatsword', enh: 1 },
+  { key: 'g_battleaxe_p1', name: '+1 Battle Axe', short: '+1 battle axe', type: 'gear', gearType: 'weapon', icon: '⚔️', value: 2310, weaponName: 'battle axe', enh: 1 },
+  { key: 'g_longsword_p2', name: '+2 Longsword', short: '+2 longsword', type: 'gear', gearType: 'weapon', icon: '⚔️', value: 8315, weaponName: 'longsword', enh: 2 },
+  { key: 'g_chainshirt_p1', name: '+1 Chain Shirt', short: '+1 chain shirt', type: 'gear', gearType: 'armor', icon: '🛡️', value: 1250, acBonus: 5, enh: 1 },
+  { key: 'g_breastplate_p1', name: '+1 Breastplate', short: '+1 breastplate', type: 'gear', gearType: 'armor', icon: '🛡️', value: 1350, acBonus: 7, enh: 1 },
+  { key: 'g_chainshirt_p2', name: '+2 Chain Shirt', short: '+2 chain shirt', type: 'gear', gearType: 'armor', icon: '🛡️', value: 4250, acBonus: 6, enh: 2 },
+];
+
 const GEAR = [
   { key: 'g_longsword', name: 'Longsword', short: 'longsword', type: 'gear', gearType: 'weapon', icon: '🗡️', value: 15, weight: 3, weaponName: 'longsword' },
   { key: 'g_battleaxe', name: 'Battle Axe', short: 'battle axe', type: 'gear', gearType: 'weapon', icon: '🪓', value: 10, weight: 3, weaponName: 'battle axe' },
@@ -43,7 +55,22 @@ const GEAR = [
   { key: 'g_chainshirt', name: 'Chain Shirt', short: 'chain shirt', type: 'gear', gearType: 'armor', icon: '🛡️', value: 100, weight: 1, acBonus: 4 },
 ];
 
-const ALL = CONSUMABLES.concat(GEAR).concat(COMPONENTS);
+// VALUABLES — gems & art objects: pure wealth, sold at the Swashgoblin.
+const { GEMS, ART } = (() => {
+  // treasure.js owns the lists; late-require avoids a cycle at load order.
+  try { return require('./treasure'); } catch (e) { return { GEMS: [], ART: [] }; }
+})();
+const VALUABLES = [].concat(
+  GEMS.map(g => ({ key: g.key, name: g.name, short: g.name, type: 'valuable', icon: '💎', value: g.value })),
+  ART.map(a => ({ key: a.key, name: a.name, short: a.name, type: 'valuable', icon: '🖼️', value: a.value })),
+);
+
+// Priced vetted MAGIC pool for the treasure roller (potions, +N gear, components).
+const PRICED_MAGIC = CONSUMABLES.filter(c => c.key.startsWith('potion')).map(c => ({ key: c.key, value: c.value }))
+  .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))
+  .concat([{ key: 'diamond_dust', value: 100 }, { key: 'diamond', value: 5000 }]);
+
+const ALL = CONSUMABLES.concat(GEAR).concat(MAGIC_GEAR).concat(COMPONENTS).concat(VALUABLES);
 const ITEM_BY_KEY = Object.fromEntries(ALL.map(i => [i.key, i]));
 const TOTAL_WEIGHT = ALL.reduce((s, i) => s + i.weight, 0);
 
@@ -61,4 +88,4 @@ function rollAmount(item, roll = Math.random) {
 }
 
 module.exports = {
-  COMPONENTS, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };
+  COMPONENTS, MAGIC_GEAR, VALUABLES, PRICED_MAGIC, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };

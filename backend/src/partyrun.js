@@ -19,6 +19,7 @@ const SFX = require('./sounds');
 const { DungeonShim } = require('./pokerdungeon/shim');
 const { artFor } = require('./art');
 const { generatePartyRoom, generateMonRoom, STEALTH_OVERRIDES } = require('./roomgen');
+const treasure = require('./treasure');
 const { rollDie } = require('./dice');
 
 function createPartyRun(party, roll = Math.random) {
@@ -660,7 +661,12 @@ function equipItem(run, hero, itemKey) {
   if (item.gearType === 'weapon') {
     const w = pf1.weapons.WEAPON_BY_NAME[item.weaponName];
     if (!w) { giveToPack(hero, itemKey); return { ok: false, error: 'unknown weapon' }; }
-    c.weapon = pokerWeapon(w); hero.weapon = c.weapon; c.weaponName = item.short || item.name;
+    const enh = item.enh || 0;
+    c.weapon = pokerWeapon(Object.assign({}, w, {
+      name: item.name,
+      toHit: (w.toHit || 0) + enh, dmgBonus: (w.dmgBonus || 0) + enh, enh,
+    }));
+    hero.weapon = c.weapon; c.weaponName = item.short || item.name;
     logEvent(run, `${hero.name} equips the ${item.name}.`, 'event');
   } else {                                    // armor
     const dex = c.derived.mods.dex || 0;
@@ -677,6 +683,7 @@ function equipItem(run, hero, itemKey) {
 function awardRoomXp(run) {
   const foes = run.combatants.filter(c => c.side === 'enemy' && !c.summoned);
   const roomXp = foes.reduce((s, e) => s + pf1.xp.xpForCR(e.crNum || (e.creature && e.creature.crNum) || 0.25), 0);
+  run._lastRoomXp = roomXp;
   if (roomXp <= 0) return;
   const recips = run.heroes.filter(h => !h.left);
   const per = Math.floor(roomXp / Math.max(1, recips.length));
@@ -720,7 +727,6 @@ function clearRoom(run, roll = Math.random) {
   run.combatants.forEach(c => { if (c.summoned && !c.down) { c.down = true; } });
   run.phase = 'cleared';
   awardRoomXp(run);
-  run.gold += run.room.reward.gp;
   run.roomsCleared += 1;
   run.heroes.forEach(h => {           // short rest: the dying recover; the DEAD do not
     if (h.dead) return;
@@ -731,21 +737,16 @@ function clearRoom(run, roll = Math.random) {
   if (run.heroes.some(h => h.dead)) {
     logEvent(run, `The party carries the fallen — only revival magic (or the surface temple) can bring them back.`, 'event');
   }
-  // Treasure: gold, plus ~60% of the time an item from the early-treasure table.
-  let found = `${run.room.reward.gp} gold`;
-  if (rollDie(100, roll) <= 60) {
-    const key = items.rollTreasureItem(roll);
-    addItem(run, key, 1);
-    found += ` and ${items.ITEM_BY_KEY[key].name}`;
-  }
-  // RARE component finds (Tobias): hang on to these — a found diamond makes a
-  // future Raise Dead cheap. Deeper rooms are likelier to hide one.
-  const depth = run.roomsCleared;
-  if (rollDie(100, roll) <= Math.min(12, 3 + depth)) {
-    const comp = rollDie(100, roll) <= 30 ? 'diamond' : 'diamond_dust';
-    addItem(run, comp, 1);
-    found += ` — and tucked in a niche, ${items.ITEM_BY_KEY[comp].name}!`;
-  }
+  // PF1 RAW TREASURE (Tobias 2026-07-11): Core Table 12-5 value for the room's
+  // effective encounter CR, composed into coins + gems + art + vetted magic.
+  // Coins go to run gold (banked at the pub); everything else lands in the
+  // PARTY PILE for the leader to divide. Unvetted table hits divert to gems.
+  const roomXp = run._lastRoomXp || pf1.xp.xpForCR(1);
+  const hoard = treasure.rollTreasure(roomXp, pf1.xp.xpForCR, roll);
+  run.gold += hoard.coins;
+  hoard.drops.forEach(d => addItem(run, d.key, d.qty));
+  let found = treasure.prose(hoard);
+  if (hoard.diverted) logEvent(run, `(vetting: ${hoard.diverted} unvetted table result${hoard.diverted === 1 ? '' : 's'} diverted to gems)`, 'ambient');
   logEvent(run, `The room is cleared! The party finds ${found}, and catches its breath. Descend deeper?`, 'urgent');
 }
 
