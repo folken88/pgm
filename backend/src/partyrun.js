@@ -344,7 +344,22 @@ function runUntilHeroTurn(run, roll) {
 }
 
 /** Cast a spell by key through the casting layer; converts events into the log. */
+const DIVINE_RESTORERS = new Set(['cleric', 'oracle', 'druid', 'shaman', 'inquisitor']);
 function castSpell(run, hero, spellKey, targetId, roll) {
+  // RESTORATION (app-layer, PF1 RAW-ish): a divine caster burns a 4th-level
+  // slot + a pinch of diamond dust to strip an ally's negative levels. The
+  // component comes from their pack or party-property pile (the found-item
+  // economy: dust in the bag makes this castable mid-delve).
+  if (spellKey === 'restoration') {
+    if (!DIVINE_RESTORERS.has(hero.cls)) return { ok: false, error: 'only a divine caster can restore' };
+    if (!((hero.slots || {})[4] > 0)) return { ok: false, error: 'needs an open 4th-level slot' };
+    const target = run.heroes.find(h => (targetId ? h.id === targetId : (h.negLevels || 0) > 0) && !h.dead);
+    if (!target || !(target.negLevels > 0)) return { ok: false, error: 'nobody here carries negative levels' };
+    if (!takeUsable(run, hero, 'diamond_dust')) return { ok: false, error: 'needs diamond dust (100gp component) in your pack or party property' };
+    hero.slots[4] -= 1;
+    cureNegLevels(target, run);
+    return { ok: true };
+  }
   // THE TRANSPLANTED POKER ENGINE: the full class kit via _useAbility.
   const shim = run.shim;
   let kit;
@@ -789,7 +804,12 @@ function publicRun(run) {
     try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
     const kd = pf1.abilities.kitFor(cb.cls);
     if (kd && kd.atwill) kit = [{ ...kd.atwill, cost: 'free' }].concat(kit);
-    const spells = kit.filter(ab => kitUses(cb, ab) && run.shim._charAllows(cb, ab)).map(ab => ({
+    // App-layer Restoration rides alongside the kit when it is castable.
+    if (DIVINE_RESTORERS.has(cb.cls) && (cb.slots || {})[4] > 0
+        && run.heroes.some(h => (h.negLevels || 0) > 0 && !h.dead)) {
+      kit = kit.concat([{ key: 'restoration', name: 'Restoration', icon: String.fromCodePoint(0x2728), cost: 'slot', slvl: 4 }]);
+    }
+    const spells = kit.filter(ab => ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(cb, ab))).map(ab => ({
       key: ab.key, name: ab.name, icon: ab.icon,
       uses: ab.cost === 'pool' ? cb.spellPool
           : ab.cost === 'slot' ? ((cb.slots || {})[ab.slvl || 1] || 0)

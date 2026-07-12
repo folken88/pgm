@@ -296,3 +296,30 @@ test('a live delve saves to disk and restores with a working engine', () => {
   assert.ok(r.ok || /turn/.test(r.error || ''), 'restored run accepts actions: ' + (r.error || 'ok'));
   fs.unlinkSync(file);
 });
+
+test('in-run Restoration: divine caster + 4th slot + diamond dust cures negative levels', () => {
+  const roll = seededRoller(21);
+  const partyList = [
+    { clientId: 'c1', icon: 'X', character: createCharacter({ name: 'Vicar', race: 'human', cls: 'cleric' }) },
+    { clientId: 'c2', icon: 'X', character: createCharacter({ name: 'Drained', race: 'human', cls: 'fighter' }) },
+  ];
+  const run = pr.createPartyRun(partyList, roll); rollInit(run, roll);
+  const vicar = run.heroes.find(h => h.name === 'Vicar');
+  const drained = run.heroes.find(h => h.name === 'Drained');
+  drained.negLevels = 2; drained.maxHp -= 10; drained.weapon.toHit -= 2;
+  vicar.slots = Object.assign({}, vicar.slots, { 4: 1 });
+  run.turnIndex = run.combatants.indexOf(vicar); run.phase = 'combat';
+  // Without the component it refuses...
+  const dry = pr.applyAction(run, 'c1', { type: 'cast', spell: 'restoration', target: drained.id }, roll);
+  assert.strictEqual(dry.ok, false);
+  assert.match(dry.error, /diamond dust/);
+  // ...with dust in the pack it cures.
+  vicar.pack = [{ key: 'diamond_dust', qty: 1 }];
+  run.turnIndex = run.combatants.indexOf(vicar); run.phase = 'combat';
+  const r = pr.applyAction(run, 'c1', { type: 'cast', spell: 'restoration', target: drained.id }, roll);
+  assert.ok(r.ok, 'restoration cast: ' + (r.error || ''));
+  assert.strictEqual(drained.negLevels, 0, 'negative levels gone');
+  assert.strictEqual(vicar.slots[4], 0, 'slot spent');
+  assert.strictEqual(vicar.pack.length, 0, 'dust consumed');
+  assert.ok(run.log.some(e => /Restoration lifts/.test(e.text)), 'narrated');
+});
