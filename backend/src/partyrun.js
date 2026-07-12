@@ -122,7 +122,15 @@ function heroCombatant(p) {
     // Poker-engine aliases (the transplanted mixins read these):
     playerId: c.name.toLowerCase(), nickname: c.name, left: false, isBot: !!p.ai,
     abilityScores: d.scores, gear: {}, weaponKey: (c.weapon && c.weapon.name || 'dagger').toLowerCase(),
-    weapon: pokerWeapon(c.weapon), spellPool: 0, abilityUses: {}, runAbilityUses: {},
+    weapon: pokerWeapon(c.weapon), spellPool: 0, abilityUses: {},
+    // Once-per-run powers start CHARGED: the poker engine reads
+    // runAbilityUses[key] and treats 0/missing as "already cast".
+    runAbilityUses: (() => {
+      const kd = pf1.abilities.kitFor(c.cls);
+      const out = {};
+      ((kd && kd.abilities) || []).forEach(ab => { if (ab.cost === 'run') out[ab.key] = ab.uses || 1; });
+      return out;
+    })(),
   };
 }
 /** Persisted negative levels (legacy) re-applied silently at run start. */
@@ -380,8 +388,10 @@ function castSpell(run, hero, spellKey, targetId, roll) {
   if (!kitUses(hero, ab)) return { ok: false, error: 'no uses of ' + ab.name + ' left this room' };
   const before = run.seq;
   const deadBefore = run.heroes.filter(h => h.dead).map(h => h.id);
-  try { shim._useAbility(hero, slot, { targetUid: targetId || undefined }); }
+  let ret;
+  try { ret = shim._useAbility(hero, slot, { targetUid: targetId || undefined }); }
   catch (e) { return { ok: false, error: 'the casting fizzles' }; }
+  if (ret && ret.ok === false) return { ok: false, error: ret.error || 'that cannot be cast right now' };
   if (run.seq === before) return { ok: false, error: 'that cannot be cast right now' };
   // PF1 RAW revival costs (Tobias house rules): Raise Dead/Reincarnate = 2
   // negative levels, Breath of Life/Resurrection = 1. Revived dead come back marked.

@@ -323,3 +323,17 @@ test('in-run Restoration: divine caster + 4th slot + diamond dust cures negative
   assert.strictEqual(vicar.pack.length, 0, 'dust consumed');
   assert.ok(run.log.some(e => /Restoration lifts/.test(e.text)), 'narrated');
 });
+
+test('once-per-run powers start charged: Bless casts, narrates, then refuses', () => {
+  const roll = seededRoller(31);
+  const run = pr.createPartyRun(party('cleric'), roll); rollInit(run, roll);
+  const hero = run.heroes[0];
+  assert.ok(hero.runAbilityUses.bless >= 1, 'bless charged at run start: ' + JSON.stringify(hero.runAbilityUses));
+  run.turnIndex = run.combatants.indexOf(hero); run.phase = 'combat';
+  const r = pr.applyAction(run, 'c1', { type: 'cast', spell: 'bless' }, roll);
+  assert.ok(r.ok, 'bless cast: ' + (r.error || ''));
+  assert.ok(run.log.some(e => /Bless/.test(e.text)), 'narrated');
+  run.turnIndex = run.combatants.indexOf(hero); run.phase = 'combat';
+  const r2 = pr.applyAction(run, 'c1', { type: 'cast', spell: 'bless' }, roll);
+  assert.strictEqual(r2.ok, false, 'second cast refused with a real message: ' + r2.error);
+});
