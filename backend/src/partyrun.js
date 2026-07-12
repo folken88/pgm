@@ -803,7 +803,9 @@ function publicRun(run) {
     let kit = [];
     try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
     const kd = pf1.abilities.kitFor(cb.cls);
-    if (kd && kd.atwill) kit = [{ ...kd.atwill, cost: 'free' }].concat(kit);
+    // Only CANTRIP at-wills join the list — a weapon-swing at-will ("Attack")
+    // would duplicate the real attack buttons (blind testers heard it twice).
+    if (kd && kd.atwill && kd.atwill.effect === 'bolt') kit = [{ ...kd.atwill, cost: 'free' }].concat(kit);
     // App-layer Restoration rides alongside the kit when it is castable.
     if (DIVINE_RESTORERS.has(cb.cls) && (cb.slots || {})[4] > 0
         && run.heroes.some(h => (h.negLevels || 0) > 0 && !h.dead)) {

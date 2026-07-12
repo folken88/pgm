@@ -503,7 +503,7 @@
           try { var sfx = new Audio(e.sound); sfx.volume = 0.55; sfx.play().catch(function () {}); } catch (err) {}
         }
         if (e.priority === 'banter') {                 // companion quip -> their own voice
-          BM.speakAs(e.text.replace(/^\S+\s/, ''), e.voiceId);
+          BM.speakAs(e.text.replace(/^[^ ]+ /, ''), e.voiceId);
         } else if (e.priority === 'urgent') {          // GM narration -> Ultron voice (serialized queue)
           BM.speakGM(e.text);
           var a = el('announce'); if (a) a.textContent = e.text;
@@ -645,7 +645,8 @@
     if (run.phase === 'initiative') {
       choices.push({ id: 'initiative', label: '🎲 Roll for initiative!', big: true });
     } else if (run.phase === 'combat' && myTurn) {
-      (run.enemies || []).forEach(function (e) { choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
+      (run.enemies || []).forEach(function (e) { if (e.name) choices.push({ id: 'attack', target: e.id, label: 'Attack ' + e.name }); });
+      choices.push({ id: 'pass', label: 'Hold action' });
       ((run.turn && run.turn.spells) || []).forEach(function (s) {
         // Poker semantics: only SPELLS are "cast" — class abilities (Power
         // Attack, Rage, stances) are simply used/toggled by name.
@@ -655,7 +656,6 @@
       usableItems(run).filter(function (i) { return i.type === 'consumable'; }).forEach(function (i) {
         choices.push({ id: 'use', item: i.key, label: (i.verb === 'drink' ? 'Drink ' : 'Throw ') + (i.short || i.name) });
       });
-      choices.push({ id: 'pass', label: 'Hold action' });
     } else if (run.phase === 'cleared') {
       usableItems(run).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
         choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
@@ -675,6 +675,25 @@
       state.lastAnnouncedTurn = run.turn.combatantId;
       BM.speak('Your turn. ' + choices.map(function (c, i) { return (i + 1) + ', ' + c.label; }).join('. ') + '.', 'event');
     }
+  }
+  // A d20 clattering across the table — WebAudio, no asset needed.
+  function diceEarcon() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      var ctx = diceEarcon._ctx || (diceEarcon._ctx = new AC());
+      var t = ctx.currentTime + 0.02;
+      for (var i = 0; i < 7; i++) {
+        var osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 1800 + Math.random() * 1400;
+        var dur = 0.015 + Math.random() * 0.02;
+        g.gain.setValueAtTime(0.12 * (1 - i / 9), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t); osc.stop(t + dur + 0.01);
+        t += 0.05 + Math.random() * 0.09 + i * 0.012;
+      }
+    } catch (e) {}
   }
   function appendLog(text, prio) {
     var log = el('log'); var p = document.createElement('p'); p.textContent = text;
