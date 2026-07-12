@@ -220,6 +220,7 @@ function spawnRoom(run, roll) {
       const r = casting.roomResources(h); h.slots = r.slots; h.roomUses = r.roomUses;
     }
     h.abilityUses = h.abilityUses || {}; h.roomUses = h.abilityUses;   // alias: poker room-cost counters
+    h.slotsMax = Object.assign({}, h.slots);   // for the action bar's remaining/max badges
     h.buffs = pf1.buffs.ZERO(); h.buffApplied = {}; h._aiBuffed = false;
   });
 
@@ -829,7 +830,44 @@ function publicRun(run) {
           : ab.cost === 'room' ? (cb.abilityUses && cb.abilityUses[ab.key] !== undefined ? cb.abilityUses[ab.key] : 1)
           : null,
     }));
-    turn = { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name, spells };
+    // ACTION BAR KIT (poker port): the FULL class kit with availability,
+    // uses, locks — features render inline, spells go in the Spellbook.
+    const kdFull = pf1.abilities.kitFor(cb.cls);
+    const lvl = cb.level || 1;
+    const usesMax = (ab) => {
+      if (typeof ab.uses === 'function') { try { return ab.uses(lvl, cb) || 1; } catch (e) { return 1; } }
+      return ab.uses || 1;
+    };
+    const remainingOf = (ab) => {
+      const mx = usesMax(ab);
+      if (ab.cost === 'room') return { remaining: (cb.abilityUses && cb.abilityUses[ab.key] !== undefined) ? cb.abilityUses[ab.key] : mx, max: mx };
+      if (ab.cost === 'run') return { remaining: (cb.runAbilityUses && cb.runAbilityUses[ab.key]) || 0, max: mx };
+      return { remaining: null, max: null };
+    };
+    const kitAll = (((kdFull && kdFull.abilities) || [])
+      .filter(ab => { try { return run.shim._charAllows(cb, ab); } catch (e) { return true; } })
+      .map(ab => {
+        const r = remainingOf(ab);
+        return {
+          key: ab.key, name: ab.name, icon: ab.icon || '', desc: ab.desc || '',
+          cost: ab.cost || 'free', slvl: ab.slvl != null ? ab.slvl : null,
+          minLevel: ab.minLevel || 1, available: lvl >= (ab.minLevel || 1),
+          isSpell: !!(ab.slvl != null || ab.cost === 'slot' || ab.cost === 'pool'),
+          remaining: r.remaining, max: r.max,
+        };
+      }));
+    let cantripState = null;
+    try { cantripState = run.shim._cantripState(cb); } catch (e) {}
+    const kitOut = {
+      caster: kitAll.some(a => a.isSpell),
+      atwill: (kdFull && kdFull.atwill) ? { key: kdFull.atwill.key, name: kdFull.atwill.name, icon: kdFull.atwill.icon || '', effect: kdFull.atwill.effect || null } : null,
+      cantrip: cantripState ? { current: cantripState.current, choices: cantripState.choices.map(c2 => c2.name) } : null,
+      slots: Object.fromEntries(Object.entries(cb.slots || {}).map(([L, v]) => [L, { remaining: v, max: (cb.slotsMax || {})[L] != null ? cb.slotsMax[L] : v }])),
+      spellPool: cb.spellPool > 0 ? { remaining: cb.spellPool, max: cb.spellPoolMax || cb.spellPool } : null,
+      ranged: !!(cb.weapon && cb.weapon.ranged),
+      abilities: kitAll,
+    };
+    turn = { combatantId: cb.id, ownerClientId: cb.ownerClientId, name: cb.name, spells, kit: kitOut };
   }
   const shown = run.combatants.filter(c => c.side === 'hero' || c.revealed);
   return {

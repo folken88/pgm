@@ -483,6 +483,7 @@
     if (rb) rb.hidden = !(state.role === 'player' && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative'));
 
     renderBattlefield(run);
+    renderActionBar(run, myTurn);
     renderPartyPanel(run);
     renderLootPanel(run);
 
@@ -638,6 +639,104 @@
     var seen = {};
     return myPack().concat(pile).filter(function (i) { if (seen[i.key]) return false; seen[i.key] = true; return true; });
   }
+
+  // ── POKER ACTION BAR (ported from poker client.js ~1596-1745) ──
+  var _sbOpen = false;
+  function abilBtn(ab) {
+    var esc2 = esc;
+    if (!ab.available) {
+      return '<button class="ab-btn is-locked" disabled title="' + esc2(ab.desc) + ' (unlocks at level ' + ab.minLevel + ')">' +
+        String.fromCodePoint(0x1F512) + ' ' + (ab.icon || '') + ' ' + esc2(ab.name) + ' <span class="ab-uses">Lv' + ab.minLevel + '</span></button>';
+    }
+    var ok = ab.cost === 'free' ? true : (ab.remaining === null || ab.remaining > 0);
+    var count = (ab.cost === 'room' || ab.cost === 'run')
+      ? ' <span class="ab-uses" title="' + (ab.cost === 'run' ? 'once per dungeon' : 'per room') + '">' + ab.remaining + '/' + ab.max + '</span>' : '';
+    return '<button class="ab-btn" data-abkey="' + esc2(ab.key) + '"' + (ok ? '' : ' disabled') +
+      ' title="' + esc2(ab.desc) + '">' + (ab.icon || '') + ' ' + esc2(ab.name) + count + '</button>';
+  }
+  function spellTile(ab) {
+    var ok = ab.available && (ab.remaining === null || ab.remaining > 0);
+    var badge = !ab.available ? '<span class="sb-badge sb-lock">' + String.fromCodePoint(0x1F512) + '</span>'
+      : ((ab.cost === 'room' || ab.cost === 'run') ? '<span class="sb-badge">' + ab.remaining + '/' + ab.max + '</span>' : '');
+    var title = ab.name + (!ab.available ? ' - unlocks at level ' + ab.minLevel : '') + (ab.desc ? ' - ' + ab.desc : '');
+    return '<button class="sb-spell' + (ab.available ? '' : ' is-locked') + '" data-abkey="' + esc(ab.key) + '"' + (ok ? '' : ' disabled') +
+      ' title="' + esc(title) + '" aria-label="' + esc(ab.name) + '">' + (ab.icon || String.fromCodePoint(0x2728)) + badge + '</button>';
+  }
+  function renderActionBar(run, myTurn) {
+    var bar = el('action-bar'); if (!bar) return;
+    var spectating = state.role === 'spectator';
+    if (spectating) { bar.innerHTML = ''; return; }
+    var kit = (run.turn && run.turn.ownerClientId === state.myId) ? run.turn.kit : null;
+
+    if (run.phase === 'initiative') {
+      bar.innerHTML = '<button class="ab-btn ab-primary ab-roll" data-dact="initiative">' + String.fromCodePoint(0x1F3B2) + ' Roll for initiative!</button>';
+    } else if (run.phase === 'cleared') {
+      bar.innerHTML = '<span class="ab-status">' + String.fromCodePoint(0x1F6AA) + ' The room is yours.</span>' +
+        '<button class="ab-btn ab-primary" data-dact="descend">' + String.fromCodePoint(0x1F6AA) + ' Open the next door</button>';
+    } else if (run.phase !== 'combat') {
+      bar.innerHTML = '<button class="ab-btn" data-dact="leave">' + String.fromCodePoint(0x21A9) + ' Return to start</button>';
+    } else if (!kit) {
+      var actor = run.turn ? run.turn.name : 'The enemy';
+      bar.innerHTML = '<span class="ab-status">' + esc(actor) + ' is acting' + String.fromCharCode(8230) + '</span>';
+    } else {
+      var slotSummary = Object.keys(kit.slots || {}).sort().map(function (L) { return L + ':' + kit.slots[L].remaining; }).join(' ');
+      var html = '<span class="ab-status">' + String.fromCodePoint(0x2694, 0xFE0F) + ' Your turn' + (slotSummary ? ' <span class="ab-uses">' + String.fromCodePoint(0x2728) + slotSummary + '</span>' : '') + '</span>';
+      // primary swing (melee or ranged by weapon)
+      html += '<button class="ab-btn ab-primary" data-dact="attack">' +
+        (kit.ranged ? String.fromCodePoint(0x1F3F9) + ' Ranged' : String.fromCodePoint(0x2694, 0xFE0F) + ' Melee') + '</button>';
+      // at-will cantrip + element cycler
+      if (kit.atwill && kit.atwill.effect === 'bolt') {
+        html += '<button class="ab-btn" data-abkey="' + esc(kit.atwill.key) + '">' + (kit.atwill.icon || '') + ' ' + esc(kit.atwill.name) + '</button>';
+        if (kit.cantrip) html += '<button class="ab-btn ab-cycle" data-dact="cantrip" title="Cycle cantrip element (' + esc((kit.cantrip.choices || []).join(', ')) + ')">' + String.fromCodePoint(0x1F504) + '</button>';
+      }
+      // class FEATURES inline; SPELLS collapse into the Spellbook popover
+      var features = kit.abilities.filter(function (a) { return !a.isSpell; });
+      var spells = kit.abilities.filter(function (a) { return a.isSpell; });
+      html += features.map(abilBtn).join('');
+      if (kit.caster && spells.length) {
+        var byLvl = {};
+        spells.forEach(function (a) { var L = a.slvl || 1; (byLvl[L] = byLvl[L] || []).push(a); });
+        var sections = Object.keys(byLvl).sort().map(function (L) {
+          var sl = kit.slots && kit.slots[L];
+          var slotTxt = sl ? ' <span class="sb-slots">' + sl.remaining + '/' + sl.max + ' slots</span>' : '';
+          return '<div class="sb-lvl"><div class="sb-lvlhead">Level ' + L + slotTxt + '</div><div class="sb-row">' +
+            byLvl[L].map(spellTile).join('') + '</div></div>';
+        }).join('');
+        html += '<span class="sb-wrap">' +
+          '<button class="ab-btn' + (_sbOpen ? ' ab-primary' : '') + '" data-sb-toggle aria-expanded="' + _sbOpen + '">' + String.fromCodePoint(0x1F4D6) + ' Spellbook ' + String.fromCharCode(9662) + '</button>' +
+          '<div class="spellbook' + (_sbOpen ? ' is-open' : '') + '">' + sections + '</div></span>';
+      }
+      html += '<button class="ab-btn ab-ghost" data-dact="pass">' + String.fromCodePoint(0x23F8, 0xFE0F) + ' Hold</button>';
+      bar.innerHTML = html;
+    }
+
+    bar.querySelectorAll('[data-dact]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var act = b.getAttribute('data-dact');
+        if (act === 'cantrip') {
+          api('/api/session/action', { clientId: state.clientId, action: 'cantrip' }).then(function (r) {
+            BM.toast(r.ok ? 'Cantrip: ' + r.cantripName : (r.error || 'No.'));
+            if (r.ok && r.snapshot) onState({ you: r.snapshot, sessions: state.sessions });
+          });
+          return;
+        }
+        if (act === 'attack') { doGameAction({ id: 'attack', target: state.queuedTarget }); return; }
+        doGameAction({ id: act });
+      });
+    });
+    bar.querySelectorAll('[data-abkey]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _sbOpen = false;
+        doGameAction({ id: 'cast', spell: b.getAttribute('data-abkey'), target: state.queuedTarget });
+      });
+    });
+    var tog = bar.querySelector('[data-sb-toggle]');
+    if (tog) tog.addEventListener('click', function (e) { e.stopPropagation(); _sbOpen = !_sbOpen; renderActionBar(run, myTurn); });
+  }
+  document.addEventListener('click', function (e) {
+    if (_sbOpen && !e.target.closest('.sb-wrap')) { _sbOpen = false; var r = myRun(); if (r) renderActionBar(r, true); }
+  });
+
   function renderGameChoices(run, myTurn) {
     var choices = [];
     var spectating = state.role === 'spectator';

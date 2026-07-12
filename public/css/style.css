@@ -417,3 +417,33 @@ input::placeholder { color: #8f6f46; }
 .a11y-bar { background: rgba(13,7,3,.94); border-top: 2px solid var(--line); }
 .a11y-bar button { font-size: .85rem; }
 #status-line { color: var(--gold); }
+
+/* ── Poker action bar (sighted surface) ── */
+.action-bar { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin: .55rem 0; position: relative; }
+.ab-status { color: var(--ink); font-variant: small-caps; letter-spacing: .04em; margin-right: .3rem; }
+.ab-btn { padding: .45rem .7rem; font-size: .95rem; border-radius: 6px; }
+.ab-btn.is-locked { opacity: .55; }
+.ab-btn.ab-primary { background-image: var(--tex-grain), linear-gradient(180deg, #7a2412, #4d1207); color: #f2dfb8; font-weight: 700; }
+.ab-btn.ab-roll { font-size: 1.2rem; padding: .7rem 1.2rem; }
+.ab-uses { background: rgba(0,0,0,.35); border-radius: 4px; padding: 0 .35rem; font-size: .78rem; color: var(--accent); }
+.sb-wrap { position: relative; display: inline-block; }
+.spellbook {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  min-width: 260px; max-width: 420px; max-height: 46vh; overflow-y: auto;
+  background-image: var(--tex-panel), linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 2px solid var(--line); border-radius: 8px; padding: .6rem .7rem;
+  box-shadow: 0 10px 26px rgba(0,0,0,.8);
+}
+.spellbook.is-open { display: block; }
+.sb-lvlhead { font-variant: small-caps; color: var(--accent); border-bottom: 1px solid var(--line); margin: .35rem 0 .3rem; }
+.sb-slots { color: var(--muted); font-size: .78rem; }
+.sb-row { display: flex; flex-wrap: wrap; gap: .35rem; }
+.sb-spell { position: relative; font-size: 1.25rem; padding: .35rem .5rem; min-width: 2.6rem; }
+.sb-spell.is-locked { opacity: .5; }
+.sb-badge { position: absolute; top: -6px; right: -6px; font-size: .62rem; background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 .25rem; }
+/* Sighted players drive the BAR (poker's split); the numbered choices remain
+   the blind/screen-reader surface and stay fully functional via 1-9 keys. */
+body:not(.blind-on) #choices {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
