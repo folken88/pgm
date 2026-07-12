@@ -26,6 +26,7 @@ const session = require('./session');
 const eleven = require('./elevenlabs');
 const gm = require('./gm');
 const accounts = require('./accounts');
+const devtools = require('./devtools');
 const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
@@ -144,6 +145,16 @@ const server = http.createServer(async (req, res) => {
 
   function sessionResult(r, clientId) {
     return Object.assign({}, r, { snapshot: session.sessionSnapshotFor(r.clientId || clientId) });
+  }
+
+  // ── DEV BACKDOOR (DEV_BACKDOOR=1 only; never in prod compose): drive every
+  // play function through the real action paths — Tobias 2026-07-12. ──
+  if (url === '/api/dev/cmd' && req.method === 'POST') {
+    if (!devtools.ENABLED) return sendJSON(res, 404, { error: 'unknown endpoint' });
+    const body = await readBody(req);
+    const r = await devtools.runCmd(body.who, body.cmd);
+    broadcast();
+    return sendJSON(res, 200, r);
   }
 
   // ── Accounts: one call signs in OR registers; /me resumes from a token ──

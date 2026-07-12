@@ -591,6 +591,13 @@ function applyAction(run, clientId, action, roll = Math.random) {
     spawnRoom(run, roll);
     return { ok: true };
   }
+  if (run.phase === 'cleared' && type === 'use') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    const it = items.ITEM_BY_KEY[action.item];
+    if (!it || !it.effect || it.effect.kind !== 'heal') return { ok: false, error: 'only healing draughts between fights' };
+    return useItem(run, hero, action.item, action.target, roll);
+  }
   if (run.phase === 'cleared' && type === 'equip') {
     const hero = run.heroes.find(h => h.ownerClientId === clientId);
     if (!hero) return { ok: false, error: 'not a party member' };
