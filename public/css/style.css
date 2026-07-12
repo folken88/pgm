@@ -317,3 +317,9 @@ body:not(.blind-on) main { padding-bottom: 1.5rem; }
 .signin-row { display: flex; gap: .5rem; align-items: center; margin: .5rem 0 .8rem; flex-wrap: wrap; }
 .signin-row input { flex: 1 1 12rem; }
 #signin-status { color: var(--ok); font-size: .85rem; }
+
+/* Your characters: 1-click play cards */
+.char-list { margin: .6rem 0; }
+.char-list h3 { margin: 0 0 .4rem; font-size: .95rem; color: var(--accent); }
+.char-card { display: block; width: 100%; text-align: left; margin-bottom: .4rem; padding: .6rem .8rem; font-size: 1rem; border-radius: 10px; }
+.char-card.new { color: var(--muted); }

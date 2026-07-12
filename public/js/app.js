@@ -99,8 +99,11 @@
         el('handle').value = r.name;
         el('signin-status').textContent = 'Signed in as ' + r.name;
         if (r.character) state.rememberedBuild = r.character;
+        renderCharList(r);
         var live = (r.delves || []).filter(function (d) { return d.phase !== 'lobby'; });
-        var msg = 'Welcome back, ' + r.name + '.' + (live.length ? ' You have ' + live.length + ' delve' + (live.length === 1 ? '' : 's') + ' waiting — use Rejoin in the delves panel.' : '');
+        var msg = 'Welcome back, ' + r.name + '.'
+          + ((r.characters || []).length ? ' Your characters are ready for one-click play.' : '')
+          + (live.length ? ' ' + live.length + ' delve' + (live.length === 1 ? '' : 's') + ' waiting.' : '');
         BM.speak(msg, 'event'); BM.toast(msg);
       });
     }
@@ -196,6 +199,46 @@
   }
 
   // ---------- start / join a delve ----------
+  // ── Your characters: 1-click back into the game (Tobias 2026-07-11) ──
+  function renderCharList(me) {
+    var box = el('char-list'); if (!box) return;
+    var chars = me.characters || [];
+    var delves = me.delves || [];
+    if (!chars.length && !delves.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<h3>Your characters</h3>';
+    chars.forEach(function (c) {
+      var live = delves.find(function (d) { return d.phase !== 'lobby' && d.heroName.toLowerCase() === c.charName.toLowerCase(); });
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'char-card';
+      b.textContent = (live ? '\u25B6 Resume ' : '\u2694\uFE0F Play ') + c.charName + ' \u2014 ' + cap(c.race) + ' ' + cap(c.cls)
+        + (live ? ' (in "' + live.delveName + '")' : '');
+      b.addEventListener('click', function () { quickPlay(c, live); });
+      box.appendChild(b);
+    });
+    var nb = document.createElement('button');
+    nb.type = 'button'; nb.className = 'char-card new';
+    nb.textContent = '\u2795 Create a new character';
+    nb.addEventListener('click', function () { startDelve(); });
+    box.appendChild(nb);
+  }
+  function quickPlay(c, live) {
+    if (live) {   // reclaim the live seat
+      state.icon = state.icon || null;
+      joinDelveAs(live.sessionId, 'player');
+      return;
+    }
+    // Fresh delve with this character, default skills — straight to the lobby.
+    api('/api/session/create', { name: c.charName, icon: state.icon, delveName: el('delve-name').value.trim(), token: state.token }).then(function (r) {
+      if (!r.ok) return BM.speak(r.error || 'Could not start.', 'urgent');
+      afterJoin(r, 'player');
+      api('/api/session/character', { clientId: state.clientId, race: c.race, cls: c.cls }).then(function (r2) {
+        if (!r2.ok) return BM.speak(r2.error || 'Could not ready the character.', 'urgent');
+        state.you = r2.snapshot; showScreen('lobby'); renderLobby(r2.snapshot);
+        BM.speak(c.charName + ' the ' + c.race + ' ' + c.cls + ' is ready. Add companions, then start the adventure.', 'event');
+      });
+    });
+  }
   function doSignIn() {
     var name = el('handle').value.trim(); var pw = el('pw').value;
     if (!name) { BM.speak('Enter your name first.', 'urgent'); el('handle').focus(); return; }
@@ -208,6 +251,7 @@
       var msg = (r.created ? 'Account created. ' : '') + 'Signed in as ' + r.name + ' — you will be remembered here.';
       el('signin-status').textContent = 'Signed in as ' + r.name;
       el('pw').value = '';
+      api('/api/auth/me', { token: r.token }).then(function (me) { if (me.ok) renderCharList(me); });
       BM.speak(msg, 'urgent'); BM.toast(msg);
     });
   }

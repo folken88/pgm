@@ -155,7 +155,10 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const a = accounts.byToken(String(body.token || ''));
     if (!a) return sendJSON(res, 200, { ok: false });
-    return sendJSON(res, 200, { ok: true, name: a.name, character: a.character || null, delves: session.delvesForAccount(a.name) });
+    return sendJSON(res, 200, {
+      ok: true, name: a.name, character: a.character || null,
+      characters: a.characters || [], delves: session.delvesForAccount(a.name),
+    });
   }
 
   if (url === '/api/session/create' && req.method === 'POST') {

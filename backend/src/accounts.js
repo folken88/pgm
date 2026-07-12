@@ -44,11 +44,17 @@ function byToken(token) {
   return Object.values(DB).find(a => a.token === token) || null;
 }
 
-/** Remember the last character build so the create screen prefills next visit. */
+/** Remember created characters (list, newest first) — the landing shows them
+ *  for 1-click play. Also keeps `character` (last build) for prefill. */
 function rememberCharacter(name, character) {
   const a = DB[keyOf(name)];
   if (!a) return;
   a.character = { race: character.race, cls: character.cls };
+  a.characters = a.characters || [];
+  const key = (character.charName || a.name) + '|' + character.race + '|' + character.cls;
+  a.characters = a.characters.filter(c => (c.charName + '|' + c.race + '|' + c.cls) !== key);
+  a.characters.unshift({ charName: character.charName || a.name, race: character.race, cls: character.cls, at: Date.now() });
+  a.characters = a.characters.slice(0, 6);
   save();
 }
 

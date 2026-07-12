@@ -208,7 +208,7 @@ function setCharacter(clientId, charInput) {
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
   m.ready = true;
-  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls });
+  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls, charName: m.name });
   saveSession(s);
   return { ok: true };
 }
