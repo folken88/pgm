@@ -645,7 +645,10 @@
     if (choice.item) body.item = choice.item;
     if (choice.spell) body.spell = choice.spell;
     api('/api/session/action', body).then(function (r) {
-      if (!r.ok) { BM.speak(r.error || 'Cannot do that.', 'urgent'); BM.toast(r.error || 'Cannot do that.'); }
+      if (!r.ok) { BM.speak(r.error || 'Cannot do that.', 'urgent'); BM.toast(r.error || 'Cannot do that.'); return; }
+      // Render from the response NOW — never sit waiting on the SSE push
+      // (a severed stream after a deploy left the screen frozen for Tobias).
+      if (r.snapshot) onState({ you: r.snapshot, sessions: state.sessions });
     }).catch(function () { BM.toast('Connection hiccup — try again.'); });
   }
 

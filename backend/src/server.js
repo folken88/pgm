@@ -69,7 +69,12 @@ function serveStatic(req, res) {
   if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
   fs.readFile(filePath, (err, buf) => {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not found'); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
+    const ext = path.extname(filePath);
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    // Testers must always get the CURRENT client after a deploy (a cached
+    // app.js froze Tobias's UI). Small files — revalidation is cheap.
+    if (ext === '.html' || ext === '.js' || ext === '.css') headers['Cache-Control'] = 'no-cache';
+    res.writeHead(200, headers);
     res.end(buf);
   });
 }

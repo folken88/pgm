@@ -543,6 +543,7 @@ function memberView(m, clientId) {
 
 /** Detailed view of the client's own delve. */
 function sessionSnapshotFor(clientId) {
+  if (!clients.get(clientId)) sessionOf(clientId);   // auto-rebind severed SSE clients too
   const c = clients.get(clientId); if (!c) return null;
   const s = sessions.get(c.sessionId); if (!s) return null;
   return {
