@@ -188,7 +188,7 @@ function spawnRoom(run, roll) {
     const e = run.shim._makeEnemyPGM(MON[k], isBoss, elite);
     e.key = k; e.revealed = false;
     e.stealth = STEALTH_OVERRIDES[k] != null ? STEALTH_OVERRIDES[k] : 10;
-    e.art = artFor(e.name);
+    e.art = artFor(e.key) || artFor(e.name);   // key matches the portrait filename
     return e;
   });
   // Suffix duplicates: "Goblin A", "Goblin B".
@@ -259,7 +259,7 @@ function rollInitiative(run, roll) {
   const order = run.combatants
     .filter(c => c.side === 'hero' || c.revealed)
     .map(c => c.name + ' ' + c.init).join(', ');
-  logEvent(run, '🎲 Initiative! ' + order + '.', 'urgent', 'earcon:dice');
+  logEvent(run, '🎲 Initiative rolled — ' + order + '.', 'event', 'earcon:dice');   // dice earcon fires; GM voice does NOT read the rolls (Tobias)
   run.turnIndex = 0;
   run.phase = 'combat';
   runUntilHeroTurn(run, roll);
@@ -918,7 +918,7 @@ function publicRun(run) {
     room: run.room ? { flavor: run.room.flavor } : null,
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,
-      art: artFor(c.side === 'enemy' && c.creature ? c.creature.baseName || c.name : c.name),
+      art: c.side === 'enemy' ? (artFor(c.key) || artFor(c.creature && c.creature.baseName || c.name)) : artFor(c.name),
       hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
       dead: !!c.dead, negLevels: c.negLevels || 0,

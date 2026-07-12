@@ -157,8 +157,12 @@
   // Chrome auto-pauses speechSynthesis around the 15s mark; an unconditional
   // resume() defeats it (poker does exactly this).
   if (supportsTTS) setInterval(function () { try { TTS.resume(); } catch (e) {} }, 8000);
-  function fallbackTts(text) {                 // GM audio failed → speak it if blind mode is on
-    if (on && text) rawSpeak(text, 'urgent'); else pump();
+  // A GM/companion CLIP failed to fetch. GM narration is meant for EVERYONE, so
+  // degrade to browser TTS for all players (not just blind mode) — otherwise a
+  // dropped clip means a sighted player misses the room's narration entirely
+  // (Tobias: "the GM didn't announce what we see in room 2").
+  function fallbackTts(text) {
+    if (text) rawSpeak(text, 'urgent'); else pump();
   }
   function rawSpeak(text, prio) {   // internal: ignores the on/off gate (toggle announcements)
     if (!supportsTTS || !text) return;

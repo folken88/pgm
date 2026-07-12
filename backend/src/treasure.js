@@ -106,15 +106,21 @@ function rollTreasure(totalXp, xpForCR, roll = Math.random) {
   return out;
 }
 
-/** Human line for the room-clear narration. */
+/** Room-clear narration (Tobias 2026-07-12): announce the TOTAL value of coin
+ *  + gems + art as one number, then call out magic items (potions, +N gear)
+ *  and notable components by name — not a gem-by-gem readout. */
 function prose(t) {
-  const names = t.drops.map(d => {
-    const it = itemsMod().ITEM_BY_KEY[d.key];
-    const val = it && it.value ? ` (${it.value}gp)` : '';
-    return (it ? it.name : d.key) + val;
-  });
-  let s = `${t.coins} gold`;
-  if (names.length) s += ', ' + names.join(', ');
+  const ITEMS = itemsMod();
+  let value = t.coins;
+  const notable = [];
+  for (const d of t.drops) {
+    const it = ITEMS.ITEM_BY_KEY[d.key];
+    if (!it) { notable.push(d.key); continue; }
+    if (it.type === 'valuable') value += (it.value || 0) * (d.qty || 1);   // gems/art fold into the total
+    else notable.push(it.name + (d.qty > 1 ? ' ×' + d.qty : ''));      // potions, +N gear, components
+  }
+  let s = `${value} gold in coin and valuables`;
+  if (notable.length) s += ', plus ' + (notable.length === 1 ? notable[0] : notable.slice(0, -1).join(', ') + ' and ' + notable[notable.length - 1]);
   return s;
 }
 
