@@ -403,7 +403,13 @@ function castSpell(run, hero, spellKey, targetId, roll) {
     if (kd && kd.atwill && kd.atwill.key === spellKey) {
       const target = targetId ? livingRevealedEnemies(run).find(f => f.id === targetId) : livingRevealedEnemies(run)[0];
       if (!target) return { ok: false, error: 'no visible target' };
-      try { run.shim._abCantrip(hero, kd.atwill, target); } catch (e) { return { ok: false, error: 'the casting fizzles' }; }
+      // Fire the player's CURRENTLY-SELECTED cantrip element (poker parity): the
+      // button key stays the base at-will key so this branch matches, but the
+      // element/name/icon that resolve come from hero.cantrip via _activeCantrip.
+      // (Bug 2026-07-13: the base at-will was always fired, ignoring the cycle.)
+      let ab = kd.atwill;
+      try { ab = run.shim._activeCantrip(hero, target.uid, kd.atwill) || kd.atwill; } catch (e) {}
+      try { run.shim._abCantrip(hero, ab, target); } catch (e) { return { ok: false, error: 'the casting fizzles' }; }
       return { ok: true };
     }
     return { ok: false, error: 'you do not know that spell' };
@@ -937,9 +943,19 @@ function publicRun(run) {
       }));
     let cantripState = null;
     try { cantripState = run.shim._cantripState(cb); } catch (e) {}
+    // The at-will button shows the CURRENTLY-SELECTED cantrip element — its name
+    // and icon change as you cycle. The KEY stays the base at-will key so the cast
+    // handler still matches (it resolves the live element via _activeCantrip).
+    let atwillOut = (kdFull && kdFull.atwill)
+      ? { key: kdFull.atwill.key, name: kdFull.atwill.name, icon: kdFull.atwill.icon || '', effect: kdFull.atwill.effect || null }
+      : null;
+    if (atwillOut && cantripState) {
+      const sel = cantripState.choices.find(c2 => c2.key === cantripState.current);
+      if (sel) { atwillOut.name = sel.name; atwillOut.icon = sel.icon || atwillOut.icon; }
+    }
     const kitOut = {
       caster: kitAll.some(a => a.isSpell),
-      atwill: (kdFull && kdFull.atwill) ? { key: kdFull.atwill.key, name: kdFull.atwill.name, icon: kdFull.atwill.icon || '', effect: kdFull.atwill.effect || null } : null,
+      atwill: atwillOut,
       cantrip: cantripState ? { current: cantripState.current, choices: cantripState.choices.map(c2 => c2.name) } : null,
       slots: Object.fromEntries(Object.entries(cb.slots || {}).map(([L, v]) => [L, { remaining: v, max: (cb.slotsMax || {})[L] != null ? cb.slotsMax[L] : v }])),
       spellPool: cb.spellPool > 0 ? { remaining: cb.spellPool, max: cb.spellPoolMax || cb.spellPool } : null,
