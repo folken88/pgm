@@ -425,6 +425,10 @@ function startRun(clientId) {
     const saved = LEGACY[legacyKey(s, m.name)] || {};
     return { clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai, negLevels: saved.negLevels || 0 };
   }));
+  // Live runs PACE their AI/enemy turns (1-2s deliberation each), streaming each
+  // via SSE. Setting onUpdate flips partyrun into paced mode; without it (tests)
+  // turns resolve synchronously. See partyrun.driveTurnsPaced.
+  s.run.onUpdate = () => { try { notifyChange(); } catch (e) {} };
   for (const m of ready) {
     if (!m._legacyXp) continue;
     const h = s.run.heroes.find(x => x.name === m.name);

@@ -321,8 +321,84 @@ function tickFor(run, cb, roll) {
   return t.acts;
 }
 
-/** Auto-resolve enemy + ai-companion turns; stop at a living HUMAN hero. */
+/** Advance through enemy + AI-companion turns to the next living HUMAN. Live
+ *  runs (run.onUpdate set by the session) PACE each AI/enemy turn behind a 1-2s
+ *  "deliberation" delay, streaming each via SSE; tests/headless runs (no
+ *  onUpdate) resolve the whole batch synchronously as before. */
 function runUntilHeroTurn(run, roll) {
+  if (run.onUpdate) return driveTurnsPaced(run, roll);
+  return runTurnsSync(run, roll);
+}
+
+/** A random 1-2s deliberation beat between AI/enemy actions. */
+function paceDelay(roll) { return 1000 + Math.floor((typeof roll === 'function' ? roll() : Math.random()) * 1000); }
+
+/** Paced driver: run the fast bookkeeping synchronously, STOP at a human turn,
+ *  and schedule each ACTING AI/enemy turn behind a delay so it looks deliberate.
+ *  Mirrors runTurnsSync's control flow exactly — only the acting turns are
+ *  deferred onto run.paceTimer instead of resolving inline. */
+function driveTurnsPaced(run, roll) {
+  clearTimeout(run.paceTimer);
+  let guard = 0;
+  while (run.phase === 'combat' && guard++ < 2000) {
+    run.combatants.forEach(c => {
+      if (c.hp > 0) return;
+      if (c.side === 'hero' && !c.dead && c.hp < -conScore(c)) {
+        c.dead = true; c.down = true;
+        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent');
+      }
+      if (!c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; }
+      if (c.side === 'hero') c.queuedAction = null;
+    });
+    if (living(run, 'enemy').length === 0) { clearRoom(run, roll); run.onUpdate(); return; }
+    if (living(run, 'hero').length === 0) { defeat(run); run.onUpdate(); return; }
+    const cb = current(run);
+    if (cb && cb.side === 'hero' && cb.down && !cb.dead && !cb.stable) {
+      cb.hp -= 1;
+      if (cb.hp < -conScore(cb)) { cb.dead = true; logEvent(run, `💀 ${cb.name} bleeds out — dead at ${cb.hp}.`, 'urgent'); }
+      else {
+        const conMod = Math.floor((conScore(cb) - 10) / 2);
+        const check = rollDie(20, roll) + conMod;
+        if (check >= 10 + Math.abs(cb.hp)) { cb.stable = true; logEvent(run, `${cb.name} stabilizes at ${cb.hp}.`, 'event'); }
+        else logEvent(run, `${cb.name} is dying (${cb.hp}). `, 'event');
+      }
+    }
+    if (!cb || cb.down) { nextTurn(run); continue; }
+    if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // condition cost the turn (instant — not deliberation)
+    if (cb.side === 'hero' && !cb.ai) {
+      if (cb.queuedAction) {
+        const q = cb.queuedAction; cb.queuedAction = null;
+        logEvent(run, `⏳ ${cb.name}'s pre-loaded ${q.label} triggers!`, 'event');
+        const r = applyAction(run, cb.ownerClientId, q.action, roll);
+        if (r && r.ok) { run.onUpdate(); return; }   // applyAction re-entered the driver
+        logEvent(run, `⏳ ${cb.name}'s queued ${q.label} fizzled${r && r.error ? ` (${r.error})` : ''} — act now.`, 'event');
+      }
+      run.turnStartedAt = Date.now();
+      logEvent(run, `It is ${cb.name}'s turn.`, 'event');
+      run.onUpdate();
+      return;
+    }
+    // An AI companion / enemy / summon / dominated foe is up: pause, THEN act.
+    run.paceTimer = setTimeout(() => {
+      try {
+        if (run.phase !== 'combat') return;
+        const actor = current(run);
+        if (!actor || actor.down || actor.hp <= 0) { driveTurnsPaced(run, roll); return; }
+        if (actor.side === 'enemy' && actor.summoned) summonTurn(run, actor, roll);
+        else if (actor.side === 'enemy' && actor.dominated > 0) dominatedTurn(run, actor, roll);
+        else if (actor.side === 'hero') aiHeroTurn(run, actor, roll);
+        else enemyTurn(run, actor, roll);
+        nextTurn(run);
+        run.onUpdate();
+        driveTurnsPaced(run, roll);
+      } catch (e) { try { driveTurnsPaced(run, roll); } catch (e2) {} }
+    }, paceDelay(roll));
+    return;
+  }
+}
+
+/** Synchronous batch (tests / headless): resolve all AI turns to the next human. */
+function runTurnsSync(run, roll) {
   let guard = 0;
   while (run.phase === 'combat' && guard++ < 2000) {
     run.combatants.forEach(c => {
