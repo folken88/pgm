@@ -31,7 +31,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     const sick = e.sickened > 0 ? SICKENED_PENALTY : 0;
     const pray = e.prayed || 0;   // Prayer: −1 to the enemy's attacks & damage
     // High ground: a flyer swooping on grounded heroes gets a to-hit edge.
-    const toHit = e.toHit - sick - pray - (e.blinded > 0 ? 4 : 0) + (e.flying ? HIGH_GROUND_HIT : 0) - (e.fdOn ? 4 : 0);   // Fight Defensively: −4 to attacks
+    const toHit = e.toHit - sick - pray - (e.blinded > 0 ? 4 : 0) + (e.flying ? HIGH_GROUND_HIT : 0) - (e.fdOn ? 4 : 0) + (e._blazeBonus || 0);   // Fight Defensively: −4 to attacks; Order of the Flame BLAZE OF GLORY: +4 for the room
     const roll = dRoll(20), total = roll + toHit;
     if (roll === 1) return { hit: false, roll, toHit, total, ac: targetAC, sound: SND.fumble };
     const hit = roll === 20 || total >= targetAC;
@@ -204,7 +204,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
         for (let i = 0; i < swings; i++) {
           if (target.hp <= 0) break;
           const r = this._monsterSwing(e, this._enemyAC(target));
-          if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds); else if (r.hit && e.atkSound) r.sound = e.atkSound;
+          if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds); else if (e.atkSound && (r.hit || e.ranged)) r.sound = e.atkSound;   // ranged foes fire their bow/gun sound on a MISS too (a missed shot isn't a sword clang — Josh)
           if (r.hit) { this._dmgE(target, r.damage); this._note(`${e.glyph} ${e.name} smashes your undead ${target.name} for ${r.damage}!${target.hp <= 0 ? ' ☠️ Destroyed!' : ''}`, r.sound, { side: 'enemy' }); }
           else this._note(`${e.glyph} ${e.name} swings at your undead ${target.name} — and misses.`, r.sound, { side: 'enemy' });
         }
@@ -277,11 +277,18 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     // A foe that MOVES to engage provokes: reach heroes get an AoO before it strikes (see above).
     if (target && e._lastMeleeTargetId !== target.playerId) { e._lastMeleeTargetId = target.playerId; this._provokeReachAoO(e); if (e.hp <= 0) return; }
     e.invisible = false;   // striking in melee breaks Invisibility (same rule as heroes)
+    // ORDER OF THE FLAME — BLAZE OF GLORY (enemy parity, the sahuagin prince): the moment
+    // it's BLOODIED (≤ half HP) it flares up ONCE per room, +4 to ALL its attacks for the
+    // rest of the room (mirrors Lord Gweyir's hero deed). Fresh enemy each room → no reset.
+    if (e.blazeOfGlory && !e._blazedRoom && e.hp > 0 && e.hp <= (e.maxHp || e.hp) / 2) {
+      e._blazedRoom = true; e._blazeBonus = 4;
+      this._note(`☄️ ${e.glyph} ${e.name} BLAZES in a final surge of glory — +4 to ALL its attacks for the rest of the room!`, '/audio/draugr_shout03_burning.mp3', { side: 'enemy' });
+    }
     // _acOf strips shield AC for dual-wielders AND ranged-weapon wielders.
     const effAC = this._acOf(target).ac + this._acBonus(target) - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0) - (target.stunned > 0 ? 2 : 0) - (target.slowed > 0 ? 1 : 0) - this._acPenalty(target);   // helpless / stunned / slowed / rage / reckless / cleave: easier to hit (enemy melee vs prone = −4)
     const r = this._monsterSwing(e, effAC);
     if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds);   // monk's randomized "bruce" kiai (hit or miss)
-    else if (r.hit && e.atkSound) r.sound = e.atkSound;                    // rogue's "riki" stab (hit only)
+    else if (e.atkSound && (r.hit || e.ranged)) r.sound = e.atkSound;      // melee atkSound = the connecting blow (hit only, e.g. rogue "riki" stab); a RANGED foe fires its bow/gun sound on a MISS too (Josh: a missed shot shouldn't clang like a sword)
     if (r.hit) {
       // Swashbuckler PARRY — the first melee attack against them each round can be
       // turned aside (parry roll vs the foe's attack total). On success: NO damage
@@ -387,7 +394,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   // already-prone. Casters draw a heavier grapple weight (drag off the squishy!).
   _pickEnemyManeuver(e, target) {
     if (e.ranged) return 'attack';                      // an archer doesn't wrestle
-    if (e.flying) return 'attack';                      // a swooping flyer STRIKES (or casts) — it doesn't trip/grapple/bull-rush a grounded foe from the air (poker parity, Josh 2026-07-12: flying angel clerics were wrestling)
+    if (e.flying) return 'attack';                      // a swooping flyer STRIKES (or casts) — it doesn't trip/grapple/bull-rush a grounded foe from the air (Josh 2026-07-12: flying angel clerics were wrestling)
     const corporeal = !e.incorporeal;
     const menu = [['attack', 12]];
     if (corporeal && !target.grappled) menu.push(['grapple', this._isSquishy(target) ? 6 : 3]);
