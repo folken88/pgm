@@ -19,20 +19,30 @@ function save() { try { fs.writeFileSync(FILE, JSON.stringify(DB)); } catch (e) 
 function keyOf(name) { return String(name || '').trim().toLowerCase(); }
 function hashPw(pw, salt) { return crypto.scryptSync(String(pw), salt, 32).toString('hex'); }
 
-/** Register OR log in with one call (family UX: "Sign in" just works).
- *  New name -> account created; known name -> password must match. */
+/** Register OR log in with one call. Password is OPTIONAL (family UX, Tobias
+ *  2026-07-12: "one-click connect and play"). A name-only profile is created
+ *  instantly and remembered in the browser for a one-click button next time.
+ *  Setting a password protects the name; once set, it's required. */
 function signIn(name, password) {
   const k = keyOf(name);
   if (!k || k.length < 2) return { ok: false, error: 'pick a name (2+ characters)' };
-  if (!password || String(password).length < 3) return { ok: false, error: 'password needs 3+ characters' };
+  const hasPw = !!(password && String(password).length);
   const existing = DB[k];
   if (existing) {
-    if (hashPw(password, existing.salt) !== existing.hash) return { ok: false, error: 'wrong password for that name' };
+    if (existing.hash) {   // this profile is password-protected
+      if (!hasPw) return { ok: false, error: 'this profile has a password — enter it' };
+      if (hashPw(password, existing.salt) !== existing.hash) return { ok: false, error: 'wrong password for that name' };
+    } else if (hasPw) {    // first password locks a previously-open profile
+      existing.salt = crypto.randomBytes(16).toString('hex');
+      existing.hash = hashPw(password, existing.salt);
+      save();
+    }
     return { ok: true, token: existing.token, name: existing.name, character: existing.character || null, created: false };
   }
   const salt = crypto.randomBytes(16).toString('hex');
   DB[k] = {
-    name: String(name).trim().slice(0, 24), salt, hash: hashPw(password, salt),
+    name: String(name).trim().slice(0, 24), salt,
+    hash: hasPw ? hashPw(password, salt) : null,   // null = open profile (name-only)
     token: crypto.randomBytes(24).toString('hex'), character: null, createdAt: Date.now(),
   };
   save();

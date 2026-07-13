@@ -87,26 +87,10 @@
     window.addEventListener('beforeunload', function () {
       if (state.clientId && navigator.sendBeacon) navigator.sendBeacon('/api/session/leave', JSON.stringify({ clientId: state.clientId }));
     });
-    // Accounts: sign in / auto-resume from the remembered token.
+    // Accounts: sign in / auto-resume + one-click "previous player" buttons.
     el('signin-btn').addEventListener('click', doSignIn);
     el('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSignIn(); } });
-    var savedToken = null;
-    try { savedToken = localStorage.getItem('pgmToken'); } catch (e) {}
-    if (savedToken) {
-      api('/api/auth/me', { token: savedToken }).then(function (r) {
-        if (!r.ok) return;
-        state.token = savedToken; state.account = r.name;
-        el('handle').value = r.name;
-        el('signin-status').textContent = 'Signed in as ' + r.name;
-        if (r.character) state.rememberedBuild = r.character;
-        renderCharList(r);
-        var live = (r.delves || []).filter(function (d) { return d.phase !== 'lobby'; });
-        var msg = 'Welcome back, ' + r.name + '.'
-          + ((r.characters || []).length ? ' Your characters are ready for one-click play.' : '')
-          + (live.length ? ' ' + live.length + ' delve' + (live.length === 1 ? '' : 's') + ' waiting.' : '');
-        BM.speak(msg, 'event'); BM.toast(msg);
-      });
-    }
+    renderAccountPicker();   // show remembered players immediately
     connectSSE(null);
     setTimeout(function () {
       BM.speak('Welcome to Personal Game Master. Enter your name and pick an icon, then start a new delve, or join an active delve from the panel. Hold space or the microphone to speak.', 'event');
@@ -239,17 +223,74 @@
       });
     });
   }
+  // ── Remembered players (one-click login, Tobias 2026-07-12) ──
+  function remembered() {
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem('pgmAccounts') || '[]'); } catch (e) {}
+    // migrate the legacy single-token key
+    try {
+      var old = localStorage.getItem('pgmToken');
+      if (old && !list.some(function (a) { return a.token === old; })) { list.unshift({ name: state.account || '', token: old }); }
+      localStorage.removeItem('pgmToken');
+    } catch (e) {}
+    return list.filter(function (a) { return a && a.token; });
+  }
+  function rememberAccount(name, token) {
+    var list = remembered().filter(function (a) { return a.name.toLowerCase() !== String(name).toLowerCase() && a.token !== token; });
+    list.unshift({ name: name, token: token });
+    try { localStorage.setItem('pgmAccounts', JSON.stringify(list.slice(0, 8))); } catch (e) {}
+  }
+  function forgetAccount(token) {
+    var list = remembered().filter(function (a) { return a.token !== token; });
+    try { localStorage.setItem('pgmAccounts', JSON.stringify(list)); } catch (e) {}
+  }
+  function renderAccountPicker() {
+    var box = el('account-picker'); if (!box) return;
+    var list = remembered();
+    if (!list.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<h3>Welcome back — pick your player</h3>';
+    list.forEach(function (a) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'account-btn';
+      b.innerHTML = '<span>' + String.fromCodePoint(0x25B6) + ' ' + esc(a.name || 'Player') + '</span>';
+      b.addEventListener('click', function () { signInWithToken(a.token); });
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'account-forget'; x.title = 'Forget this player on this device';
+      x.textContent = String.fromCharCode(215);
+      x.addEventListener('click', function (e) { e.stopPropagation(); forgetAccount(a.token); renderAccountPicker(); });
+      var row = document.createElement('div'); row.className = 'account-row';
+      row.appendChild(b); row.appendChild(x); box.appendChild(row);
+    });
+  }
+  function signInWithToken(token) {
+    api('/api/auth/me', { token: token }).then(function (r) {
+      if (!r.ok) { forgetAccount(token); renderAccountPicker(); BM.toast('That player is no longer recognized — sign in again.'); return; }
+      state.token = token; state.account = r.name;
+      el('handle').value = r.name;
+      el('signin-status').textContent = 'Playing as ' + r.name;
+      if (r.character) state.rememberedBuild = r.character;
+      rememberAccount(r.name, token);   // refresh position + name
+      renderCharList(r);
+      var live = (r.delves || []).filter(function (d) { return d.phase !== 'lobby'; });
+      var msg = 'Welcome back, ' + r.name + '.'
+        + ((r.characters || []).length ? ' Pick a character to play.' : ' Create a character to begin.')
+        + (live.length ? ' ' + live.length + ' delve' + (live.length === 1 ? '' : 's') + ' waiting.' : '');
+      BM.speak(msg, 'urgent'); BM.toast(msg);
+      el('char-list').scrollIntoView && el('char-list').scrollIntoView({ block: 'nearest' });
+    });
+  }
   function doSignIn() {
     var name = el('handle').value.trim(); var pw = el('pw').value;
     if (!name) { BM.speak('Enter your name first.', 'urgent'); el('handle').focus(); return; }
-    if (!pw) { BM.speak('Enter a password to be remembered.', 'urgent'); el('pw').focus(); return; }
     api('/api/auth/signin', { name: name, password: pw }).then(function (r) {
       if (!r.ok) { el('signin-status').textContent = r.error; BM.speak(r.error, 'urgent'); return; }
       state.token = r.token; state.account = r.name;
-      try { localStorage.setItem('pgmToken', r.token); } catch (e) {}
+      rememberAccount(r.name, r.token);   // one-click button next time
+      renderAccountPicker();
       if (r.character) state.rememberedBuild = r.character;
-      var msg = (r.created ? 'Account created. ' : '') + 'Signed in as ' + r.name + ' — you will be remembered here.';
-      el('signin-status').textContent = 'Signed in as ' + r.name;
+      var msg = (r.created ? 'Player created. ' : '') + 'Signed in as ' + r.name + ' — one click to return next time.';
+      el('signin-status').textContent = 'Playing as ' + r.name;
       el('pw').value = '';
       api('/api/auth/me', { token: r.token }).then(function (me) { if (me.ok) renderCharList(me); });
       BM.speak(msg, 'urgent'); BM.toast(msg);

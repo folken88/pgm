@@ -102,3 +102,16 @@ test('accounts: sign in once, delves follow the account, build remembered', () =
   const me = accounts.byToken(a.token);
   assert.deepStrictEqual(me.character, { race: 'dwarf', cls: 'cleric' }, 'build remembered for next visit');
 });
+
+test('accounts: passwordless quick profile (one-click), then optional password lock', () => {
+  const accounts = require('../src/accounts');
+  const u = 'quick' + process.pid + Date.now();
+  const a = accounts.signIn(u);                 // no password -> instant profile
+  assert.ok(a.ok && a.token && a.created, 'passwordless profile created');
+  const b = accounts.signIn(u);                 // one-click return
+  assert.ok(b.ok && !b.created && b.token === a.token, 'passwordless re-login, same token');
+  accounts.signIn(u, 'lockit');                 // first password locks the name
+  assert.strictEqual(accounts.signIn(u).ok, false, 'passwordless refused once protected');
+  assert.ok(accounts.signIn(u, 'lockit').ok, 'correct password works');
+  assert.strictEqual(accounts.signIn(u, 'nope').ok, false, 'wrong password refused');
+});

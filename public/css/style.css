@@ -451,3 +451,12 @@ body:not(.blind-on) #choices {
 /* Action queue (poker parity): pre-load chips */
 .ab-queued { color: var(--accent); font-size: .85rem; font-variant: small-caps; margin-left: .3rem; }
 .hero-card .hc-queued { color: var(--accent); font-size: .78rem; font-variant: small-caps; }
+
+/* Remembered players — one-click login (Tobias 2026-07-12) */
+.account-picker { margin: .2rem 0 1rem; }
+.account-picker h3 { margin: 0 0 .5rem; font-size: .95rem; color: var(--accent); font-variant: small-caps; letter-spacing: .05em; }
+.account-row { display: flex; gap: .35rem; margin-bottom: .45rem; }
+.account-btn { flex: 1; text-align: left; font-size: 1.05rem; padding: .7rem .9rem;
+  background-image: var(--tex-grain), linear-gradient(180deg, #7a2412, #4d1207); color: #f2dfb8; font-weight: 700; }
+.account-forget { flex: 0 0 auto; width: 2.4rem; color: var(--muted); }
+.account-forget:hover { color: var(--danger); }

@@ -20,6 +20,8 @@
     <!-- Landing: start a new delve, or join/watch an existing one (side window) -->
     <section id="landing" aria-labelledby="landing-h">
       <h2 id="landing-h">Enter the dungeon</h2>
+      <!-- One-click login buttons for players remembered on this device -->
+      <div id="account-picker" class="account-picker" aria-label="Previous players" hidden></div>
       <div class="field">
         <label for="handle">Your name</label>
         <input id="handle" type="text" autocomplete="off" value="" placeholder="e.g. Josh" required />
@@ -37,8 +39,8 @@
         <div class="signin-row">
           <label for="pw" class="visually-hidden">Password (optional — sign in to be remembered)</label>
           <input id="pw" type="password" autocomplete="current-password" maxlength="64"
-            placeholder="Password (optional — to be remembered)" aria-label="Password, optional. Sign in to be remembered across visits." />
-          <button id="signin-btn" type="button">Sign in</button>
+            placeholder="Password (optional)" aria-label="Password, optional. Leave blank for a quick profile; set one to protect your name." />
+          <button id="signin-btn" type="button">Save player</button>
           <span id="signin-status" aria-live="polite"></span>
         </div>
         <button type="button" id="start-delve">⚔️ Start a new delve</button>
