@@ -600,6 +600,29 @@ function applyAction(run, clientId, action, roll = Math.random) {
     return { ok: true };
   }
 
+  // SELL ANYTHING (Tobias 2026-07-13): fence a party-pile OR pack item for 50%
+  // of its value; the gold drops into the party purse (run gold). Free action,
+  // like the other loot management. "Maybe the party needs money more than the
+  // item" — so gems, art, components, spare gear are all sellable.
+  if (type === 'loot_sell') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    const fromPile = run.inventory.find(s2 => s2.key === action.item && s2.qty > 0);
+    const fromPack = !fromPile && hero.pack ? hero.pack.find(s2 => s2.key === action.item && s2.qty > 0) : null;
+    const src = fromPile || fromPack;
+    if (!src) return { ok: false, error: 'nothing like that to sell' };
+    const it = items.ITEM_BY_KEY[src.key];
+    const val = it && it.value ? it.value : 0;
+    if (!val) return { ok: false, error: 'that has no resale value' };
+    const price = Math.max(1, Math.floor(val / 2));   // 50% of value
+    src.qty -= 1;
+    if (fromPile && src.qty <= 0) run.inventory = run.inventory.filter(s2 => s2.qty > 0);
+    if (fromPack && src.qty <= 0) hero.pack = hero.pack.filter(s2 => s2.qty > 0);
+    run.gold += price;
+    logEvent(run, `${hero.name} sells ${it.name} for ${price} gold — into the party purse.`, 'event');
+    return { ok: true, text: `Sold ${it.name} for ${price} gold.` };
+  }
+
   // CANTRIP CYCLE (poker's C key): a free action, not turn-gated. With no key,
   // steps to the next element; with action.spell, picks that one directly.
   if (type === 'cantrip') {
@@ -1001,7 +1024,7 @@ function publicRun(run) {
       queued: c.queuedAction ? c.queuedAction.label : null,
       pack: c.side === 'hero' ? (c.pack || []).map(s2 => {
         const it = items.ITEM_BY_KEY[s2.key] || { name: s2.key, icon: '?', type: 'misc' };
-        return { key: s2.key, name: it.name, icon: it.icon, type: it.type, verb: it.verb || 'equip', kind: it.effect ? it.effect.kind : null, qty: s2.qty };
+        return { key: s2.key, name: it.name, icon: it.icon, type: it.type, verb: it.verb || 'equip', kind: it.effect ? it.effect.kind : null, qty: s2.qty, sellGp: it.value ? Math.max(1, Math.floor(it.value / 2)) : 0 };
       }) : null,
       level: c.level || null, xp: c.xp || 0, cls: c.cls || null,
       xpNext: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).next : null,
@@ -1026,6 +1049,7 @@ function publicRun(run) {
         key: s.key, name: it.name, short: it.short, icon: it.icon,
         type: it.type, verb: it.verb || 'equip', gearType: it.gearType || null,
         kind: it.effect ? it.effect.kind : null, qty: s.qty, party: !!s.party,
+        sellGp: it.value ? Math.max(1, Math.floor(it.value / 2)) : 0,
       };
     }),
     turn,

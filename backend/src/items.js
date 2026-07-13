@@ -29,8 +29,8 @@ const CONSUMABLES = [
 // component's PF1 price at the Swashgoblin — unless you FOUND one below and
 // hung on to it, in which case only the casting fee is due.
 const COMPONENTS = [
-  { key: 'diamond', name: 'Flawless Diamond (5,000gp)', short: 'Raise Dead component', icon: String.fromCodePoint(0x1F48E), type: 'component', component: 'raisedead' },
-  { key: 'diamond_dust', name: 'Diamond Dust (100gp)', short: 'Restoration component', icon: String.fromCodePoint(0x2728), type: 'component', component: 'restoration' },
+  { key: 'diamond', name: 'Flawless Diamond (5,000gp)', short: 'Raise Dead component', icon: String.fromCodePoint(0x1F48E), type: 'component', component: 'raisedead', value: 5000 },
+  { key: 'diamond_dust', name: 'Diamond Dust (100gp)', short: 'Restoration component', icon: String.fromCodePoint(0x2728), type: 'component', component: 'restoration', value: 100 },
 ];
 
 // MAGIC GEAR (vetted slice, Tobias 2026-07-11): +1/+2 weapons and armor at

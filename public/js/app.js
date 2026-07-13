@@ -639,6 +639,7 @@
         var row = document.createElement('div'); row.className = 'bag-item' + (i.party ? ' is-party' : '');
         var btns = '';
         if (i.party && isPlayer) btns += '<button data-act="loot_take">Take</button>';
+        if ((i.party || isHost) && isPlayer && i.sellGp) btns += '<button data-act="loot_sell" title="Sell for 50% of value into the party purse">Sell ' + i.sellGp + 'g</button>';
         if (isHost) {
           btns += '<button data-act="loot_party">' + (i.party ? 'Unmark' : 'Party') + '</button>';
           btns += '<button data-act="send-open">Send</button>';
@@ -669,12 +670,17 @@
       var kh = document.createElement('h4'); kh.textContent = 'Your pack'; box.appendChild(kh);
       pack.forEach(function (i) {
         var row = document.createElement('div'); row.className = 'bag-item';
-        var actBtn = '';
-        if (i.type === 'gear' && run.phase === 'cleared' && isPlayer) actBtn = '<button data-act="equip">Equip</button>';
-        else if (i.type === 'consumable' && myTurn) actBtn = '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
-        row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.name) + ' ×' + i.qty + '</span>' + actBtn;
-        var b = row.querySelector('button');
-        if (b) b.addEventListener('click', function () { doGameAction({ id: b.dataset.act, item: i.key, label: i.name }); });
+        var btns = '';
+        if (i.type === 'gear' && run.phase === 'cleared' && isPlayer) btns += '<button data-act="equip">Equip</button>';
+        else if (i.type === 'consumable' && myTurn) btns += '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
+        if (i.sellGp && isPlayer) btns += '<button data-act="loot_sell" title="Sell for 50% of value into the party purse">Sell ' + i.sellGp + 'g</button>';
+        row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.name) + ' ×' + i.qty + '</span>' + btns;
+        row.querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (b.dataset.act === 'loot_sell') lootAction('loot_sell', i.key);
+            else doGameAction({ id: b.dataset.act, item: i.key, label: i.name });
+          });
+        });
         box.appendChild(row);
       });
     }
