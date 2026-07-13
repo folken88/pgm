@@ -416,6 +416,9 @@ function castSpell(run, hero, spellKey, targetId, roll) {
   try { ret = shim._useAbility(hero, slot, { targetUid: targetId || undefined }); }
   catch (e) { return { ok: false, error: 'the casting fizzles' }; }
   if (ret && ret.ok === false) return { ok: false, error: ret.error || 'that cannot be cast right now' };
+  // FREE ACTIONS (poker parity): Rage, Power Attack, Mage Armor, Overland
+  // Flight, Judgement, stances — toggling on/off costs NO turn.
+  if (ret && ret.freeAction) return { ok: true, freeAction: true };
   if (run.seq === before) return { ok: false, error: 'that cannot be cast right now' };
   // PF1 RAW revival costs (Tobias house rules): Raise Dead/Reincarnate = 2
   // negative levels, Breath of Life/Resurrection = 1. Revived dead come back marked.
@@ -660,6 +663,7 @@ function applyAction(run, clientId, action, roll = Math.random) {
   } else if (type === 'cast') {
     const r = castSpell(run, cb, action.spell, action.target, roll);
     if (!r.ok) return r;                 // invalid cast doesn't burn the turn
+    if (r.freeAction) return { ok: true, freeAction: true };   // free toggle — keep your turn (poker)
   } else if (type === 'use') {
     const r = useItem(run, cb, action.item, action.target, roll);
     if (!r.ok) return r;                 // invalid use doesn't burn the turn

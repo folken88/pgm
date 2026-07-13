@@ -341,3 +341,20 @@ test('once-per-run powers start charged: Bless casts, narrates, then refuses', (
   const r2 = pr.applyAction(run, 'c1', { type: 'cast', spell: 'bless' }, roll);
   assert.strictEqual(r2.ok, false, 'second cast refused with a real message: ' + r2.error);
 });
+
+test('free toggles (Rage, Power Attack, Mage Armor) cost NO turn; attacks do', () => {
+  const roll = seededRoller(5);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'Barb', race: 'human', cls: 'barbarian' }) }], roll);
+  pr.applyAction(run, 'c1', { type: 'initiative' }, roll);
+  const hero = run.heroes[0];
+  const foe = run.combatants.find(c => c.side === 'enemy'); foe.hp = 200; foe.maxHp = 200; foe.revealed = true;
+  run.turnIndex = run.combatants.indexOf(hero); run.phase = 'combat';
+  const idxBefore = run.turnIndex;
+  const rage = pr.applyAction(run, 'c1', { type: 'cast', spell: 'rage' }, roll);
+  assert.ok(rage.ok && rage.freeAction, 'rage is a free action');
+  assert.strictEqual(run.turnIndex, idxBefore, 'rage did NOT advance the turn');
+  const pa = pr.applyAction(run, 'c1', { type: 'cast', spell: 'powerattack' }, roll);
+  assert.ok(pa.ok && pa.freeAction, 'power attack is a free action');
+  assert.strictEqual(run.turnIndex, idxBefore, 'power attack did NOT advance the turn');
+  assert.ok(run.log.some(e => /RAGE/i.test(e.text)) && run.log.some(e => /Power Attack/i.test(e.text)), 'both narrated');
+});
