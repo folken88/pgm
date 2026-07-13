@@ -10,3 +10,4 @@ public/tokens/*.webp
 public/tokens/*.png
 public/assets/characters/*.webp
 public/assets/characters/*.png
+.sync-backup/
