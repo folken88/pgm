@@ -61,6 +61,34 @@ function takeItem(run, key) {
   return true;
 }
 
+// AI AUTO-CLAIM (Tobias 2026-07-13): a relevant item left in the party pile is
+// grabbed by an AI companion who can use it, IF no human took it first. Humans
+// always get the current round to claim; the AI only sweeps at the next round
+// start (see the round hook in the turn drivers). Restraint: only clearly
+// role-relevant items (a cleric wants the Restoration diamond dust; a hurt
+// companion wants a healing potion) — never generic loot the leader may divvy.
+function aiWantsItem(hero, it) {
+  const cls = hero.cls || (hero.character && hero.character.cls);
+  if (!it) return false;
+  if (it.type === 'component') return DIVINE_RESTORERS.has(cls) || cls === 'cleric' || cls === 'oracle';   // Restoration / Raise Dead reagents → a divine caster
+  if (it.effect && it.effect.kind === 'heal') return hero.hp < hero.maxHp * 0.6;   // a wounded companion pockets a cure potion
+  return false;
+}
+function aiClaimLoot(run) {
+  const aiHeroes = run.heroes.filter(h => h.ai && !h.down && !h.dead && !h.left);
+  if (!aiHeroes.length || !run.inventory.length) return;
+  for (const slot of run.inventory.slice()) {
+    if (slot.qty <= 0) continue;
+    const it = items.ITEM_BY_KEY[slot.key];
+    const taker = aiHeroes.find(h => aiWantsItem(h, it));
+    if (!taker) continue;
+    slot.qty -= 1;
+    if (slot.qty <= 0) run.inventory = run.inventory.filter(s => s.qty > 0);
+    giveToPack(taker, slot.key, 1);
+    logEvent(run, `🎒 ${taker.name} claims ${it.name} from the party loot — no one else did.`, 'event');
+  }
+}
+
 /** HOUSE RULE (Tobias 2026-07-11): you die when negative HP EXCEEDS your CON
  *  score — 14 CON dies at −15. Between 0 and −CON you are DYING: unconscious,
  *  bleeding 1/round until a DC (10 + neg HP) CON check stabilizes you. No
@@ -270,6 +298,8 @@ function rollInitiative(run, roll) {
   logEvent(run, '🎲 Initiative rolled — ' + order + '.', 'event', 'earcon:dice');   // dice earcon fires; GM voice does NOT read the rolls (Tobias)
   run.turnIndex = 0;
   run.phase = 'combat';
+  run._lootClaimRound = 1;
+  aiClaimLoot(run);   // next fight begins: AI sweeps relevant treasure no human took between rooms
   runUntilHeroTurn(run, roll);
 }
 
@@ -292,7 +322,10 @@ function livingRevealedEnemies(run) { return run.combatants.filter(c => c.side =
 function current(run) { return run.combatants[run.turnIndex]; }
 function nextTurn(run) {
   run.turnIndex = (run.turnIndex + 1) % run.combatants.length;
-  if (run.turnIndex === 0) run.round += 1;   // wrapped to top of initiative = new round
+  if (run.turnIndex === 0) {
+    run.round += 1;   // wrapped to top of initiative = new round
+    if (run.round >= 2) aiClaimLoot(run);   // humans had round 1 to claim; AI now sweeps relevant leftovers
+  }
 }
 
 /** Turn-start condition tick (pf1core engine): narrates events, returns acts. */
