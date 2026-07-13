@@ -31,6 +31,30 @@ test('enemy art resolves by MON key (matches portrait filenames)', () => {
   }
 });
 
+test('enemy HP is hidden + quantized to 25% buckets; heroes keep exact HP + XP progress', () => {
+  const pr = require('../src/partyrun');
+  const { seededRoller } = require('../src/dice');
+  const pf1 = require('../src/pf1core');
+  const roll = seededRoller(4);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'T', race: 'human', cls: 'fighter' }) }], roll);
+  pr.applyAction(run, 'c1', { type: 'initiative' }, roll);
+  const foe = run.combatants.find(c => c.side === 'enemy'); foe.revealed = true;
+  foe.hp = Math.ceil(foe.maxHp * 0.4);   // 40% → ceil to the 50% bucket
+  const snap = pr.publicRun(run);
+  const efoe = snap.combatants.find(c => c.side === 'enemy');
+  assert.strictEqual(efoe.hp, null, 'enemy exact HP is not sent');
+  assert.strictEqual(efoe.maxHp, null, 'enemy max HP is not sent');
+  assert.strictEqual(efoe.hpPct, 50, '40% of HP quantizes UP to the 50% bucket');
+  const ehero = snap.combatants.find(c => c.side === 'hero');
+  assert.ok(ehero.hp > 0 && ehero.maxHp > 0, 'heroes keep exact HP');
+  assert.strictEqual(typeof ehero.xpInto, 'number', 'heroes expose XP-into-level for the bar');
+  assert.strictEqual(typeof ehero.xpSpan, 'number', 'heroes expose XP span for the bar');
+  // the blind/target readout uses a coarse word, never a number
+  const listed = snap.enemies.find(e => e.id === efoe.id);
+  assert.ok(/wounded|scratched|unhurt|near death/.test(listed.hpWord), 'coarse hpWord, not a number: ' + listed.hpWord);
+  assert.strictEqual(listed.hp, undefined, 'no exact enemy HP in the target list');
+});
+
 test('char-gated abilities are filtered from other heroes’ action bars', () => {
   const pr = require('../src/partyrun');
   const { seededRoller } = require('../src/dice');

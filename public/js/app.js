@@ -572,11 +572,15 @@
     rows.enemy.innerHTML = ''; rows.hero.innerHTML = '';
     run.combatants.forEach(function (c) {
       var d = document.createElement('div');
-      d.className = 'unit' + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && c.hp <= c.maxHp / 3 ? ' hurt' : '');
+      var pct = (c.hpPct != null) ? c.hpPct : (c.maxHp ? Math.round(100 * c.hp / c.maxHp) : 0);
+      // Enemies: bar only, quantized to 25% (no numbers). Heroes: bar + exact HP.
+      var hpText = (c.side === 'enemy') ? '' : (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP');
+      d.className = 'unit unit-' + c.side + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && pct <= 33 ? ' hurt' : '');
       d.innerHTML = (c.art ? '<img class="u-art" src="' + c.art + '" alt="" loading="lazy" />'
                           : '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>')
         + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.myId ? ' ✦' : '') + '</div>'
-        + '<div class="u-hp">' + (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP') + '</div>'
+        + '<div class="u-hpbar" role="img" aria-label="' + (c.down ? 'down' : 'health ' + pct + ' percent') + '"><div style="width:' + pct + '%"></div></div>'
+        + (hpText ? '<div class="u-hp">' + hpText + '</div>' : '')
         + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
       if (c.side === 'enemy' && !c.down) { d.style.cursor = 'pointer'; d.title = 'Click to attack / target'; d.addEventListener('click', function () {
         var atk = state.choices.find(function (x) { return x.id === 'attack' && x.target === c.id; });
@@ -598,7 +602,12 @@
       var slots = c.slots ? Object.entries(c.slots).map(function (kv) { return 'L' + kv[0] + '×' + kv[1]; }).join(' ') : '';
       card.innerHTML = '<div class="hc-name">' + (c.art ? '<img class="hc-art" src="' + c.art + '" alt="" loading="lazy" />' : (c.icon || '')) + ' ' + esc(c.name)
         + (c.ownerClientId === state.myId ? ' <span class="you">(you)</span>' : '') + (c.ai ? ' 🤖' : '') + '</div>'
-        + '<div class="hpbar"><div style="width:' + pct + '%"></div></div>'
+        + '<div class="hpbar" role="img" aria-label="health ' + pct + ' percent"><div style="width:' + pct + '%"></div></div>'
+        + (function () {
+            if (c.xpInto == null || !c.xpSpan) return '';
+            var xpP = Math.max(0, Math.min(100, Math.round(100 * c.xpInto / c.xpSpan)));
+            return '<div class="xpbar" role="img" aria-label="experience ' + xpP + ' percent to next level" title="' + c.xpInto + ' / ' + c.xpSpan + ' XP to level ' + ((c.level || 1) + 1) + '"><div style="width:' + xpP + '%"></div></div>';
+          })()
         + '<div class="hc-meta">' + (c.level ? 'L' + c.level + ' · ' : '') + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
         + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '')
         + (c.queued ? '<div class="hc-queued">⏳ queued: ' + esc(c.queued) + '</div>' : '');
@@ -883,7 +892,7 @@
     BM.registerInfo({
       foes: function () {
         var run = myRun(); if (!run) return [];
-        return (run.enemies || []).map(function (e) { return { id: e.id, key: e.id, label: e.name + ', ' + e.hp + ' HP' }; });
+        return (run.enemies || []).map(function (e) { return { id: e.id, key: e.id, label: e.name + ', ' + (e.hpWord || 'unknown') }; });
       },
       spells: function () {
         var run = myRun(); if (!run || !run.turn || run.turn.ownerClientId !== state.myId) return [];

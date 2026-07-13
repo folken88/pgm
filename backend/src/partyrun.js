@@ -891,6 +891,26 @@ function logEvent(run, text, priority, sound) {
   if (run.log.length > 80) run.log.shift();
 }
 
+/** HP as a percentage for the bar. Heroes get an exact %, enemies are QUANTIZED
+ *  to 25% buckets (ceil, so a living foe never reads 0) — players can't tell a
+ *  foe's exact wound level, only "about a quarter / half / three-quarters left". */
+function hpPctFor(c) {
+  if (c.down || c.hp <= 0) return 0;
+  const ratio = c.maxHp > 0 ? Math.max(0, Math.min(1, c.hp / c.maxHp)) : 0;
+  if (c.side === 'enemy') return Math.ceil(ratio * 4) / 4 * 100;
+  return Math.round(ratio * 100);
+}
+/** Coarse word for a foe's health (blind/target readouts) — never exact HP. */
+function hpWordFor(e) {
+  if (e.down || e.hp <= 0) return 'down';
+  const ratio = e.maxHp > 0 ? Math.max(0, Math.min(1, e.hp / e.maxHp)) : 0;
+  if (ratio >= 1) return 'unhurt';
+  if (ratio > 0.75) return 'barely scratched';
+  if (ratio > 0.5) return 'wounded';
+  if (ratio > 0.25) return 'badly wounded';
+  return 'near death';
+}
+
 /** Client-facing view. Hidden (unrevealed) enemies are omitted entirely. */
 function publicRun(run) {
   const cb = current(run);
@@ -971,7 +991,11 @@ function publicRun(run) {
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,
       art: c.side === 'enemy' ? (artFor(c.key) || artFor(c.creature && c.creature.baseName || c.name)) : artFor(c.name),
-      hp: Math.max(0, c.hp), maxHp: c.maxHp, ac: c.ac, down: c.down,
+      // Heroes expose exact HP; ENEMIES show only a coarse bar (25% buckets) and
+      // NO numbers — players (sighted or blind) can't read a foe's exact HP.
+      hp: c.side === 'enemy' ? null : Math.max(0, c.hp),
+      maxHp: c.side === 'enemy' ? null : c.maxHp,
+      hpPct: hpPctFor(c), ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
       dead: !!c.dead, negLevels: c.negLevels || 0,
       queued: c.queuedAction ? c.queuedAction.label : null,
@@ -981,6 +1005,8 @@ function publicRun(run) {
       }) : null,
       level: c.level || null, xp: c.xp || 0, cls: c.cls || null,
       xpNext: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).next : null,
+      xpInto: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).into : null,
+      xpSpan: c.side === 'hero' ? pf1.xp.xpProgress(c.xp || 0).span : null,
       current: cb ? c.id === cb.id : false,
       init: c.init || 0,
       conditions: condList(c)
@@ -993,7 +1019,7 @@ function publicRun(run) {
       debuffs: condList(c).filter(x => x !== 'blessed'),
       slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
     })),
-    enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hp: Math.max(0, e.hp) })),
+    enemies: livingRevealedEnemies(run).map(e => ({ id: e.id, name: e.name, hpPct: hpPctFor(e), hpWord: hpWordFor(e) })),
     inventory: run.inventory.map(s => {
       const it = items.ITEM_BY_KEY[s.key] || { name: s.key, short: '', icon: '?', type: 'misc' };
       return {

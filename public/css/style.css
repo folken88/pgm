@@ -201,6 +201,9 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .hero-card .hpbar > div { height: 100%; background: var(--ok); border-radius: 4px; }
 .hero-card.hurt .hpbar > div { background: var(--accent); }
 .hero-card.critical .hpbar > div { background: var(--danger); }
+/* Blue experience-to-next-level bar under the HP bar (poker parity). */
+.hero-card .xpbar { height: 4px; background: #24262b; border-radius: 3px; margin: 0 0 .3rem; overflow: hidden; }
+.hero-card .xpbar > div { height: 100%; background: #6ea8ff; border-radius: 3px; transition: width .3s ease; }
 .hero-card .hc-meta { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .hero-card .hc-conds { color: var(--danger); font-size: .78rem; }
 
@@ -215,6 +218,13 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .unit .u-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
 .unit .u-hp { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .unit .u-conds { color: var(--danger); font-size: .72rem; min-height: .9rem; }
+/* HP bar on the initiative tile. Heroes read green→amber→red by fill; enemies
+   are always the danger tint (quantized to 25% — no numbers shown). */
+.unit .u-hpbar { height: 6px; width: 80%; margin: .2rem auto; background: #2b2b2b; border-radius: 4px; overflow: hidden; }
+.unit .u-hpbar > div { height: 100%; border-radius: 4px; transition: width .3s ease; }
+.unit-hero .u-hpbar > div { background: var(--ok); }
+.unit-hero.hurt .u-hpbar > div { background: var(--danger); }
+.unit-enemy .u-hpbar > div { background: var(--danger); }
 .unit.current { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok); }
 .unit.down { opacity: .45; filter: grayscale(1); }
 .unit.hurt .u-hp { color: var(--danger); }
