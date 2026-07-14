@@ -36,9 +36,14 @@
       if (id === 'game' && el('loot-panel')) el('loot-panel').appendChild(sw);
       else if (sw._home && sw.parentNode !== sw._home) sw._home.appendChild(sw);
     }
+    var changed = state.mode !== id;
     state.mode = id;
     var h = el(id + '-h') || el(id).querySelector('h2');
     if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    // On entering a NEW screen, speak the short "what can I do here" guide (Josh
+    // 2026-07-14: "it only read my options once… couldn't repeat it"). It becomes
+    // lastText, so the A key re-reads it any time. Silent when speech is off.
+    if (changed) setTimeout(function () { blindGuide(); }, 120);
   }
 
   // ---------- setup ----------
@@ -530,7 +535,9 @@
         raiseBtn = '<button class="raise-btn" data-raise="' + esc(m.name) + '" title="Hire a cleric to Raise Dead — +2 negative levels (PF1)">⚰️ Raise — ' + raiseSvc.gp + 'g</button>';
       }
       var status = m.dead ? '<span class="rmeta dead">💀 DEAD</span>' : ('<span class="rmeta ' + (m.ready ? 'ready' : 'waiting') + '">' + (m.ready ? '✓ ' + esc(meta) + (m.negLevels ? ' · ' + m.negLevels + ' neg' : '') : '…choosing') + '</span>');
-      li.innerHTML = '<span class="ricon">' + m.icon + '</span><span>' + esc(m.name) + (m.isYou ? ' (you)' : '') + (m.ai ? ' 🤖' : '') + '</span>' + status + raiseBtn;
+      // Decorative icon hidden from the screen reader so it reads the NAME, not
+      // "alembic" (Josh 2026-07-14: "⚗️ Josh… it aint my name").
+      li.innerHTML = '<span class="ricon" aria-hidden="true">' + m.icon + '</span><span>' + esc(m.name) + (m.isYou ? ' (you)' : '') + (m.ai ? ' (AI)' : '') + '</span>' + status + raiseBtn;
       pl.appendChild(li);
     });
     pl.querySelectorAll('[data-raise]').forEach(function (b) {
@@ -1122,9 +1129,14 @@
         return (run.turn.spells || []).map(function (s) { return { key: s.key, label: s.name + (s.uses != null ? ', ' + s.uses + ' left' : ', at will') }; });
       },
       targetFoe: function (id) {
-        var run = myRun(); var e = run && (run.enemies || []).find(function (x) { return x.id === id; });
+        var run = myRun();
         state.queuedTarget = id;
-        BM.speak('Targeting ' + (e ? e.name : 'that enemy') + '. Press A to attack.', 'urgent');
+        var e = run && (run.enemies || []).find(function (x) { return x.id === id; });
+        // Enter on a foe attacks it if it's your turn (select-and-strike, like the
+        // poker dungeon); otherwise it just marks the target.
+        var atk = (state.choices || []).find(function (c) { return c.id === 'attack' && c.target === id; });
+        if (atk) { BM.speak('Attacking ' + (e ? e.name : 'the enemy') + '.', 'urgent'); doGameAction(atk); }
+        else BM.speak('Targeting ' + (e ? e.name : 'the enemy') + '. Not your turn yet.', 'urgent');
       },
       attack: function () {
         var atk = state.choices.filter(function (c) { return c.id === 'attack'; });
@@ -1145,9 +1157,20 @@
         return h.name + ', level ' + (h.level || 1) + ' ' + (h.cls || '') + '. Health ' + h.hp + ' of ' + h.maxHp + '. Armor class ' + h.ac + conds + '.';
       },
       health: function () {
-        var run = myRun(); if (!run) return 'No party yet.';
-        return run.combatants.filter(function (c) { return c.side === 'hero'; })
-          .map(function (c) { return c.name + ' ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp); }).join('. ') + '.';
+        var run = myRun();
+        if (run) {
+          return run.combatants.filter(function (c) { return c.side === 'hero'; })
+            .map(function (c) { return c.name + ' ' + (c.down ? 'DOWN' : c.hp + ' of ' + c.maxHp); }).join('. ') + '.';
+        }
+        // Lobby/pub: H reports the recruited roster (Josh 2026-07-14: "H does not
+        // report the party in the lobby").
+        var you = state.you;
+        if (you && you.members && you.members.length) {
+          return 'Party of ' + you.members.length + ': ' + you.members.map(function (m) {
+            return m.name + (m.isYou ? ' (you)' : (m.ai ? ' the ' + (m.race ? cap(m.race) + ' ' : '') + cap(m.cls || 'companion') : ''));
+          }).join(', ') + '.';
+        }
+        return 'No party yet.';
       },
       money: function () {   // M key — gold + depth
         var run = myRun(); if (!run) return 'No delve yet.';

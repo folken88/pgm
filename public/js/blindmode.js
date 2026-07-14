@@ -108,7 +108,13 @@
   ];
   function earFix(text) {
     WORD_FIXES.forEach(function (f) { text = text.replace(f[0], f[1]); });
-    return text;
+    // Strip emoji / pictographs / symbols so the screen reader doesn't announce
+    // "sparkles", "skull", "drop of blood" mid-narration (Josh 2026-07-14: "every
+    // action had a visual descriptor"). The VISIBLE text keeps its glyphs.
+    text = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, ' ');
+    // "65/80" → "65 of 80" (poker parity — the voice wastes time on every slash).
+    text = text.replace(/(\d+)\s*\/\s*(\d+)/g, '$1 of $2');
+    return text.replace(/\s{2,}/g, ' ').trim();
   }
   function speakUtterance(text, isRetry) {
     var gen = pumpGen;
@@ -351,7 +357,7 @@
 
   // ---- the keymap (mirrors poker's dungeon blind keys — see header) ----
   var HELP = {
-    a: 'A. Attack your target.', e: 'E. Inspect enemies. Tab cycles, Enter targets.',
+    a: 'A. Repeat the last thing said (like the poker dungeon).', e: 'E. Inspect enemies. Tab cycles, Enter targets.',
     k: 'K. Spellbook. Tab cycles, Enter casts.', c: 'C. Cycle your at-will cantrip element.',
     l: 'L. Your own status — level, class, health, armor.', m: 'M. Money and depth.',
     h: 'H. Health of the party.', x: 'X. Level and experience.',
@@ -389,7 +395,7 @@
     if (k === 'e') { e.preventDefault(); openBrowse('foes'); return; }
     if (k === 'k') { e.preventDefault(); openBrowse('spells'); return; }
     if (k === 'p') { e.preventDefault(); openBrowse('party'); return; }
-    if (k === 'a') { e.preventDefault(); if (info.attack) info.attack(); return; }
+    if (k === 'a') { e.preventDefault(); repeat(); return; }   // A = repeat (poker parity, Josh 2026-07-14). Attacks are on the number keys.
     if (e.key === '0') { e.preventDefault(); if (info.descend) info.descend(); return; }
     if (e.key === '\\') { e.preventDefault(); if (info.chatFocus) info.chatFocus(); return; }
     if (e.key === 'Escape') { e.preventDefault(); openBrowse('session'); return; }
