@@ -5,9 +5,9 @@ node_modules/
 .env
 .env.local
 data/
-# imported galleries (server-side, from the NAS/poker vault — not committed)
-public/tokens/*.webp
-public/tokens/*.png
+# public/tokens/ ART IS NOW COMMITTED (Tobias 2026-07-13: his own Midjourney art,
+# so it's fine in this public repo — keeps rebuilds self-contained + backed up).
+# Other imported galleries stay server-side (from the NAS/poker vault):
 public/assets/characters/*.webp
 public/assets/characters/*.png
 .sync-backup/
