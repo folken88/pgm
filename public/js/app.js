@@ -445,12 +445,22 @@
     el('lobby-you').textContent = (you.role === 'spectator' ? 'Watching as ' : 'You are ') + (me ? me.icon + ' ' + me.name : '') + (you.youAreHost ? ' (host)' : '') + '.';
 
     var pl = el('players-list'); pl.innerHTML = '';
+    var raiseSvc = ((you.pub && you.pub.services) || []).find(function (s) { return s.kind === 'raise'; });
     you.members.forEach(function (m) {
       var li = document.createElement('li');
       var meta = m.ready ? (cap(m.race || '') + ' ' + cap(m.cls || '')) : 'choosing…';
-      li.innerHTML = '<span class="ricon">' + m.icon + '</span><span>' + esc(m.name) + (m.isYou ? ' (you)' : '') + (m.ai ? ' 🤖' : '') + '</span>'
-        + '<span class="rmeta ' + (m.ready ? 'ready' : 'waiting') + '">' + (m.ready ? '✓ ' + esc(meta) : '…choosing') + '</span>';
+      // A DEAD member shows a Raise button — with the cost — right on their card
+      // (only at the pub, only when actually dead; Tobias 2026-07-13).
+      var raiseBtn = '';
+      if (you.phase === 'pub' && m.dead && you.role === 'player' && raiseSvc) {
+        raiseBtn = '<button class="raise-btn" data-raise="' + esc(m.name) + '" title="Hire a cleric to Raise Dead — +2 negative levels (PF1)">⚰️ Raise — ' + raiseSvc.gp + 'g</button>';
+      }
+      var status = m.dead ? '<span class="rmeta dead">💀 DEAD</span>' : ('<span class="rmeta ' + (m.ready ? 'ready' : 'waiting') + '">' + (m.ready ? '✓ ' + esc(meta) + (m.negLevels ? ' · ' + m.negLevels + ' neg' : '') : '…choosing') + '</span>');
+      li.innerHTML = '<span class="ricon">' + m.icon + '</span><span>' + esc(m.name) + (m.isYou ? ' (you)' : '') + (m.ai ? ' 🤖' : '') + '</span>' + status + raiseBtn;
       pl.appendChild(li);
+    });
+    pl.querySelectorAll('[data-raise]').forEach(function (b) {
+      b.addEventListener('click', function () { pubBuyService('raisedead', b.getAttribute('data-raise')); });
     });
     var sl = el('spectators-list'); sl.innerHTML = '';
     you.spectators.forEach(function (s) {
@@ -522,8 +532,9 @@
       } else if (svc.kind === 'restoration') {
         pub.hurt.forEach(function (h) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(h.name) + '">Restoration: ' + esc(h.name) + ' - ' + svc.gp + 'g</button>'; });
       } else if (svc.kind === 'raise') {
+        // Party dead get their Raise button ON THEIR CARD (see renderLobby). Here
+        // only recovered CORPSES from other delves (not roster members) are offered.
         var tag = svc.usingComponent ? ' (using your diamond)' : '';
-        pub.dead.forEach(function (n) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(n) + '">Raise ' + esc(n) + ' - ' + svc.gp + 'g' + tag + '</button>'; });
         (pub.corpses || []).forEach(function (c2) { html += '<button data-svc="' + svc.key + '" data-target="' + esc(c2.name) + '">Raise ' + esc(c2.name) + ' of “' + esc(c2.delve) + '” - ' + svc.gp + 'g' + tag + '</button>'; });
       }
     });
@@ -548,17 +559,21 @@
       });
     });
     box.querySelectorAll('[data-svc]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        api('/api/pub/buy', { clientId: state.clientId, service: b.getAttribute('data-svc'), target: b.getAttribute('data-target') || undefined })
-          .then(function (r) {
-            BM.speak(r.ok ? (r.text || 'Done.') : (r.error || 'The barkeep shrugs.'), 'urgent');
-            if (r.ok && r.snapshot) { state.you = r.snapshot; renderLobby(r.snapshot); renderPub(r.snapshot); }
-          });
-      });
+      b.addEventListener('click', function () { pubBuyService(b.getAttribute('data-svc'), b.getAttribute('data-target') || undefined); });
     });
     el('lobby-start').hidden = false;
     el('lobby-start').textContent = '⚔️ Set out again';
     el('lobby-wait').textContent = '';   // clear the "adventure has begun" clutter renderLobby left
+  }
+
+  // Buy a Swashgoblin service (restoration / raise / stash). Plays the returned
+  // SFX — e.g. the Breath of Life clip when a dead adventurer is raised.
+  function pubBuyService(service, target) {
+    api('/api/pub/buy', { clientId: state.clientId, service: service, target: target || undefined }).then(function (r) {
+      if (r.ok && r.sound && !BM.isMuted()) { try { var a = new Audio(r.sound); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {} }
+      BM.speak(r.ok ? (r.text || 'Done.') : (r.error || 'The barkeep shrugs.'), 'urgent');
+      if (r.ok && r.snapshot) { state.you = r.snapshot; renderLobby(r.snapshot); renderPub(r.snapshot); }
+    });
   }
 
   function startAdventure() {

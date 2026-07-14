@@ -397,7 +397,7 @@ function pubBuy(clientId, serviceKey, targetName) {
     saveLegacy();
     saveSession(s);
     delveLog(s, 'PUB: raised recovered adventurer ' + corpse.name + ' of "' + corpse.delve + '" (' + price.gp + 'gp)');
-    return { ok: true, text: corpse.name + ' of "' + corpse.delve + '" breathes again — free to delve anew under that banner, two negative levels the wiser.' };
+    return { ok: true, sound: '/audio/spell_revive.mp3', text: corpse.name + ' of "' + corpse.delve + '" breathes again — free to delve anew under that banner, two negative levels the wiser.' };
   }
   if (svc.kind === 'raise') {
     if (!m.dead) return { ok: false, error: m.name + ' is not dead' };
@@ -407,7 +407,7 @@ function pubBuy(clientId, serviceKey, targetName) {
     LEGACY[legacyKey(s, m.name)] = Object.assign({}, LEGACY[legacyKey(s, m.name)], { dead: false, negLevels: m.negLevels, at: Date.now() });
     saveLegacy();
     delveLog(s, 'PUB: Raise Dead on ' + m.name + ' (' + svc.gp + 'gp) — 2 negative levels');
-    return { ok: true, text: m.name + ' gasps back to life — weakened by two negative levels until a Restoration.' };
+    return { ok: true, sound: '/audio/spell_revive.mp3', text: m.name + ' draws a sudden BREATH OF LIFE — back from the dead, weakened by two negative levels until a Restoration.' };
   }
   return { ok: false, error: 'nothing happened' };
 }
@@ -570,6 +570,7 @@ function leave(clientId) {
 function memberView(m, clientId) {
   return { memberId: m.memberId, name: m.name, icon: m.icon, ready: m.ready, ai: m.ai,
     cls: m.character ? m.character.cls : null, race: m.character ? m.character.race : null,
+    dead: !!m.dead, negLevels: m.negLevels || 0,
     isYou: m.memberId === clientId };
 }
 

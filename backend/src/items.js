@@ -75,7 +75,10 @@ const PRICED_MAGIC = CONSUMABLES.filter(c => c.key.startsWith('potion')).map(c =
 // consumables (potions/throwables), spell components, and +N magic gear —
 // cheapest first so the list reads sensibly.
 const SHOP_STOCK = CONSUMABLES.map(c => ({ key: c.key, value: c.value }))
-  .concat(COMPONENTS.map(c => ({ key: c.key, value: c.value })))
+  // Restoration reagent (diamond_dust) is a live need; the Raise Dead diamond is
+  // NOT sold here (Tobias 2026-07-13: raise dead only surfaces when someone's
+  // actually dead, at the pub) — it's a rare treasure find.
+  .concat(COMPONENTS.filter(c => c.component !== 'raisedead').map(c => ({ key: c.key, value: c.value })))
   .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))
   .filter(x => x.value > 0)
   .sort((a, b) => a.value - b.value);

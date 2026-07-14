@@ -43,7 +43,7 @@ test('cannot buy what you cannot afford', () => {
   const { run, roll } = party(4);
   pr.applyAction(run, 'c1', { type: 'shop_open' }, roll);
   run.gold = 10;
-  const buy = pr.applyAction(run, 'c1', { type: 'shop_buy', item: 'diamond' }, roll);   // 5000gp
+  const buy = pr.applyAction(run, 'c1', { type: 'shop_buy', item: 'g_longsword_p2' }, roll);   // +2 longsword, 8315gp
   assert.ok(!buy.ok, 'refused');
   assert.match(buy.error, /not enough gold/);
   assert.strictEqual(run.gold, 10, 'purse untouched');
