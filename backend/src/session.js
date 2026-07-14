@@ -619,8 +619,44 @@ function allSummaries() {
     return {
       id: s.id, name: s.name, phase: s.phase, depth, round, elapsedSec,
       partySize: partySize(s), spectators: s.spectators.size, heroes,
+      hostAccount: (s.members.get(s.host) || {}).accountId || null,   // so the owner sees a Delete button
     };
   });
+}
+
+/** Hard-remove a delve (in-memory + its saved file), detaching any clients.
+ *  No auth — used by removeDelve (after an owner check) and the admin path. */
+function deleteDelve(sessionId) {
+  const s = sessions.get(sessionId);
+  if (!s) return false;
+  for (const [cid, c] of [...clients.entries()]) if (c.sessionId === sessionId) clients.delete(cid);
+  if (s.run && s.run.paceTimer) { try { clearTimeout(s.run.paceTimer); } catch (e) {} }
+  sessions.delete(sessionId);
+  deleteSave(s);
+  return true;
+}
+
+/** Owner-gated delete (the delve host, by clientId OR by account). */
+function removeDelve(clientId, sessionId, account) {
+  const s = sessions.get(sessionId);
+  if (!s) return { ok: false, error: 'that delve no longer exists' };
+  const accountId = account ? accounts.keyOf(account) : null;
+  const hostMember = s.members.get(s.host);
+  const isHost = memberIdOf(clientId) === s.host;
+  const isOwnerAccount = !!(accountId && hostMember && hostMember.accountId === accountId);
+  if (!isHost && !isOwnerAccount) return { ok: false, error: 'only the delve owner can delete it' };
+  deleteDelve(sessionId);
+  delveLog(s, 'DELVE DELETED by owner');
+  return { ok: true };
+}
+
+/** Admin (localhost-only): list every delve for dev cleanup. */
+function adminListDelves() {
+  return [...sessions.values()].map(s => ({
+    id: s.id, name: s.name, phase: s.phase,
+    hostAccount: (s.members.get(s.host) || {}).accountId || null,
+    members: [...s.members.values()].filter(m => !m.ai).map(m => m.name),
+  }));
 }
 
 /** All live delves this account has a seat in (for welcome-back resume). */
@@ -646,6 +682,7 @@ module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
   startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
+  removeDelve, deleteDelve, adminListDelves,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
   // Test seam: inject a combat beat and run the banter scan; returns any quip line.

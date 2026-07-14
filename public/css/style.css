@@ -114,6 +114,8 @@ button { cursor: pointer; }
    action (Start / Confirm / Set out again). */
 .ghost-btn { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: .55rem .8rem; cursor: pointer; font-weight: 600; }
 .ghost-btn:hover { color: var(--ink); border-color: var(--muted); }
+.dactions .del-btn { color: var(--danger); border-color: var(--danger); padding: .3rem .55rem; font-weight: 600; }
+.dactions .del-btn:hover { background: var(--danger); color: #fff; }
 .nav-row { display: flex; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: .5rem; }
 .nav-row #begin-btn { margin-top: 0; flex: 0 0 auto; }
 #lobby-start { background: var(--ok); color: #08130a; border: none; font-weight: 800; padding: .8rem 1.2rem; font-size: 1.05rem; }

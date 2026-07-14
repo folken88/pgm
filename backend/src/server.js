@@ -43,6 +43,13 @@ function broadcast() {
   }
 }
 
+// Only requests originating from inside the container (loopback) — gates the
+// admin/dev delve routes. External requests come via Traefik with a real IP.
+function isLocal(req) {
+  const a = (req.socket && req.socket.remoteAddress) || '';
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -249,6 +256,30 @@ const server = http.createServer(async (req, res) => {
     session.leave(body.clientId);
     broadcast();
     return sendJSON(res, 200, { ok: true });
+  }
+
+  // DELETE a delve — owner only (host clientId or the host's account via token).
+  if (url === '/api/session/delete' && req.method === 'POST') {
+    const body = await readBody(req);
+    const acct = accounts.byToken(String(body.token || ''));
+    const r = session.removeDelve(body.clientId, String(body.sessionId || ''), acct && acct.name);
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, r);
+  }
+
+  // ── ADMIN (dev, NO confirmation): delete/list any delve. LOCALHOST-ONLY, so
+  //    only reachable from inside the container (docker exec wget 127.0.0.1) —
+  //    external requests via Traefik carry a non-loopback IP and get a 404.
+  if (url === '/api/admin/delves' && req.method === 'GET') {
+    if (!isLocal(req)) return sendJSON(res, 404, { error: 'unknown endpoint' });
+    return sendJSON(res, 200, session.adminListDelves());
+  }
+  if (url === '/api/admin/delve/delete' && req.method === 'POST') {
+    if (!isLocal(req)) return sendJSON(res, 404, { error: 'unknown endpoint' });
+    const body = await readBody(req);
+    const ok = session.deleteDelve(String(body.id || ''));
+    if (ok) broadcast();
+    return sendJSON(res, ok ? 200 : 404, { ok });
   }
 
   if (url.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });

@@ -237,8 +237,11 @@
         ? ('Depth ' + s.depth + ' · Rd ' + s.round + ' · ' + s.partySize + ' in party · ' + time)
         : ('Forming · ' + s.partySize + ' joined · ' + time);
       var canAct = !state.clientId;
+      // You may delete a delve you OWN (its host is your account).
+      var mine = !!(s.hostAccount && state.account && state.account.trim().toLowerCase() === s.hostAccount);
       var actions = canAct
-        ? '<div class="dactions">' + (s.phase === 'lobby' ? '<button data-join="' + s.id + '">Join</button>' : '<button data-join="' + s.id + '">Rejoin</button>') + '<button data-watch="' + s.id + '">Watch</button></div>'
+        ? '<div class="dactions">' + (s.phase === 'lobby' ? '<button data-join="' + s.id + '">Join</button>' : '<button data-join="' + s.id + '">Rejoin</button>') + '<button data-watch="' + s.id + '">Watch</button>'
+          + (mine ? '<button class="del-btn ghost-btn" data-del="' + s.id + '">🗑 Delete</button>' : '') + '</div>'
         : '';
       card.innerHTML = '<div class="dtitle"><span>' + esc(s.name) + '</span><span class="dphase">' + s.phase + '</span></div>'
         + '<div class="dmeta">' + meta + '</div>'
@@ -248,7 +251,23 @@
     if (!state.clientId) {
       box.querySelectorAll('[data-join]').forEach(function (b) { b.addEventListener('click', function () { joinDelveAs(b.getAttribute('data-join'), 'player'); }); });
       box.querySelectorAll('[data-watch]').forEach(function (b) { b.addEventListener('click', function () { joinDelveAs(b.getAttribute('data-watch'), 'spectator'); }); });
+      box.querySelectorAll('[data-del]').forEach(function (b) {
+        var armed = 0;
+        b.addEventListener('click', function () {
+          var now = Date.now();
+          if (now - armed < 5000) { deleteDelveById(b.getAttribute('data-del')); return; }
+          armed = now; b.textContent = '🗑 Confirm delete?';
+          BM.speak('Delete this delve permanently? Press again to confirm.', 'urgent');
+          setTimeout(function () { if (Date.now() - armed >= 5000) b.textContent = '🗑 Delete'; }, 5200);
+        });
+      });
     }
+  }
+  function deleteDelveById(id) {
+    api('/api/session/delete', { clientId: state.clientId, sessionId: id, token: state.token }).then(function (r) {
+      BM.speak(r.ok ? 'Delve deleted.' : (r.error || 'Could not delete that delve.'), 'urgent');
+      BM.toast(r.ok ? 'Delve deleted.' : (r.error || 'Could not delete.'));
+    });
   }
 
   function requireName() {
