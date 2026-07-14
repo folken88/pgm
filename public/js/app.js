@@ -136,17 +136,16 @@
   // narrates itself as you go. (BM.speak is silent when blind mode is off.)
   function blindGuide() {
     var mode = state.mode || 'landing';
-    if (mode === 'game') { BM.speak('You are in the dungeon. I narrate every turn — just listen, and act on yours. Press question mark to learn the keys.', 'event'); return; }
-    if (mode === 'lobby') { BM.speak('You are in the lobby. Tab to the Start button to begin the adventure, or add AI companions first.', 'event'); return; }
-    if (mode === 'create' || mode === 'skills') { BM.speak('Building your character. Tab through the choices; the last button confirms.', 'event'); return; }
+    // Every screen points to Escape — the one stable, key-driven action hub, so a
+    // blind player never has to Tab around to find a button (Josh 2026-07-14).
+    if (mode === 'game') { BM.speak('You are in the dungeon. I narrate every turn — just listen, and act on your turn with the number keys. Press Escape for the menu: descend, shop, retreat. Press A to repeat, question mark to learn the keys.', 'event'); return; }
+    if (mode === 'lobby') { BM.speak('You are in the lobby. Press Escape for the menu — Start the adventure, add a companion, or the main menu. Press H to hear your party. Press A to repeat.', 'event'); return; }
+    if (mode === 'create' || mode === 'skills') { BM.speak('Building your character. Tab through the fields; the last button moves you on. Press A to repeat.', 'event'); return; }
     // landing
     var accts = [];
     try { accts = JSON.parse(localStorage.getItem('pgmAccounts') || '[]'); } catch (e) {}
-    if (accts.length) {
-      BM.speak('Welcome back, ' + accts[0].name + '. Two ways to play: to start your OWN delve, find the "Start a new delve" button. To JOIN an existing one, Tab to the Active delves list and press its Join button. Question mark for help.', 'event');
-    } else {
-      BM.speak('Welcome to Personal Game Master. To start your OWN adventure, type your name, then find the "Start a new delve" button. To JOIN one already running, Tab to the Active delves list and press its Join button. Question mark any time for help.', 'event');
-    }
+    var who = accts.length ? ('Welcome back, ' + accts[0].name + '. ') : 'Welcome to Personal Game Master. ';
+    BM.speak(who + 'Press Escape for the menu — start your own delve, or join an active one. Or type your name in the field to begin. Press A to repeat, question mark for the keys.', 'event');
   }
 
   function fill(id, items) {
@@ -1206,10 +1205,34 @@
         inp.focus();
         BM.speak('Chat. Type, then Enter to send, Escape to cancel.', 'urgent');
       },
-      sessionMenu: function () {   // Escape — bail lives HERE (poker), never on a single key
-        var run = myRun(); var items = [];
-        if (run && (run.phase === 'combat' || run.phase === 'cleared')) {
-          items.push({ label: 'Retreat — end the run for the whole party, keep the gold', run: doRetreat });
+      // Escape — the blind player's ACTION HUB. Context-aware, so the major
+      // action of every screen is always one key away (Josh 2026-07-14: couldn't
+      // find the Start button, focus kept jumping). Key-driven, so DOM re-renders
+      // never lose it. This IS the "persistent navigation" Josh asked for.
+      sessionMenu: function () {
+        var items = [];
+        var mode = state.mode || 'landing';
+        var run = myRun();
+        var you = state.you;
+        if (mode === 'game') {
+          if (run && run.phase === 'cleared') items.push({ label: 'Open the next door — descend deeper', run: function () { if (info.descend) info.descend(); } });
+          items.push({ label: 'Shop — buy potions and gear', run: function () { openShop(); } });
+          if (run && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative')) items.push({ label: 'Retreat — end the run for the party, keep the gold', run: doRetreat });
+          items.push({ label: 'Main menu — leave; your delve is saved', run: leaveToMenu });
+        } else if (mode === 'lobby') {
+          if (you && you.phase === 'pub') {
+            items.push({ label: 'Set out again — begin a new delve', run: startAdventure });
+          } else {
+            items.push({ label: 'Start the adventure', run: startAdventure });
+            var cast = (state.meta && state.meta.companions) || [];
+            if (cast.length) items.push({ label: 'Add a random AI companion', run: function () { addCompanion(cast[Math.floor(Math.random() * cast.length)].name); } });
+          }
+          items.push({ label: 'Main menu — leave; your delve is saved', run: leaveToMenu });
+        } else {   // landing / create / skills
+          items.push({ label: 'Start a new delve of your own', run: function () { startDelve(); } });
+          (state.sessions || []).slice(0, 8).forEach(function (s) {
+            items.push({ label: (s.phase === 'lobby' ? 'Join' : 'Rejoin') + ' the delve ' + s.name + ', ' + s.partySize + ' in the party', run: function () { joinDelveAs(s.id, 'player'); } });
+          });
         }
         items.push({ label: 'Close this menu', run: function () {} });
         return items;
