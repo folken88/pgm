@@ -58,6 +58,11 @@
     el('skill-begin').addEventListener('click', confirmCharacter);
     el('skill-auto').addEventListener('click', resetSkills);
     el('lobby-start').addEventListener('click', startAdventure);
+    // Consistent navigation: a Main-menu button on the lobby/pub, a cancel on
+    // create, a back on skills (Tobias 2026-07-13: no way back from the pub).
+    el('lobby-menu').addEventListener('click', function () { leaveToMenu('lobby-menu'); });
+    var ccl = el('create-cancel'); if (ccl) ccl.addEventListener('click', function () { leaveToMenu('create'); });
+    var skb = el('skills-back'); if (skb) skb.addEventListener('click', function () { showScreen('create'); BM.speak('Back to race and class.', 'event'); });
     // Two-press arm instead of native confirm() — confirm() isn't narrated and
     // traps VoiceOver focus (poker replaced it for the same reason).
     var retreatArm = 0;
@@ -578,6 +583,13 @@
 
   function startAdventure() {
     api('/api/session/start', { clientId: state.clientId }).then(function (r) { if (!r.ok) BM.speak(r.error || 'Cannot start yet.', 'urgent'); });
+  }
+  // Leave the current delve and return to the landing/main menu. The delve is
+  // SAVED (resumable from the delve list), so this just detaches you.
+  function leaveToMenu() {
+    BM.speak('Returning to the main menu. This delve is saved — you can rejoin it from the list.', 'event');
+    if (state.clientId) { try { api('/api/session/leave', { clientId: state.clientId }); } catch (e) {} }
+    setTimeout(function () { location.reload(); }, 80);
   }
 
   // ---------- game ----------

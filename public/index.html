@@ -70,7 +70,10 @@
           <input id="token-search" type="text" autocomplete="off" placeholder="Filter tokens — e.g. elf wizard, dwarf, archer" aria-label="Filter tokens by keyword" />
           <div id="token-picker" class="token-picker" role="radiogroup" aria-label="Choose a character token"></div>
         </fieldset>
-        <button type="submit" id="begin-btn">Next: choose skills</button>
+        <div class="nav-row">
+          <button type="button" id="create-cancel" class="ghost-btn">← Cancel, back to menu</button>
+          <button type="submit" id="begin-btn">Next: choose skills →</button>
+        </div>
       </form>
     </section>
 
@@ -84,6 +87,7 @@
       <p id="skill-points" class="points" aria-live="polite">Points remaining: 0</p>
       <div id="skill-list" class="skill-list" role="group" aria-label="Skills — activate to toggle a rank"></div>
       <div class="skill-actions">
+        <button type="button" id="skills-back" class="ghost-btn">← Back</button>
         <button type="button" id="skill-auto">↺ Reset to suggested</button>
         <button type="button" id="skill-begin">Confirm character →</button>
       </div>
@@ -112,6 +116,7 @@
 
       <div class="lobby-actions">
         <button type="button" id="lobby-start" hidden>▶ Start the adventure</button>
+        <button type="button" id="lobby-menu" class="ghost-btn">🏠 Main menu</button>
         <span id="lobby-wait" class="muted-line"></span>
       </div>
     </section>
