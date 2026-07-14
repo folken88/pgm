@@ -262,7 +262,10 @@ function spawnRoom(run, roll) {
 
   // An Invisibility Purge burns for its ROOM only — the next room can hide again.
   // (Poker resets this in Dungeon.js; PGM's host IS the shim, so it resets here.)
-  try { run.shim.invisPurged = false; } catch (_) {}
+  // The tentacle field is the same shape of per-room shim state: poker clears it at
+  // the same door, but PGM's shim only ever set it in the constructor — so a Black
+  // Tentacles cast used to follow the party downstairs for the rest of the delve.
+  try { run.shim.invisPurged = false; run.shim.blackTentacles = null; } catch (_) {}
 
   run.combatants = run.heroes.concat(enemies);
   run.turnIndex = 0;

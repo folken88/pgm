@@ -7,6 +7,17 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.1.1  2026-07-14 TESTS + a latent room-state leak, on top of 1.1.0. The seeing/invisibility work
+//                    shipped UNTESTED, so it gets a suite now (7 cases, written independently against
+//                    poker's spec and passing against 1.1.0's implementation — a real cross-check):
+//                    the spells exist with the right flags & casters; See Invisibility removes the
+//                    concealment miss ENTIRELY but leaves mirror image intact while True Seeing
+//                    pierces both (the RAW distinction — the thing most likely to silently regress);
+//                    the purge strips ALLIES, sets the room flag, refuses a hero's invisibility, and
+//                    expires at the next door. LATENT BUG: spawnRoom cleared `invisPurged` but not
+//                    `blackTentacles` — PGM's shim outlives the room and only ever set the tentacle
+//                    field in its constructor, so a Black Tentacles cast FOLLOWED THE PARTY
+//                    DOWNSTAIRS for the rest of the delve. Poker clears both at the same door.
 //  1.1.0  2026-07-14 SEEING & INVISIBILITY — poker parity for the whole unseen/illusion system, which
 //                    PGM had essentially NOT implemented. Before: the shim's _targetableParty/
 //                    _targetableEnemies never filtered `invisible` at all, so going unseen did NOTHING
@@ -65,6 +76,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.1.0';
-const HEADLINE = 'Going invisible finally MEANS something — for you and for them. Vanish and most foes cannot touch you, but the Erinyes see straight through it. New spells: See Invisibility, and Invisibility Purge, which spares no one — it strips your own rogue right along with the enemy.';
+const VERSION = '1.1.1';
+const HEADLINE = 'Black Tentacles no longer follows you downstairs — the field now dies with the room you cast it in, like every other room effect. The new seeing/invisibility spells also get a proper test suite behind them.';
 module.exports = { VERSION, HEADLINE };

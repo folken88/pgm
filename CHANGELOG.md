@@ -15,6 +15,19 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.1.1 — 2026-07-14
+
+**Black Tentacles stopped following you around.** A grasping-tentacle field is supposed to fill
+*the room you cast it in*. Because of a bug it was never cleared when you took the next door, so
+once anyone cast it, the tentacles kept grabbing for the rest of the delve — in every room after.
+The field now dies with its room, the same as every other room-long effect.
+
+Also: the new seeing/invisibility spells now have a **test suite** behind them, so the fiddly part
+— See Invisibility letting you hit an invisible foe while *still* being fooled by a mirror image,
+and only True Seeing piercing both — can't quietly break in a future change.
+
+---
+
 ## v1.1.0 — 2026-07-14
 
 **Going invisible finally means something.** It turns out PGM had never really implemented the
