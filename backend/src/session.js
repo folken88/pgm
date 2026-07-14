@@ -438,7 +438,7 @@ function startRun(clientId) {
   // Live runs PACE their AI/enemy turns (1-2s deliberation each), streaming each
   // via SSE. Setting onUpdate flips partyrun into paced mode; without it (tests)
   // turns resolve synchronously. See partyrun.driveTurnsPaced.
-  s.run.onUpdate = () => { try { notifyChange(); } catch (e) {} };
+  s.run.onUpdate = () => { try { maybeBanter(s); notifyChange(); } catch (e) {} };   // paced AI/enemy kills trigger combat banter too
   for (const m of ready) {
     if (!m._legacyXp) continue;
     const h = s.run.heroes.find(x => x.name === m.name);
@@ -471,9 +471,25 @@ function startRun(clientId) {
 }
 
 // ── COMBAT BANTER (Tobias 2026-07-11: LLM-generated) ──
-// After each action, scan fresh log lines for a quip-worthy beat (a slaying,
-// a fallen hero). At most ONE quip per round per delve, 60% of the time, from
-// a random living AI companion — generated async and appended when it lands.
+// COMBAT BANTER (poker parity, banter.js is a line pool). Scan fresh log lines
+// for a quip-worthy beat (a foe slain, an ally down). At most ONE quip per round
+// per delve, 60% of the time, from a random living AI companion — spoken INSTANTLY
+// in their own 11labs voice (no LLM latency; the LLM stays for direct chat).
+// Called from action() (human turns) AND run.onUpdate (paced AI/enemy turns) —
+// the per-round throttle keeps it from double-firing.
+const COMBAT_QUIPS = {
+  foe: ["That's one less.", 'Down you go!', 'Next!', 'Ha — too easy.', 'Stay down.',
+    "Who's next?", 'Cleared.', "That's how it's done.", 'Rest now.', 'Scratch one.',
+    'Sent it packing.', 'One down — keep moving!'],
+  ally: ['No — get up!', 'Someone help them!', "Hold on, I've got you!",
+    "We're not losing anyone today!", 'Cover them, quickly!', 'Stay with us!',
+    'Not like this — fight on!', 'Get them up, now!'],
+};
+function combatQuip(beatText) {
+  const foe = /is slain!|is destroyed!|slain by|cut down/.test(beatText);
+  const pool = foe ? COMBAT_QUIPS.foe : COMBAT_QUIPS.ally;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 let notifyChange = () => {};
 function setNotify(fn) { notifyChange = fn || (() => {}); }
 function maybeBanter(s) {
@@ -482,25 +498,18 @@ function maybeBanter(s) {
     const fresh = run.log.filter(e => e.seq > (s._banterSeq || 0));
     if (!fresh.length) return;
     s._banterSeq = run.log[run.log.length - 1].seq;
-    const beat = fresh.find(e => /is slain!|is destroyed!|falls!|DEAD —|bleeds out/.test(e.text));
+    const beat = fresh.find(e => /is slain!|is destroyed!|falls!|DEAD —|bleeds out|cut down/.test(e.text));
     if (!beat || s._lastBanterRound === run.round || Math.random() > 0.6) return;
     const ais = run.heroes.filter(h => h.ai && !h.down);
     if (!ais.length) return;
     const speaker = ais[Math.floor(Math.random() * ais.length)];
     s._lastBanterRound = run.round;
     const member = [...s.members.values()].find(m => m.name === speaker.name);
-    const { CHARACTER_FLAVOR } = require('./dungeon-port/character_flavor');
-    const flavor = CHARACTER_FLAVOR[speaker.name] || CHARACTER_FLAVOR[speaker.name.split(' ')[0]] || `${speaker.name}, a ${speaker.cls} adventurer.`;
-    const snap = sessionSnapshotFor.length ? null : null;
-    require('./gm').askBanter(speaker.name, flavor, beat.text, { name: s.name, run: partyrun.publicRun(run) })
-      .then(r => {
-        if (!r || !sessions.has(s.id) || s.run !== run) return;
-        run.log.push({ seq: ++run.seq, text: '💬 ' + speaker.name + ': ' + r.text, priority: 'banter', sound: null, voiceId: (member && member.voiceId) || null });
-        flushRunLog(s);
-        saveSession(s);
-        notifyChange();
-      })
-      .catch(() => {});
+    const line = combatQuip(beat.text);
+    run.log.push({ seq: ++run.seq, text: '💬 ' + speaker.name + ': ' + line, priority: 'banter', sound: null, voiceId: (member && member.voiceId) || null });
+    flushRunLog(s);
+    // No notifyChange here — every caller broadcasts right after (action() via the
+    // server, run.onUpdate via notifyChange), so the line ships with that push.
   } catch (e) {}
 }
 
@@ -636,5 +645,13 @@ module.exports = {
   startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },
+  // Test seam: inject a combat beat and run the banter scan; returns any quip line.
+  _bantForTest(clientId, beatText) {
+    const s = sessionOf(clientId); if (!s || !s.run) return null;
+    s.run.log.push({ seq: ++s.run.seq, text: beatText, priority: 'urgent', sound: null });
+    const before = s.run.log.length;
+    maybeBanter(s);
+    return s.run.log.slice(before)[0] || null;
+  },
   _devSetPurse(s, gold) { LEGACY[pubKey(s)] = { gold: Math.max(0, gold), at: Date.now() }; saveLegacy(); },
 };
