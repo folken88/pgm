@@ -48,6 +48,7 @@
     var v0 = parseFloat(localStorage.getItem('blindVolume')); if (v0 >= 0.1 && v0 <= 1) volume = v0;
   } catch (e) {}
   var commandHandler = null, voice = null;
+  var blindOnHook = null;   // app-provided: speaks context-aware guidance when blind mode turns on
   var info = {};                   // app-registered providers: foes/spells/status/health/buffs/debuffs/money/descend/cantrip/chatFocus/…
   var helpMode = false;            // '?' learn mode
   var browse = null;               // {kind:'foes'|'spells'|'party'|'session', list, idx}
@@ -230,9 +231,12 @@
     var btn = document.getElementById('blind-toggle');
     if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '👁 Blind mode: ON' : '👁 Blind mode: off'; }
     document.body.classList.toggle('blind-on', on);
-    rawSpeak(on
-      ? 'Blind mode on. A attack, E enemies, K spells, L life, H health, B buffs, D debuffs, X progression, Escape for the session menu, S stops speech, question mark for help. Hold space to talk.'
-      : 'Blind mode off.', 'urgent');
+    // A SHORT announcement — never a wall of keys (Tobias 2026-07-13: "don't spam
+    // keys they won't remember"). The app's onBlindOn hook then guides them
+    // through the next step for wherever they are; question mark teaches keys on
+    // demand.
+    rawSpeak(on ? 'Blind mode on. Press question mark any time to learn the keys.' : 'Blind mode off.', 'urgent');
+    if (on && typeof blindOnHook === 'function') { try { blindOnHook(); } catch (e) {} }
     blog('blind mode', on ? 'ON' : 'off');
   }
 
@@ -372,7 +376,7 @@
     var k = (e.key || '').toLowerCase();
     var hk = e.key === 'Escape' ? 'escape' : k;
     if (helpMode && HELP[hk]) { e.preventDefault(); speak(HELP[hk], 'urgent'); return; }   // learn mode: speak, don't fire
-    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak('Help mode ' + (helpMode ? 'on — keys are described, not fired.' : 'off.'), 'urgent'); return; }
+    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak(helpMode ? 'Help mode on. Press any key to hear what it does, without doing it. Question mark again to exit.' : 'Help mode off.', 'urgent'); return; }
     if (e.code === 'Space') { e.preventDefault(); startListen(); return; }
     if (k === 's') { e.preventDefault(); stopSpeaking(); return; }
     if (k === 'h') { e.preventDefault(); speak((info.health && info.health()) || lastText || 'Nothing yet.', 'urgent'); return; }
@@ -412,6 +416,7 @@
   function init(opts) {
     opts = opts || {};
     commandHandler = opts.onCommand || null;
+    blindOnHook = opts.onBlindOn || null;
     if (supportsTTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
 
     var bt = document.getElementById('blind-toggle');

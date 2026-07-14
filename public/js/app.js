@@ -43,7 +43,7 @@
 
   // ---------- setup ----------
   function boot() {
-    BM.init({ onCommand: handleCommand });
+    BM.init({ onCommand: handleCommand, onBlindOn: blindGuide });
     registerBlindInfo();
     document.body.classList.add('on-landing');   // landing is the initial screen (CSS shows the left delve list)
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
@@ -110,9 +110,26 @@
       if (_accts.length && _accts[0].token) signInWithToken(_accts[0].token);
     } catch (e) {}
     connectSSE(null);
-    setTimeout(function () {
-      BM.speak('Welcome to Personal Game Master. Enter your name and pick an icon, then start a new delve, or join an active delve from the panel. Hold space or the microphone to speak.', 'event');
-    }, 350);
+    setTimeout(function () { blindGuide(); }, 400);   // context-aware onboarding for blind users (no-op with speech off)
+  }
+
+  // Blind onboarding: a SHORT, context-aware nudge toward the next step — spoken
+  // when blind mode turns on and on first load in blind mode. NOT a wall of keys
+  // (Tobias 2026-07-13). Question mark teaches keys on demand; each screen
+  // narrates itself as you go. (BM.speak is silent when blind mode is off.)
+  function blindGuide() {
+    var mode = state.mode || 'landing';
+    if (mode === 'game') { BM.speak('You are in the dungeon. I narrate every turn — just listen, and act on yours. Press question mark to learn the keys.', 'event'); return; }
+    if (mode === 'lobby') { BM.speak('You are in the lobby. Tab to the Start button to begin the adventure, or add AI companions first.', 'event'); return; }
+    if (mode === 'create' || mode === 'skills') { BM.speak('Building your character. Tab through the choices; the last button confirms.', 'event'); return; }
+    // landing
+    var accts = [];
+    try { accts = JSON.parse(localStorage.getItem('pgmAccounts') || '[]'); } catch (e) {}
+    if (accts.length) {
+      BM.speak('Welcome back, ' + accts[0].name + '. To keep playing, press Tab to reach your saved characters and active delves, then Enter to resume one. Or type a new name to start fresh.', 'event');
+    } else {
+      BM.speak('Welcome to Personal Game Master. To begin, type your name, then Tab to the Start button to create a delve. Press question mark any time to learn the keys.', 'event');
+    }
   }
 
   function fill(id, items) {
