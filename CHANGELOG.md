@@ -15,6 +15,36 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.1.0 — 2026-07-14
+
+**Going invisible finally means something.** It turns out PGM had never really implemented the
+unseen: you could turn invisible and enemies would still walk right up and hit you, and they
+could vanish and you'd still target them without trouble. That whole layer was missing. It's in
+now, and it cuts both ways.
+
+- **Vanish and they lose you.** An invisible hero can't be targeted at all — unless a foe can
+  genuinely see the unseen.
+- **The Erinyes can.** Those fallen-angel archers have TRUE SEEING. They'll pick you out of the
+  air while you're invisible, and their arrows find the real you straight through Mirror Image
+  and Displacement. Hiding is not a plan against them.
+- **Invisible enemies now actually hide.** You can't target a foe that's gone unseen unless
+  somebody in the party can pierce it — darkvision, blindsense, See Invisibility or True Seeing.
+
+**Two new spells to answer it:**
+
+- **See Invisibility** (2nd level — wizard 3, sorcerer/magus/inquisitor 4, bard 7). You can find,
+  target and hit invisible foes with no miss chance. It does *not* see through Mirror Image or a
+  displaced blur — that still takes True Seeing.
+- **Invisibility Purge** (3rd level — cleric 5, inquisitor 7). A blaze of revealing light that
+  **does not discriminate.** It drags *every* invisible creature in the room into view — **your
+  own allies included** — and nothing on either side can turn invisible again that room. Purge
+  while your rogue is lying in wait for a Sneak Attack and you burn him too. That's the cost.
+
+(**True Seeing** already existed at higher level and still does everything: sees the invisible
+*and* pierces illusions.)
+
+---
+
 ## v1.0.0 — 2026-07-14
 
 **Playable by ear, properly.** Josh reported that PGM was "not at all close" to poker-dungeon

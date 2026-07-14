@@ -190,8 +190,14 @@ module.exports = {
     // A foe that has self-buffed defenses turns a clean hit aside (enemy casters
     // can now go Invisible / Mirror Image mid-fight). A hero who pierces the unseen
     // — True Seeing or blindsense — ignores the concealment.
-    if (target && !attacker.trueSeeing && !(attacker.blindsense > 0)) {
-      if (target.invisible && dRoll(2) === 1) {   // total concealment vs an unseen foe → 50% miss
+    // TWO tiers of seeing the unseen (poker parity): SEE INVISIBILITY (or True Seeing /
+    // blindsense) beats the INVISIBILITY concealment miss — you can find and strike the
+    // unseen foe. But only TRUE SEEING / blindsense pierces an ILLUSION (Mirror Image);
+    // mere See Invisibility does NOT (RAW — glamers still fool it). So the guards diverge.
+    if (target) {
+      const _pierceInvis    = attacker.trueSeeing || attacker.seeInvis || (attacker.blindsense > 0);
+      const _pierceIllusion = attacker.trueSeeing || (attacker.blindsense > 0);
+      if (target.invisible && !_pierceInvis && dRoll(2) === 1) {   // total concealment vs an unseen foe → 50% miss
         return { hit: false, conceal: true, roll, toHit, total, ac, sound: weapon.isDagger ? SND.whiffDagger : pick(SND.whiffSword) };
       }
       // PF1 MIRROR IMAGE: the blow HIT the AC — now roll which of (real + N figments)
@@ -199,8 +205,8 @@ module.exports = {
       // DR & other defenses still apply); otherwise it strikes a figment, destroyed
       // outright (one hit, no damage). So piling on attacks BOTH whittles the decoys
       // AND keeps a real-hit chance each swing — exactly RAW. (True Seeing / blindsense
-      // skip the whole illusion, handled by the guard above.)
-      if (target.images > 0 && dRoll(target.images + 1) !== 1) {
+      // skip the whole illusion; See Invisibility does not.)
+      if (target.images > 0 && !_pierceIllusion && dRoll(target.images + 1) !== 1) {
         target.images -= 1;
         const _nm = target.name === undefined ? target.nickname : target.name;
         this._note(`🪞 a mirror image of ${_nm} POPS — ${target.images} decoy${target.images === 1 ? '' : 's'} left.`, null);

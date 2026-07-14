@@ -57,8 +57,25 @@ class DungeonShim {
   livingEnemies() { return this.enemies.filter(e => e.hp > 0); }
   present() { return this.party.filter(m => !m.left); }
   member(id) { return this.party.find(m => m.playerId === id || m.id === id) || null; }
-  _targetableEnemies() { return this.livingEnemies().filter(e => !(e.darkened > 0) && !e.summoned); }
-  _targetableParty() { return this.livingParty().filter(m => !m.blinkedBy && !m.untargetable); }
+  // INVISIBILITY (poker parity — PGM used to ignore it entirely, so going unseen did
+  // nothing for either side). An INVISIBLE foe can't be targeted unless somebody in the
+  // party can pierce it: darkvision (magical dark), blindsense, See Invisibility or True
+  // Seeing. If invisibility/darkness hid EVERY foe, fall back to the full list so the
+  // party can still flail into the dark rather than soft-lock.
+  _targetableEnemies() {
+    const dv = this.livingParty().some(p => p.darkvision || p.blindsense > 0 || p.trueSeeing || p.seeInvis);
+    const seen = this.livingEnemies().filter(e => !e.summoned && (dv || (!(e.darkened > 0) && !e.invisible)));
+    const live = this.livingEnemies().filter(e => !e.summoned);
+    return seen.length ? seen : live;
+  }
+  // An INVISIBLE hero can't be picked as a target — unless the foe is a TRUE SEER (an
+  // Erinyes), which sees the unseen. Same fallback: if everyone's hidden, foes still act.
+  _targetableParty(seer) {
+    const sees = !!(seer && seer.trueSeeing);
+    const live = this.livingParty().filter(m => !m.blinkedBy && !m.untargetable);
+    const seen = live.filter(m => sees || !m.invisible);
+    return seen.length ? seen : live;
+  }
 
   // ── Narration/IO surface: map to the PGM run log; sockets/banter are no-ops ──
   _note(text, sound, opts) {
@@ -127,12 +144,20 @@ Object.assign(DungeonShim.prototype, {
   // Mirror Image + Displacement + incorporeal: does an incoming attack on this
   // hero get soaked or slip through? True = fully negated (Dungeon.js:1764).
   _evadeIncoming(target, attacker) {
-    if (target.images > 0) {
+    // TRUE SEEING (Erinyes) pierces ILLUSIONS — never fooled by a mirror image or a
+    // displaced/blurred form. It still cannot touch a truly INCORPOREAL ghost below (that
+    // is physical, not an illusion). One reveal line per round per foe. Poker parity.
+    const pierces = !!(attacker && attacker.trueSeeing);
+    if (pierces && (target.images > 0 || target.displaced) && attacker._sawThrough !== this.round) {
+      attacker._sawThrough = this.round;
+      this._note(`${attacker.name}'s TRUE SEEING picks the real ${target.nickname} out of the illusions.`, null);
+    }
+    if (!pierces && target.images > 0) {
       target.images -= 1;
       this._note(`\u{1FA9E} the blow strikes a mirror image of ${target.nickname} — it pops! (${target.images} left)`, null);
       return true;
     }
-    if (target.displaced && dRoll(2) === 1) {
+    if (!pierces && target.displaced && dRoll(2) === 1) {
       this._note(`\u{1F32B}\uFE0F ${target.nickname} is displaced — the attack passes through empty air!`, null);
       return true;
     }

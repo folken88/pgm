@@ -234,6 +234,8 @@ const SPELL = {
   chainlightning:{ key: 'chainlightning',name: 'Chain Lightning', icon: '⚡', effect: 'aoe', target: 'aoe', maxTargets: 10, randBase: 4, randDie: 6, save: 'reflex', die: 6, dice: 'level', dcap: 15, dtype: 'electricity', slvl: 6, sound: null, desc: 'A bolt forks from foe to foe — 4 + 1d6 enemies (5–10), Reflex for half (level d6, cap 15d6).' },   // no fixed sound → rotates through the SND.lightning playlist like Lightning Bolt (Tobias 2026-07-03; the Hetfield one-off stays on Storm of Vengeance)
   dispelmagicgreater: { key: 'dispelmagicgreater', name: 'Dispel Magic, Greater', icon: '🌀', effect: 'cleanse', greater: true, target: 'ally', slvl: 6, sound: S.dispel, desc: 'A sweeping unweaving — end ALL hostile SPELL effects on an ally (hold, slow, magical blindness), or tear every buff off a foe. Physical conditions stay (PF1).' },
   trueseeing:    { key: 'trueseeing',    name: 'True Seeing',     icon: '👁️', effect: 'buff', target: 'self', trueSeeing: true, sticky: true, slvl: 6, sound: S.invoke, desc: 'Your eyes pierce all deception — see through darkness, ignore illusions, and strike the invisible. Lasts the room.' },
+  seeinvisibility: { key: 'seeinvisibility', name: 'See Invisibility', icon: '🔎', effect: 'buff', target: 'self', seeInvis: true, sticky: true, slvl: 2, sound: S.invoke, desc: 'Your eyes catch the unseen — you can find, target and strike INVISIBLE foes with no concealment miss. (It does NOT pierce mirror images or a displaced blur — that needs True Seeing.) Lasts the room.' },
+  invisibilitypurge: { key: 'invisibilitypurge', name: 'Invisibility Purge', icon: '🔦', effect: 'invispurge', target: 'self', slvl: 3, sound: S.dispel, desc: 'A blaze of revealing light that does NOT DISCRIMINATE — EVERY invisible creature in the room is dragged into view, YOUR OWN ALLIES INCLUDED, and nothing on either side can turn invisible again this room. Purge while your rogue lies in wait and you burn him too. (It does not touch mirror image or displacement — that needs True Seeing.)' },
   // ── HIGH ARCANE (7th–9th) — without these, a sorcerer past L13 had the SLOTS
   //    but no spells to put in them (Josh: "L15, never got my 7th-level spells").
   delayedfireball: { key: 'delayedfireball', name: 'Delayed Blast Fireball', icon: '🔥', effect: 'aoe', target: 'aoe', maxTargets: 8, save: 'reflex', die: 6, dice: 'level', dcap: 20, dtype: 'fire', slvl: 7, sounds: FIREBALL_SFX, desc: 'A roiling fireball engulfs up to 8 foes — 1d6 fire per caster level (max 20d6), Reflex for half.' },
@@ -911,6 +913,27 @@ for (const _ck of ['swashbuckler', 'rogue']) {
     if (!_have.has(_mv.key)) _k.abilities.push({ ..._mv });
   }
 }
+
+// ── SEE INVISIBILITY + INVISIBILITY PURGE (2026-07-14, poker parity) ───────────────
+// Counters to enemy invisibility. In the SPELL registry + hand-coded fallback above, but
+// NOT in the content DB yet — so inject AFTER the generated-kit override, exactly like the
+// magus/rogue/Olbryn re-attachments. IDEMPOTENT: skips a class that already has the spell,
+// so it no-ops the moment the DB regen carries them. See Invisibility (2nd) beats the
+// invisible concealment miss but NOT mirror image; Invisibility Purge (3rd) reveals the
+// whole room — allies included — and nothing can re-vanish.
+// TODO: migrate into kit_abilities on the next DB regen, then delete this block.
+const _injectKitSpell = (cls, entry) => {
+  const _k = KITS[cls];
+  if (!_k || !Array.isArray(_k.abilities) || _k.abilities.some(a => a.key === entry.key)) return;
+  _k.abilities.push(entry);
+};
+_injectKitSpell('wizard',     preparedSpell(SPELL.seeinvisibility, 3));
+_injectKitSpell('magus',      preparedSpell(SPELL.seeinvisibility, 4));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.seeinvisibility, 4));
+_injectKitSpell('inquisitor', spontaneousSpell(SPELL.seeinvisibility, 4));
+_injectKitSpell('bard',       spontaneousSpell(SPELL.seeinvisibility, 7));
+_injectKitSpell('cleric',     preparedSpell(SPELL.invisibilitypurge, 5));
+_injectKitSpell('inquisitor', spontaneousSpell(SPELL.invisibilitypurge, 7));
 
 // Olbryn's STORM specialization — injected AFTER the generated-kit override so it
 // survives regeneration. Base sorcerers are fire/force themed; these char-tagged

@@ -7,6 +7,20 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.1.0  2026-07-14 SEEING & INVISIBILITY — poker parity for the whole unseen/illusion system, which
+//                    PGM had essentially NOT implemented. Before: the shim's _targetableParty/
+//                    _targetableEnemies never filtered `invisible` at all, so going unseen did NOTHING
+//                    for either side; swing.js still had poker's OLD single guard (no See-Invisibility
+//                    tier); makeenemy.js never copied the `trueSeeing` flag, so the Erinyes' true-sight
+//                    was dead. Now: an invisible foe can't be targeted unless somebody can pierce it
+//                    (darkvision / blindsense / See Invisibility / True Seeing); an invisible HERO can't
+//                    be targeted unless the foe is a TRUE SEER (the Erinyes), whose arrows also see
+//                    through Mirror Image and Displacement; and _swingVsAC now splits the two tiers —
+//                    See Invisibility beats the invisibility concealment miss, only True Seeing/blindsense
+//                    also beats an ILLUSION. New spells: SEE INVISIBILITY (2nd — wizard 3, sorcerer/magus/
+//                    inquisitor 4, bard 7) and INVISIBILITY PURGE (3rd — cleric 5, inquisitor 7), which
+//                    does NOT discriminate: it strips invisibility from EVERY creature in the room, your
+//                    own allies included, and nothing on either side can vanish again that room.
 //  1.0.0  2026-07-14 VERSIONING FORMALIZED — PGM now has a version, a dev log and a player-facing
 //                    CHANGELOG.md, so Josh, Tobias and I can all point at the same build. Shipped with
 //                    it: BLIND PARITY WITH POKER (Josh's "not close to poker-dungeon" report). Root
@@ -51,6 +65,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.0.0';
-const HEADLINE = 'PGM now plays by ear as well as poker does: press Escape anywhere for a spoken menu of exactly what you can do on this screen, and A to repeat the last report. Hard refresh to pick it up.';
+const VERSION = '1.1.0';
+const HEADLINE = 'Going invisible finally MEANS something — for you and for them. Vanish and most foes cannot touch you, but the Erinyes see straight through it. New spells: See Invisibility, and Invisibility Purge, which spares no one — it strips your own rogue right along with the enemy.';
 module.exports = { VERSION, HEADLINE };

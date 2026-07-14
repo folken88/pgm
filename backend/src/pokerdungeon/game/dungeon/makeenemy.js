@@ -115,6 +115,7 @@ module.exports = {
       size: base.size || 'M',               // PF1 size category (S/M/L/H…) — trip & flavor (see MON_BODY)
       legs: (base.legs != null ? base.legs : 2),   // leg count — 0 = untrippable; >2 = +4 trip defense per extra leg
       flying: !!base.flying || pre.includes('fly'),   // airborne: immune to prone + "high ground" vs grounded foes (a pre-cast Fly can be DISPELLED — the boss crashes)
+      trueSeeing: !!base.trueSeeing,   // Erinyes devils: pierce ILLUSIONS — target invisible heroes + never fooled by mirror image / displacement (parity with poker)
       evasion: !!base.evasion,             // rogues/monks: a made Reflex save vs an area effect = NO damage
       natural: !!base.natural,             // fights with natural weapons / unarmed (claws, bite, slams) → cannot be DISARMED
       detonate: base.detonate || null,     // fire skeleton: rushes in and blows itself up on its turn

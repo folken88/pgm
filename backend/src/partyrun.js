@@ -260,6 +260,10 @@ function spawnRoom(run, roll) {
     h.buffs = pf1.buffs.ZERO(); h.buffApplied = {}; h._aiBuffed = false;
   });
 
+  // An Invisibility Purge burns for its ROOM only — the next room can hide again.
+  // (Poker resets this in Dungeon.js; PGM's host IS the shim, so it resets here.)
+  try { run.shim.invisPurged = false; } catch (_) {}
+
   run.combatants = run.heroes.concat(enemies);
   run.turnIndex = 0;
   run.round = 1;
