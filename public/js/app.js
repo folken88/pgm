@@ -26,9 +26,10 @@
   function showScreen(id) {
     SCREENS.forEach(function (s) { el(s).hidden = (s !== id); });
     document.body.classList.toggle('in-game', id === 'game');
-    var swl = el('side-window-left'); if (swl) swl.hidden = (id !== 'landing');   // left delve list: landing only
-    // The concurrent-delves window docks into the right column during play
-    // (Tobias: side window with other sessions' status), floats elsewhere.
+    // CSS drives the delve panels off these body classes (see .side-window-left /
+    // body.on-landing): left panel on the landing, right panel elsewhere.
+    document.body.classList.toggle('on-landing', id === 'landing');
+    // The concurrent-delves window docks into the right column during play.
     var sw = el('side-window');
     if (sw) {
       if (!sw._home) sw._home = sw.parentNode;
@@ -44,7 +45,7 @@
   function boot() {
     BM.init({ onCommand: handleCommand });
     registerBlindInfo();
-    var swl0 = el('side-window-left'); if (swl0) swl0.hidden = false;   // landing is the initial screen → show the left delve list
+    document.body.classList.add('on-landing');   // landing is the initial screen (CSS shows the left delve list)
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
       state.meta = meta;
       fill('race', meta.races); fill('cls', meta.classes);

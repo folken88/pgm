@@ -136,27 +136,29 @@ button { cursor: pointer; }
 .delve-card .dactions { display: flex; gap: .4rem; margin-top: .4rem; }
 .delve-card .dactions button { padding: .3rem .55rem; font-size: .85rem; background: var(--panel); }
 
-@media (min-width: 1100px) {
+/* Fix the delve panels into the margins only when there's REAL room — a 300px
+   panel + the 760px main column + a 300px panel + gaps needs ~1400px. Below that
+   the right panel stays in normal flow (below main) so nothing overlaps. */
+@media (min-width: 1400px) {
   #side-window {
     position: fixed; top: .8rem; right: .8rem; width: 300px; max-width: 300px;
     margin: 0; max-height: calc(100vh - 5.5rem); overflow-y: auto; z-index: 5;
   }
+  /* On the LANDING the left panel shows the delves — hide the duplicate right one. */
+  body.on-landing #side-window { display: none; }
 }
 
-/* Left landing panel — mirror of the delve list, in the empty left margin.
-   Only on wide screens; on narrow the right panel (in normal flow) suffices. */
-.side-window-left {
-  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
-  padding: .7rem .8rem; margin: 0 auto 1.5rem; max-width: 760px;
-}
+/* Left landing panel — the delve list in the empty left margin (landing only,
+   wide screens only). Hidden otherwise; the right panel covers narrower screens. */
+.side-window-left { display: none; }
 .side-window-left h2 { font-size: 1rem; margin: 0 0 .5rem; color: var(--accent); border: 0; padding: 0; }
-@media (min-width: 1100px) {
-  .side-window-left {
-    position: fixed; top: .8rem; left: .8rem; width: 300px; max-width: 300px;
-    margin: 0; max-height: calc(100vh - 5.5rem); overflow-y: auto; z-index: 5;
+@media (min-width: 1400px) {
+  body.on-landing .side-window-left {
+    display: block; position: fixed; top: 6.5rem; left: .8rem; width: 300px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: .7rem .8rem; max-height: calc(100vh - 7.5rem); overflow-y: auto; z-index: 5;
   }
 }
-@media (max-width: 1099px) { .side-window-left { display: none; } }
 
 /* Pack item: the whole item is a click-to-use button (Drink/Throw/Equip). */
 .pack-item { padding: 0; border: 0; background: none; display: flex; gap: .35rem; align-items: stretch; }
