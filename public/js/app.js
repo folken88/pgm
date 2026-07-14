@@ -465,7 +465,11 @@
       box = document.createElement('div');
       box.id = 'pub-panel';
       box.setAttribute('aria-label', 'The Swashgoblin');
-      el('lobby').insertBefore(box, el('lobby-start'));
+      // Insert ABOVE the actions row. #lobby-start lives inside .lobby-actions, so
+      // it is NOT a direct child of #lobby — inserting before it threw NotFoundError
+      // and aborted the whole pub render (no services, no "Set out again" button).
+      var actions = el('lobby').querySelector('.lobby-actions');
+      if (actions) el('lobby').insertBefore(box, actions); else el('lobby').appendChild(box);
     }
     var pub = you.pub || { gold: 0, services: [], dead: [], hurt: [], stash: {}, corpses: [] };
     var html = '<h3>🍺 The Swashgoblin</h3>'
@@ -516,6 +520,7 @@
     });
     el('lobby-start').hidden = false;
     el('lobby-start').textContent = '⚔️ Set out again';
+    el('lobby-wait').textContent = '';   // clear the "adventure has begun" clutter renderLobby left
   }
 
   function startAdventure() {
