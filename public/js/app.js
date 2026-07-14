@@ -51,6 +51,8 @@
       buildIconPicker(meta.icons);
       if (meta.voice) BM.setGMVoice(meta.voice.enabled);   // ElevenLabs GM voice ("Ultron") when configured
     });
+    loadTokens();   // character-art token gallery (manifest.json)
+    var tsearch = el('token-search'); if (tsearch) tsearch.addEventListener('input', function () { buildTokenPicker(this.value); });
     el('start-delve').addEventListener('click', startDelve);
     el('create-form').addEventListener('submit', onCreate);
     el('skill-begin').addEventListener('click', confirmCharacter);
@@ -126,6 +128,40 @@
   function selectIcon(ic, btn) {
     state.icon = ic;
     [].forEach.call(el('icon-picker').children, function (b) { b.setAttribute('aria-checked', String(b === btn)); });
+  }
+
+  // ── Character TOKEN picker (player art, Tobias 2026-07-13) ──
+  function loadTokens() {
+    fetch('/tokens/manifest.json').then(function (r) { return r.json(); }).then(function (list) {
+      state.tokens = Array.isArray(list) ? list : [];
+      if (!state.charToken && state.tokens.length) state.charToken = state.tokens[Math.floor(Math.random() * state.tokens.length)].file;  // default art so heroes always have a token
+    }).catch(function () { state.tokens = []; });
+  }
+  function buildTokenPicker(filter) {
+    var box = el('token-picker'); if (!box) return;
+    var toks = state.tokens || [];
+    var f = (filter || '').trim().toLowerCase();
+    if (f) toks = toks.filter(function (t) { return t.label.toLowerCase().indexOf(f) >= 0 || t.file.toLowerCase().indexOf(f) >= 0; });
+    var shown = toks.slice(0, 240);
+    box.innerHTML = '';
+    if (!shown.length) { box.innerHTML = '<p class="delve-empty">No tokens match — clear the filter.</p>'; return; }
+    shown.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'token-opt' + (state.charToken === t.file ? ' sel' : '');
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(state.charToken === t.file));
+      b.setAttribute('aria-label', t.label); b.title = t.label; b.dataset.tok = t.file;
+      b.innerHTML = '<img src="/tokens/' + t.file + '" alt="" loading="lazy" />';
+      b.addEventListener('click', function () { selectToken(t.file); });
+      box.appendChild(b);
+    });
+  }
+  function selectToken(file) {
+    state.charToken = file;
+    [].forEach.call(el('token-picker').querySelectorAll('.token-opt'), function (b) {
+      var on = b.dataset.tok === file; b.classList.toggle('sel', on); b.setAttribute('aria-checked', String(on));
+    });
+    var t = (state.tokens || []).find(function (x) { return x.file === file; });
+    BM.speak('Token: ' + (t ? t.label : file) + '.', 'event');
   }
 
   // ---------- SSE ----------
@@ -232,7 +268,7 @@
     api('/api/session/create', { name: c.charName, icon: state.icon, delveName: el('delve-name').value.trim(), token: state.token }).then(function (r) {
       if (!r.ok) return BM.speak(r.error || 'Could not start.', 'urgent');
       afterJoin(r, 'player');
-      api('/api/session/character', { clientId: state.clientId, race: c.race, cls: c.cls }).then(function (r2) {
+      api('/api/session/character', { clientId: state.clientId, race: c.race, cls: c.cls, token: c.token || null }).then(function (r2) {
         if (!r2.ok) return BM.speak(r2.error || 'Could not ready the character.', 'urgent');
         state.you = r2.snapshot; showScreen('lobby'); renderLobby(r2.snapshot);
         BM.speak(c.charName + ' the ' + c.race + ' ' + c.cls + ' is ready. Add companions, then start the adventure.', 'event');
@@ -349,7 +385,9 @@
     }
     showScreen('create');
     var nf = el('name').closest('.field'); if (nf) nf.hidden = true;
-    BM.speak('Choose your race and class, then your skills.', 'event');
+    if (state.rememberedBuild && state.rememberedBuild.token) state.charToken = state.rememberedBuild.token;
+    buildTokenPicker(el('token-search') ? el('token-search').value : '');   // render the token gallery
+    BM.speak('Choose your race and class, pick your token, then your skills.', 'event');
   }
   function onCreate(e) {
     e.preventDefault();
@@ -359,7 +397,7 @@
     });
   }
   function confirmCharacter() {
-    api('/api/session/character', Object.assign({}, state.charInput, { clientId: state.clientId, skills: Array.from(state.selected) })).then(function (r) {
+    api('/api/session/character', Object.assign({}, state.charInput, { clientId: state.clientId, skills: Array.from(state.selected), token: state.charToken || null })).then(function (r) {
       if (!r.ok) return BM.speak(r.error || 'Could not confirm.', 'urgent');
       state.you = r.snapshot; showScreen('lobby'); renderLobby(r.snapshot);
       BM.speak('Character confirmed. You are in the lobby' + (r.snapshot.youAreHost ? ' as host. Add AI companions or start.' : '.'), 'event');

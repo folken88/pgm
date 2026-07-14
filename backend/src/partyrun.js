@@ -137,7 +137,7 @@ function heroCombatant(p) {
   const book = casting.spellbookFor(c.cls, d.level);
   return {
     id: 'h:' + p.clientId, side: 'hero', ownerClientId: p.ai ? null : p.clientId,
-    ai: !!p.ai, name: c.name, icon: p.icon || '🛡️',
+    ai: !!p.ai, name: c.name, icon: p.icon || '🛡️', token: p.token || null,
     hp: c.maxHp, maxHp: c.maxHp, ac: c.ac, flatAc: c.ac - Math.max(0, dex),
     perceptionMod: perceptionMod(c),
     character: c, down: false, initMod: dex,
@@ -1161,7 +1161,7 @@ function publicRun(run) {
     room: run.room ? { flavor: run.room.flavor } : null,
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,
-      art: c.side === 'enemy' ? (artFor(c.key) || artFor(c.creature && c.creature.baseName || c.name)) : artFor(c.name),
+      art: c.side === 'enemy' ? (artFor(c.key) || artFor(c.creature && c.creature.baseName || c.name)) : (c.token ? '/tokens/' + c.token : artFor(c.name)),
       // Heroes expose exact HP; ENEMIES show only a coarse bar (25% buckets) and
       // NO numbers — players (sighted or blind) can't read a foe's exact HP.
       hp: c.side === 'enemy' ? null : Math.max(0, c.hp),

@@ -202,7 +202,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url === '/api/session/character' && req.method === 'POST') {
     const body = await readBody(req);
-    const r = session.setCharacter(body.clientId, { race: body.race, cls: body.cls || body.class, skills: Array.isArray(body.skills) ? body.skills : null });
+    const r = session.setCharacter(body.clientId, { race: body.race, cls: body.cls || body.class, skills: Array.isArray(body.skills) ? body.skills : null, token: body.token ? String(body.token) : null });
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
   }

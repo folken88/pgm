@@ -65,6 +65,11 @@
           <label for="cls">Class</label>
           <select id="cls" name="cls"></select>
         </div>
+        <fieldset class="tokenset">
+          <legend>Choose your token <span class="muted-line">(your character's art)</span></legend>
+          <input id="token-search" type="text" autocomplete="off" placeholder="Filter tokens — e.g. elf wizard, dwarf, archer" aria-label="Filter tokens by keyword" />
+          <div id="token-picker" class="token-picker" role="radiogroup" aria-label="Choose a character token"></div>
+        </fieldset>
         <button type="submit" id="begin-btn">Next: choose skills</button>
       </form>
     </section>

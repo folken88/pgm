@@ -100,7 +100,7 @@ test('accounts: sign in once, delves follow the account, build remembered', () =
   assert.strictEqual(mine.length, 1, 'delve associated: ' + JSON.stringify(mine));
   assert.strictEqual(mine[0].phase, 'playing');
   const me = accounts.byToken(a.token);
-  assert.deepStrictEqual(me.character, { race: 'dwarf', cls: 'cleric' }, 'build remembered for next visit');
+  assert.deepStrictEqual(me.character, { race: 'dwarf', cls: 'cleric', token: null }, 'build remembered for next visit');
 });
 
 test('accounts: passwordless quick profile (one-click), then optional password lock', () => {

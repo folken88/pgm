@@ -217,8 +217,10 @@ function setCharacter(clientId, charInput) {
   const m = s.members.get(memberIdOf(clientId)); if (!m) return { ok: false, error: 'not a player' };
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
   m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
+  // Player-chosen art token — a bare, safe filename only (no path traversal).
+  if (charInput.token != null) m.token = /^[a-z0-9][a-z0-9._-]*\.webp$/i.test(charInput.token) ? charInput.token : null;
   m.ready = true;
-  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls, charName: m.name });
+  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls, charName: m.name, token: m.token || null });
   saveSession(s);
   return { ok: true };
 }
@@ -433,7 +435,7 @@ function startRun(clientId) {
   }
   s.run = partyrun.createPartyRun(ready.map(m => {
     const saved = LEGACY[legacyKey(s, m.name)] || {};
-    return { clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai, negLevels: saved.negLevels || 0 };
+    return { clientId: m.memberId, icon: m.icon, character: m.character, ai: m.ai, negLevels: saved.negLevels || 0, token: m.token || (m.roster && m.roster.token) || null };
   }));
   // Live runs PACE their AI/enemy turns (1-2s deliberation each), streaming each
   // via SSE. Setting onUpdate flips partyrun into paced mode; without it (tests)

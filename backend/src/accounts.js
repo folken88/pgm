@@ -59,11 +59,11 @@ function byToken(token) {
 function rememberCharacter(name, character) {
   const a = DB[keyOf(name)];
   if (!a) return;
-  a.character = { race: character.race, cls: character.cls };
+  a.character = { race: character.race, cls: character.cls, token: character.token || null };
   a.characters = a.characters || [];
   const key = (character.charName || a.name) + '|' + character.race + '|' + character.cls;
   a.characters = a.characters.filter(c => (c.charName + '|' + c.race + '|' + c.cls) !== key);
-  a.characters.unshift({ charName: character.charName || a.name, race: character.race, cls: character.cls, at: Date.now() });
+  a.characters.unshift({ charName: character.charName || a.name, race: character.race, cls: character.cls, token: character.token || null, at: Date.now() });
   a.characters = a.characters.slice(0, 6);
   save();
 }
