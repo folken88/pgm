@@ -149,12 +149,25 @@
             <span id="hud-hero">—</span>
             <span id="hud-enemy"></span>
             <span id="hud-gold">Gold: 0</span>
+            <button id="shop-btn" type="button" class="shop-btn" title="Browse the merchant (your turns pass while you shop; the dungeon keeps going)">🛒 Shop</button>
             <button id="retreat-btn" type="button" class="retreat-btn" title="Retreat from the delve (keep your gold)">🏳️ Retreat</button>
           </div>
           <h3>Treasure</h3>
           <p id="gold-line" class="gold-line">Gold: 0</p>
           <div id="bag-list"></div>
         </aside>
+      </div>
+
+      <!-- In-dungeon merchant. Opening it marks you "Shopping": your turns pass
+           and the dungeon keeps going. Native buttons → screen-reader friendly. -->
+      <div id="shop-panel" class="shop-panel" hidden role="dialog" aria-labelledby="shop-h" aria-modal="false">
+        <div class="shop-head">
+          <h3 id="shop-h">🛒 The Merchant</h3>
+          <span id="shop-gold" class="shop-gold" aria-live="polite">Party gold: 0</span>
+          <button id="shop-close" type="button">✓ Done shopping</button>
+        </div>
+        <p class="shop-note">Your turns pass while you shop — the dungeon does not wait.</p>
+        <div id="shop-list" class="shop-list" role="list" aria-label="Wares for sale"></div>
       </div>
 
       <!-- Urgent announcements (victory/defeat) get an assertive region -->

@@ -399,6 +399,7 @@ function driveTurnsPaced(run, roll) {
     if (!cb || cb.down) { nextTurn(run); continue; }
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // condition cost the turn (instant — not deliberation)
     if (cb.side === 'hero' && !cb.ai) {
+      if (cb.shopping) { nextTurn(run); continue; }   // shopping: turn passes, dungeon flows on (no delay)
       if (cb.queuedAction) {
         const q = cb.queuedAction; cb.queuedAction = null;
         logEvent(run, `⏳ ${cb.name}'s pre-loaded ${q.label} triggers!`, 'event');
@@ -464,6 +465,7 @@ function runTurnsSync(run, roll) {
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'enemy' && cb.dominated > 0) { dominatedTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'hero' && !cb.ai) {
+      if (cb.shopping) { nextTurn(run); continue; }   // shopping: turn passes, dungeon flows on
       // A pre-loaded action fires the instant your turn arrives (poker parity).
       // On success its own applyAction advances the loop; a fizzle hands the
       // turn back to you live.
@@ -730,6 +732,35 @@ function applyAction(run, clientId, action, roll = Math.random) {
     run.gold += price;
     logEvent(run, `${hero.name} sells ${it.name} for ${price} gold — into the party purse.`, 'event');
     return { ok: true, text: `Sold ${it.name} for ${price} gold.` };
+  }
+
+  // IN-DUNGEON SHOP (Tobias 2026-07-13): browse a merchant mid-delve. Opening it
+  // marks you "shopping" — your turns AUTO-SKIP and the dungeon keeps going (it
+  // does NOT pause while you shop). Buys spend the party purse (run gold).
+  if (type === 'shop_open' || type === 'shop_close' || type === 'shop_buy') {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    if (type === 'shop_open') {
+      hero.shopping = true;
+      logEvent(run, `🛒 ${hero.name} steps aside to browse a merchant's wares — their turns pass until they return.`, 'event');
+      const cb = current(run);
+      if (run.phase === 'combat' && cb && cb.id === hero.id) { nextTurn(run); runUntilHeroTurn(run, roll); }   // it was their turn — let the dungeon flow on
+      return { ok: true, stock: shopStockPayload(), gold: run.gold };
+    }
+    if (type === 'shop_close') {
+      hero.shopping = false;
+      logEvent(run, `🛒 ${hero.name} pockets their purchases and rejoins the party.`, 'event');
+      return { ok: true, gold: run.gold };
+    }
+    // shop_buy
+    const entry = items.SHOP_STOCK.find(s => s.key === action.item);
+    if (!entry) return { ok: false, error: 'the merchant does not carry that' };
+    const it = items.ITEM_BY_KEY[entry.key];
+    if ((run.gold || 0) < entry.value) return { ok: false, error: `not enough gold — ${it.name} costs ${entry.value}, the purse has ${run.gold || 0}` };
+    run.gold -= entry.value;
+    giveToPack(hero, entry.key, 1);
+    logEvent(run, `🛒 ${hero.name} buys ${it.name} for ${entry.value} gold.`, 'event');
+    return { ok: true, gold: run.gold, text: `Bought ${it.name} for ${entry.value} gold.` };
   }
 
   // CANTRIP CYCLE (poker's C key): a free action, not turn-gated. With no key,
@@ -1043,11 +1074,19 @@ function hpWordFor(e) {
   return 'near death';
 }
 
+/** The merchant's wares (static vetted pool) with display fields + RAW price. */
+function shopStockPayload() {
+  return items.SHOP_STOCK.map(s => {
+    const it = items.ITEM_BY_KEY[s.key] || { name: s.key, icon: '?', type: 'misc' };
+    return { key: s.key, name: it.name, icon: it.icon || '', type: it.type, price: s.value };
+  });
+}
+
 /** Client-facing view. Hidden (unrevealed) enemies are omitted entirely. */
 function publicRun(run) {
   const cb = current(run);
   let turn = null;
-  if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai) {
+  if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai && !cb.shopping) {   // a shopping player never gets a turn payload — their turns pass
     let kit = [];
     try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
     const kd = pf1.abilities.kitFor(cb.cls);
@@ -1129,7 +1168,7 @@ function publicRun(run) {
       maxHp: c.side === 'enemy' ? null : c.maxHp,
       hpPct: hpPctFor(c), ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
-      dead: !!c.dead, negLevels: c.negLevels || 0,
+      dead: !!c.dead, negLevels: c.negLevels || 0, shopping: !!c.shopping,
       queued: c.queuedAction ? c.queuedAction.label : null,
       pack: c.side === 'hero' ? (c.pack || []).map(s2 => {
         const it = items.ITEM_BY_KEY[s2.key] || { name: s2.key, icon: '?', type: 'misc' };

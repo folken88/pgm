@@ -65,6 +65,8 @@
       BM.speak('Retreat? The run ends for the whole party; you keep the gold. Press again to confirm.', 'urgent');
       setTimeout(function () { if (Date.now() - retreatArm >= 5000) b.textContent = '🏳️ Retreat'; }, 5200);
     });
+    el('shop-btn').addEventListener('click', openShop);
+    el('shop-close').addEventListener('click', closeShop);
     // Chat prompt: play via typed commands (same grammar as voice); questions
     // route to the LLM GM when that layer lands.
     function sendChat() {
@@ -527,6 +529,10 @@
     renderActionBar(run, myTurn);
     renderPartyPanel(run);
     renderLootPanel(run);
+    // Keep the open shop's gold/affordability live as the party earns — but only
+    // rebuild when gold actually changed, so a blind user's focus in the list is
+    // not reset on every SSE tick.
+    if (!el('shop-panel').hidden && ('Party gold: ' + (run.gold || 0)) !== el('shop-gold').textContent) renderShop();
 
     // On the FIRST snapshot after (re)joining, display the backlog but only
     // SPEAK the last few lines — replaying whole prior rooms aloud described
@@ -610,6 +616,7 @@
           })()
         + '<div class="hc-meta">' + (c.level ? 'L' + c.level + ' · ' : '') + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
         + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '')
+        + (c.shopping ? '<div class="hc-shopping">🛒 Shopping — turns passing</div>' : '')
         + (c.queued ? '<div class="hc-queued">⏳ queued: ' + esc(c.queued) + '</div>' : '');
       box.appendChild(card);
     });
@@ -685,6 +692,56 @@
       });
     }
   }
+  // ── IN-DUNGEON SHOP ──────────────────────────────────────────────────────
+  // Opening it marks you "Shopping" server-side: your turns auto-skip and the
+  // dungeon keeps going. The wares are a static vetted pool; gold is the party
+  // purse. Native buttons keep it screen-reader friendly (Josh).
+  function renderShop() {
+    var list = el('shop-list'); if (!list) return;
+    var gold = (myRun() || {}).gold;                       // live party purse (updates via SSE)
+    if (gold == null) gold = state.shopGold != null ? state.shopGold : 0;
+    el('shop-gold').textContent = 'Party gold: ' + gold;
+    var stock = state.shopStock || [];
+    list.innerHTML = '';
+    if (!stock.length) { list.innerHTML = '<p class="delve-empty">The merchant has nothing today.</p>'; return; }
+    stock.forEach(function (it) {
+      var row = document.createElement('div'); row.className = 'shop-item'; row.setAttribute('role', 'listitem');
+      var afford = gold >= it.price;
+      row.innerHTML = '<span class="si-icon">' + (it.icon || '') + '</span>'
+        + '<span class="si-name">' + esc(it.name) + '</span>'
+        + '<button class="si-buy"' + (afford ? '' : ' disabled') + ' aria-label="Buy ' + esc(it.name) + ' for ' + it.price + ' gold">Buy ' + it.price + 'g</button>';
+      var b = row.querySelector('button');
+      b.addEventListener('click', function () { buyItem(it.key, it.name); });
+      list.appendChild(row);
+    });
+  }
+  function openShop() {
+    if (state.role !== 'player') { BM.speak('Only a player can shop.', 'urgent'); return; }
+    api('/api/session/action', { clientId: state.clientId, action: 'shop_open' }).then(function (r) {
+      if (!r.ok) { BM.speak(r.error || 'Cannot shop right now.', 'urgent'); return; }
+      state.shopStock = r.stock || []; state.shopGold = r.gold;
+      el('shop-panel').hidden = false;
+      renderShop();
+      BM.speak('Shopping. Your turns will pass until you finish. ' + (state.shopStock.length) + ' wares. Party gold ' + r.gold + '.', 'urgent');
+      var first = el('shop-list').querySelector('button'); if (first) first.focus();
+    });
+  }
+  function closeShop() {
+    el('shop-panel').hidden = true;
+    api('/api/session/action', { clientId: state.clientId, action: 'shop_close' }).then(function (r) {
+      if (r && r.ok) BM.speak('Done shopping — back to the delve.', 'urgent');
+    });
+    el('shop-btn').focus();
+  }
+  function buyItem(key, name) {
+    api('/api/session/action', { clientId: state.clientId, action: 'shop_buy', item: key }).then(function (r) {
+      if (!r.ok) { BM.speak(r.error || 'No sale.', 'urgent'); return; }
+      state.shopGold = r.gold;
+      BM.speak(r.text || ('Bought ' + name + '.'), 'urgent');
+      renderShop();
+    });
+  }
+
   // What THIS hero may consume right now: their pack + party-flagged pile
   // items (+ the whole pile for the leader — dividing to yourself is implied).
   function matchLoot(name) {

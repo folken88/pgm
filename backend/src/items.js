@@ -70,6 +70,16 @@ const PRICED_MAGIC = CONSUMABLES.filter(c => c.key.startsWith('potion')).map(c =
   .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))
   .concat([{ key: 'diamond_dust', value: 100 }, { key: 'diamond', value: 5000 }]);
 
+// SHOP stock (Tobias 2026-07-13): what an in-dungeon merchant sells, at PF1 RAW
+// value (full price to buy; sell is 50%, see loot_sell). Vetted pool only:
+// consumables (potions/throwables), spell components, and +N magic gear —
+// cheapest first so the list reads sensibly.
+const SHOP_STOCK = CONSUMABLES.map(c => ({ key: c.key, value: c.value }))
+  .concat(COMPONENTS.map(c => ({ key: c.key, value: c.value })))
+  .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))
+  .filter(x => x.value > 0)
+  .sort((a, b) => a.value - b.value);
+
 const ALL = CONSUMABLES.concat(GEAR).concat(MAGIC_GEAR).concat(COMPONENTS).concat(VALUABLES);
 const ITEM_BY_KEY = Object.fromEntries(ALL.map(i => [i.key, i]));
 const TOTAL_WEIGHT = ALL.reduce((s, i) => s + i.weight, 0);
@@ -88,4 +98,4 @@ function rollAmount(item, roll = Math.random) {
 }
 
 module.exports = {
-  COMPONENTS, MAGIC_GEAR, VALUABLES, PRICED_MAGIC, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };
+  COMPONENTS, MAGIC_GEAR, VALUABLES, PRICED_MAGIC, SHOP_STOCK, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };

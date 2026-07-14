@@ -204,6 +204,29 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 /* Blue experience-to-next-level bar under the HP bar (poker parity). */
 .hero-card .xpbar { height: 4px; background: #24262b; border-radius: 3px; margin: 0 0 .3rem; overflow: hidden; }
 .hero-card .xpbar > div { height: 100%; background: #6ea8ff; border-radius: 3px; transition: width .3s ease; }
+.hero-card .hc-shopping { color: var(--accent); font-size: .78rem; margin-top: .2rem; }
+
+/* ── In-dungeon merchant shop ── */
+.shop-btn { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: .25rem .5rem; cursor: pointer; }
+.shop-btn:hover { border-color: var(--accent); }
+.shop-panel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 40;
+  width: min(560px, 92vw); max-height: 82vh; overflow-y: auto;
+  background: var(--panel); border: 2px solid var(--accent); border-radius: 12px;
+  padding: 1rem 1.1rem; box-shadow: 0 12px 40px rgba(0,0,0,.6);
+}
+.shop-head { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.shop-head h3 { margin: 0; flex: 1 1 auto; }
+.shop-gold { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; }
+.shop-head button { background: var(--ok); color: #0c1a0c; border: 0; border-radius: 8px; padding: .35rem .7rem; cursor: pointer; font-weight: 700; }
+.shop-note { color: var(--muted); font-size: .82rem; margin: .35rem 0 .6rem; }
+.shop-list { display: flex; flex-direction: column; gap: .3rem; }
+.shop-item { display: flex; align-items: center; gap: .6rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.15); }
+.shop-item .si-icon { font-size: 1.1rem; }
+.shop-item .si-name { flex: 1 1 auto; }
+.shop-item .si-buy { background: var(--panel); border: 1px solid var(--accent); color: var(--ink); border-radius: 6px; padding: .25rem .6rem; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.shop-item .si-buy:disabled { opacity: .4; cursor: not-allowed; border-color: var(--line); }
+.shop-item .si-buy:not(:disabled):hover { background: var(--accent); color: #1a1206; }
 .hero-card .hc-meta { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .hero-card .hc-conds { color: var(--danger); font-size: .78rem; }
 
