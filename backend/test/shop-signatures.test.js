@@ -75,22 +75,34 @@ test('the riders are ALWAYS on — a +0 signature still burns (poker\'s rule)', 
   assert.match(plussed.name, /^\+3 Redeemer/);
 });
 
-test('price = PF1 magic curve + a craft premium for raw lethality', () => {
+test('price = the Foundry base item + PF1 RAW masterwork and enchantment', () => {
   const P = k => items.ITEM_BY_KEY[k].value;
-  // The magic still follows PF1: Redeemer = flamingBurst (+2) + holy (+2) = +4
-  // effective, so 16×2000 of its price is enchantment.
-  assert.strictEqual(P('sig_redeemer'), 315 + 16 * 2000 + sigs.damagePremium(sigs.CUSTOM_WEAPONS.redeemer));
-  // A burst rider must not be double-charged with the base element it implies.
-  const vs = sigs.CUSTOM_WEAPONS.voidshard;
-  assert.strictEqual(P('sig_voidshard'), 315 + 4 * 2000 + sigs.damagePremium(vs), 'frostBurst is +2, not +3');
+  const W = sigs.CUSTOM_WEAPONS;
+  const raw = (key, eff) => sigs.BASE_PRICE[key] + sigs.MASTERWORK + eff * eff * 2000;
+
+  // RAW: a weapon needs a +1 enhancement BEFORE it can hold a special ability, and
+  // the abilities stack on top. So keen (+1) makes an effectively +2 weapon.
+  assert.strictEqual(sigs.effectiveBonus(W.fauchard), 1, 'no riders → the bare +1 every signature carries');
+  assert.strictEqual(sigs.effectiveBonus(W.lammas), 2, '+1 base, keen on top');
+  assert.strictEqual(sigs.effectiveBonus(W.redeemer), 5, '+1 base, flaming burst (+2), holy (+2)');
+  assert.strictEqual(sigs.effectiveBonus(W.rovadra), 4, 'holy: 1 is a NUMBER of d6 — worth +1, not +2');
+
+  assert.strictEqual(P('sig_redeemer'), raw('redeemer', 5));
+  assert.strictEqual(P('sig_voidshard'), raw('voidshard', 3), 'frostBurst is +2 — never charged as frost AND burst');
 
   // THE REGRESSION THIS EXISTS FOR: the Longue Carabine is a 2d10 ×4 rifle with NO
-  // magic on it. On the magic curve alone it priced at 315g — the best buy in the
-  // shop, and cheaper than a plain +1 longsword. Raw lethality has to cost.
-  assert.ok(P('sig_lapua') > 10000, 'a 2d10 ×4 sniper rifle is not a 315g impulse buy');
-  const cheapestSig = Math.min(...items.SIGNATURE_GEAR.map(g => g.value));
-  assert.ok(cheapestSig > items.ITEM_BY_KEY['g_longsword_p1'].value,
-    'even the humblest named weapon outprices a generic +1 longsword');
+  // magic on it, so on the enchantment curve alone it priced at 315g — the cheapest
+  // AND deadliest thing in the shop. Foundry prices the base Rifle at 5,000gp; using
+  // the real base price fixes it without inventing a "lethality premium".
+  assert.strictEqual(sigs.BASE_PRICE.lapua, 5000, 'the Foundry Rifle price');
+  assert.strictEqual(P('sig_lapua'), 5000 + 300 + 2000, 'rifle + masterwork + its bare +1');
+  const cheapest = Math.min(...items.SIGNATURE_GEAR.map(g => g.value));
+  assert.ok(cheapest >= 2000, 'even the humblest named weapon is at least a +1 weapon');
+
+  // And the curve lands where PF1 says it should: a +2-equivalent named weapon costs
+  // about what a generic +2 longsword does (8,315g), give or take its base.
+  assert.ok(Math.abs(P('sig_lammas') - items.ITEM_BY_KEY['g_longsword_p2'].value) < 100,
+    'a keen signature ≈ a +2 longsword');
 });
 
 // ---------- the merchant ----------

@@ -7,6 +7,23 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.2.1  2026-07-14 SIGNATURE PRICES NOW COME FROM THE FOUNDRY DB, not from me (Tobias: "pull them
+//                    from the original items that inspired these versions, the foundryvtt db has their
+//                    original prices"). v1.2.0 priced them on the PF1 enchantment curve plus a
+//                    "craft premium for raw lethality" that I invented to stop a 2d10 ×4 rifle costing
+//                    315gp. That premium is gone. New formula, all real data:
+//                        Foundry base item price  +  masterwork (300)  +  effective bonus² × 2000
+//                    Base prices come from the PF1 system packs in pf1-v14-fork (weapons-and-ammo,
+//                    technology) — and they solve the gun problem on their own, because Foundry already
+//                    knows a Rifle is 5,000gp and a Scimitar is 15gp. No hand-tuning needed.
+//                    ALSO FIXED A RAW ERROR the real curve exposed: a weapon must carry a +1 enhancement
+//                    BEFORE it can hold any special ability, and abilities stack ON TOP. v1.2.0 floored
+//                    the effective bonus at 1, which made keen/holy/flaming cost NOTHING on a rider-only
+//                    weapon (a keen blade priced the same as a plain one). Now +1 base, riders above it —
+//                    so keen = +2, Redeemer (flaming burst + holy) = +5. holy/unholy given as a NUMBER of
+//                    d6 count as that number (Rovadra's holy: 1 = +1, not +2).
+//                    Net: +1-equivalents ≈2,300 (a +1 longsword is 2,315), +2 ≈8,300, Ton Bokiri 32,314,
+//                    Redeemer 50,350. The rifles carry their 5,000gp Foundry base on top (7,300).
 //  1.2.0  2026-07-14 THE MERCHANT + SIGNATURE WEAPONS. Poker's 28 named weapons (pf1data/staples.js
 //                    CUSTOM_WEAPONS) come across as pf1core/pf1data/signatures.js and become LOOT —
 //                    poker binds each to a character and a human can never pick one; here they drop in
@@ -104,6 +121,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.2.0';
-const HEADLINE = 'The merchant now lays out THREE rare pieces on the good cloth — named weapons like Redeemer and Ton Bokiri — and they change every ten minutes. Buy them if the purse can stand it, or find them yourself in the deep dark. And while you shop, you can hear the fight going on without you.';
+const VERSION = '1.2.1';
+const HEADLINE = 'The named weapons are priced properly now — straight from the Pathfinder books, using the real cost of the weapon each one is built from. A keen blade costs what a keen blade costs; the rifles cost what rifles cost; and Redeemer is the 50,000gp prize it always should have been.';
 module.exports = { VERSION, HEADLINE };

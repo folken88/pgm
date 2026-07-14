@@ -23,58 +23,113 @@
  * Shield) — PGM's engine has NO shieldAC consumer, so it would be dead data;
  * J'Mal's sabers ship as the plain dual-wield `sawtoothsabers` instead.
  *
- * PRICE — poker never prices a weapon (it gives the riders away free and sells
- * only the +N tier). PGM has to put them in a shop, so we price them by PF1 RAW:
- * masterwork base 315gp + (effective bonus)² × 2000, where the riders count as
- * their standard PF1 effective-bonus adders (see EFF_BONUS below). That puts
- * Redeemer (flamingBurst + holy = +4) at 32,315gp — a genuine end-of-campaign
- * prize, not an impulse buy.
+ * PRICE — poker never prices a weapon (it gives the riders away free and sells only
+ * the +N tier). PGM has to put them in a shop, so they are priced from REAL DATA:
+ * the FoundryVTT PF1 packs' price for the base weapon each one is built on, plus
+ * PF1 RAW masterwork + enchantment. See BASE_PRICE and priceOf below.
  */
 
-// PF1 effective-bonus adders — what each rider is "worth" on the pricing curve.
+// PF1 RAW effective-bonus adders — what each rider is "worth" on the enchantment
+// curve (the Ultimate Equipment melee-weapon special-abilities table). holy/unholy
+// may be a NUMBER of d6 rather than `true` (Rovadra is only "a little bit holy",
+// holy: 1) — in that case the number IS the adder.
 const EFF_BONUS = {
   keen: 1, flaming: 1, frost: 1, shock: 1,
   flamingBurst: 2, frostBurst: 2, holy: 2, unholy: 2,
 };
-const MASTERWORK_BASE = 315;
+const MASTERWORK = 300;   // PF1 RAW: masterwork weapon, +300gp over the base
 
 /**
- * What a named weapon costs.
+ * BASE PRICE — the real gp cost of the mundane weapon each signature is built on,
+ * taken from the FoundryVTT PF1 system packs (`weapons-and-ammo`, `technology`),
+ * NOT invented (Tobias 2026-07-14: "pull them from the original items that inspired
+ * these versions, the foundryvtt db has their original prices").
  *
- * PF1 prices only the MAGIC — masterwork + (effective bonus)² × 2000 — because in
- * RAW every base weapon is a mundane 15gp thing and the dice are all in the same
- * narrow band. That breaks down here: these are exotic, anachronistic pieces whose
- * RAW DICE are the point. Charging magic alone put the Longue Carabine — a 2d10 ×4
- * sniper rifle with no enchantment — at 315gp, i.e. the best buy in the shop by a
- * mile and cheaper than a plain +1 longsword. Poker never hits this because it hands
- * signatures to bound characters for free; a shop has to price the WEAPON.
+ * This is what makes the guns price themselves honestly. PF1's enchantment curve
+ * alone is blind to raw lethality — a 2d10 ×4 rifle and a 1d6 scimitar both cost
+ * "masterwork + magic" — which is why the Longue Carabine first came out at 315gp,
+ * cheaper than a +1 longsword. Foundry already knows a Rifle is a 5,000gp item and
+ * a Scimitar is 15gp. Use its numbers and the problem disappears on its own.
  *
- * So: magic on the PF1 curve, PLUS a craft premium for raw lethality (average damage
- * × a crit factor). A big-dice, high-multiplier gun is expensive even with no magic
- * on it, which is what a player would expect when they pick it up.
+ * A few signatures are exotic pieces with no Foundry entry (three-section staff,
+ * sawtooth sabre) — those fall back to the closest real base, noted inline.
  */
-function damagePremium(w) {
-  const avg = (w.dmgCount || 1) * ((w.dmgDie || 4) + 1) / 2;
-  const threatRange = 21 - (w.crit || 20);                 // 20 → 1, 18 → 3
-  const critFactor = (w.mult || 2) + (threatRange - 1) * 0.25;
-  let prem = avg * critFactor * 400;
-  if (w.dual) prem *= 1.6;                                  // two swings a turn
-  if (w.naturalAttacks) prem *= 1 + 0.3 * w.naturalAttacks;
-  return Math.round(prem / 5) * 5;
-}
+const BASE_PRICE = {
+  // polearms & reach
+  bastardsblade: 13,        // Bardiche
+  fauchard: 14,             // Fauchard
+  tonbokiri: 14,            // Fauchard (Ton Bokiri IS a fauchard)
+  forcepike: 5,             // Longspear
+  angelbonescythe: 18,      // Scythe
+  // great blades
+  redeemer: 50,             // Greatsword
+  chainsaw: 2700,           // Chainsaw (technology pack — a real 2,700gp machine)
+  elvencurve: 80,           // Elven Curve Blade
+  estoc: 50,                // Estoc
+  kagerosansetsukon: 15,    // three-section staff has no Foundry entry → quarterstaff-class exotic
+  // one-handed blades
+  raisondacier: 20,         // Rapier
+  curator: 35,              // Bastard Sword
+  lammas: 15,               // Scimitar
+  balrogblade: 15,          // Longsword
+  voidshard: 10,            // Battle Axe
+  mithralscimitar: 515,     // Scimitar 15 + mithral (PF1: +500 for a light/1h mithral weapon)
+  darksilverscimitar: 15,   // Scimitar
+  ghosttouch: 12,           // Warhammer
+  radiance: 15,             // Scimitar
+  // dual-wield (a matched PAIR — you buy both)
+  sawtoothsabers: 30,       // no Foundry sawtooth sabre → 2 × longsword-class exotic
+  twoaxes: 20,              // 2 × Battle Axe
+  gnomehammer: 20,          // Gnome Hooked Hammer
+  // guns & bows
+  rovadra: 5000,            // Rifle
+  stormcaller: 100,         // Composite Longbow
+  repeatingcrossbow: 250,   // Repeating Light Crossbow
+  longbow: 130,             // Orc Hornbow
+  lapua: 5000,              // Rifle
+  dvl: 5000,                // Rifle
+};
 
-/** Masterwork + (enh + rider adders)² × 2000  +  the craft premium for raw lethality. */
-function priceOf(w, enh = 0) {
+/**
+ * The weapon's total effective enchantment bonus: the +N tier, plus its intrinsic
+ * riders, on the PF1 pricing curve.
+ *
+ * RAW: a weapon must carry at least a **+1 enhancement bonus** before it can hold
+ * any special ability, and the abilities then stack ON TOP of it. So a keen blade
+ * is effectively +2 (a +1 weapon that is also keen), never +1. `custom: true` gives
+ * every signature that baseline +1 for free — but the riders still have to be paid
+ * for above it, or keen/holy/flaming would come out costing nothing at all.
+ */
+function effectiveBonus(w, enh = 0) {
   const sp = w.special || {};
-  let eff = enh;
+  let riders = 0;
   for (const k of Object.keys(sp)) {
-    if (!sp[k]) continue;
+    const v = sp[k];
+    if (!v) continue;
     // flamingBurst/frostBurst SUBSUME their base rider — don't charge for both.
     if (k === 'flaming' && sp.flamingBurst) continue;
     if (k === 'frost' && sp.frostBurst) continue;
-    eff += EFF_BONUS[k] || 0;
+    // holy/unholy can be a NUMBER of d6 instead of `true` — then the number is the
+    // adder (Rovadra's holy: 1 is "a little bit holy", not the full 2d6).
+    riders += typeof v === 'number' ? v : (EFF_BONUS[k] || 0);
   }
-  return MASTERWORK_BASE + eff * eff * 2000 + damagePremium(w);
+  return Math.max(1, enh) + riders;   // the mandatory +1 base, then the abilities on top
+}
+
+/**
+ * What a named weapon costs — straight PF1 RAW, on real numbers:
+ *
+ *     Foundry base item price  +  masterwork (300)  +  effective bonus² × 2000
+ *
+ * No invented curve. The base price comes from the FoundryVTT PF1 packs (see
+ * BASE_PRICE), which is what keeps the guns honest: Foundry already prices a Rifle
+ * at 5,000gp and a Scimitar at 15gp, so the Longue Carabine stops being a 315gp
+ * impulse buy without anyone having to hand-tune a "lethality premium".
+ */
+function priceOf(w, enh = 0) {
+  const eff = effectiveBonus(w, enh);
+  const base = BASE_PRICE[w.key] != null ? BASE_PRICE[w.key] : 15;
+  return base + MASTERWORK + eff * eff * 2000;
 }
 
 const CUSTOM_WEAPONS = {
@@ -148,4 +203,4 @@ const CUSTOM_WEAPONS = {
 const SIGNATURE_KEYS = Object.keys(CUSTOM_WEAPONS);
 const IS_SIGNATURE = k => Object.prototype.hasOwnProperty.call(CUSTOM_WEAPONS, k);
 
-module.exports = { CUSTOM_WEAPONS, SIGNATURE_KEYS, IS_SIGNATURE, priceOf, damagePremium, EFF_BONUS, MASTERWORK_BASE };
+module.exports = { CUSTOM_WEAPONS, SIGNATURE_KEYS, IS_SIGNATURE, priceOf, effectiveBonus, BASE_PRICE, EFF_BONUS, MASTERWORK };

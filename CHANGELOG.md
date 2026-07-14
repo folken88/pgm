@@ -15,6 +15,38 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.2.1 — 2026-07-14
+
+**The named weapons are priced from the books now, not from my guesswork.**
+
+Yesterday's prices were partly invented — I'd bolted a "lethality premium" onto the Pathfinder
+enchantment curve to stop a sniper rifle costing less than a dagger. That's gone. Every named
+weapon is now priced the way Pathfinder actually prices weapons:
+
+> the real cost of the weapon it's built from, plus masterwork, plus its enchantment
+
+The base costs come straight from the Pathfinder rulebook data (the same tables Foundry uses).
+That fixes the guns by itself, without any fudging: a rifle costs 5,000gp in the rules and a
+scimitar costs 15gp, so the Longue Carabine was never going to be a bargain once the real numbers
+were in.
+
+It also caught a rules mistake I'd made. In Pathfinder a weapon has to be **+1 before it can hold
+any special ability at all**, and the abilities stack on top of that. I'd been flooring it, which
+meant **keen, holy and flaming were effectively costing nothing** — a keen blade priced the same
+as a plain one. Fixed.
+
+What that means at the stall:
+
+- A plain named weapon (Fauchard, Force Pike, Kagero Sansetsukon) — about **2,300g**, the same as
+  a generic +1 longsword.
+- A keen or elemental one (Lammas Aeternum, Raison d'Acier, Stormcaller) — about **8,300g**.
+- The guns carry their real price: **Longue Carabine and the DVL-10 at 7,300g**, the Chainsaw at
+  11,000g.
+- The monsters: **Ton Bokiri 32,314g**, **Rovadra 37,300g**, and **Redeemer at 50,350g** — the
+  end-of-campaign prize it always should have been.
+
+---
+
 ## v1.2.0 — 2026-07-14
 
 **The merchant got interesting, and there are named weapons in the world now.**
