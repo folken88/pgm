@@ -177,8 +177,28 @@
           <span id="shop-gold" class="shop-gold" aria-live="polite">Party gold: 0</span>
           <button id="shop-close" type="button">✓ Done shopping</button>
         </div>
-        <p class="shop-note">Your turns pass while you shop — the dungeon does not wait.</p>
-        <div id="shop-list" class="shop-list" role="list" aria-label="Wares for sale"></div>
+        <p class="shop-note">Your turns pass while you shop — the dungeon does not wait. You can hear it through the wall.</p>
+
+        <!-- RARE STOCK: three pieces, changing every 10 minutes -->
+        <section class="shop-featured" aria-labelledby="shop-feat-h">
+          <div class="shop-feat-head">
+            <h4 id="shop-feat-h">✨ Laid out on the good cloth</h4>
+            <span id="shop-rotate" class="shop-rotate" aria-live="off">changes in —</span>
+          </div>
+          <div id="shop-featured-list" class="shop-feat-list" role="list" aria-label="Rare stock, changes every ten minutes"></div>
+        </section>
+
+        <!-- STAPLES: always here -->
+        <section class="shop-staples" aria-labelledby="shop-stap-h">
+          <h4 id="shop-stap-h">The usual stock</h4>
+          <div class="shop-tools">
+            <label class="shop-search-l" for="shop-search">Search</label>
+            <input id="shop-search" type="search" placeholder="Search the stock…" autocomplete="off">
+            <div id="shop-cats" class="shop-cats" role="group" aria-label="Filter by kind"></div>
+          </div>
+          <div id="shop-list" class="shop-list" role="list" aria-label="Wares for sale"></div>
+          <p id="shop-empty" class="shop-empty" hidden>Nothing here matches that.</p>
+        </section>
       </div>
 
       <!-- Urgent announcements (victory/defeat) get an assertive region -->

@@ -1,10 +1,12 @@
 /**
  * Poker game/combat.js COMPAT — the exact API the transplanted dungeon mixins
  * import (weaponOf, SND, dRoll, dRollN, pick), assembled from pf1core weapon
- * data + PGM's transplanted sound pools. Signature/custom weapons are poker-
- * only (locked rule): weaponOf resolves standard PF1 weapons.
+ * data + PGM's transplanted sound pools. weaponOf resolves standard PF1 weapons
+ * AND the named SIGNATURE weapons (2026-07-14: poker binds those to a character
+ * and a human can never pick one; in PGM they are LOOT — see pf1data/signatures).
  */
 const { WEAPON_BY_NAME } = require('../../pf1core/pf1data/weapons');
+const { CUSTOM_WEAPONS: SIGNATURES } = require('../../pf1core/pf1data/signatures');
 const { SND, pick: sfxPick } = require('../../sounds');
 
 function dRoll(sides) { return 1 + Math.floor(Math.random() * sides); }
@@ -25,6 +27,26 @@ const UNARMED = { name: 'Unarmed Strike', cat: 'light', ranged: false, dmgCount:
 /** Poker-shape weaponOf(gear, weaponKey): stat object with tier-enhancement. */
 function weaponOf(gear, weaponKey) {
   const tier = (gear && Number(gear.weapon)) || 0;
+  // SIGNATURE WEAPONS (poker's CUSTOM_WEAPONS) are standalone stat blocks, not
+  // Foundry base weapons — they carry their own dice AND their intrinsic magic
+  // (`special`), which is always on regardless of the +N tier. Check them first;
+  // a signature key would otherwise fall through to the dagger default.
+  const sig = SIGNATURES[weaponKey];
+  if (sig) {
+    const enhanced = tier >= 1;
+    return {
+      ...sig,
+      name: `${enhanced ? `+${tier} ` : ''}${sig.name}`,   // a signature is never "Masterwork X" — it has a NAME
+      isDagger: false,
+      toHit: tier + (enhanced ? 0 : 1), dmgBonus: tier,
+      critRange: sig.crit || 20, critMult: sig.mult || 2,
+      dtype: sig.type,
+      dual: !!sig.dual, noShield: !!sig.noShield || !!sig.ranged,
+      naturalAttacks: sig.naturalAttacks || 0, reachFly: !!sig.reachFly,
+      impCritAt: sig.impCritAt || 0, grapple: !!sig.grapple,
+      atkSound: sig.atkSound || null, special: sig.special || {},
+    };
+  }
   const name = KEY_TO_NAME[weaponKey] !== undefined ? KEY_TO_NAME[weaponKey] : weaponKey;
   const base = (weaponKey === 'unarmed' ? UNARMED : WEAPON_BY_NAME[name] || WEAPON_BY_NAME[String(weaponKey || '').toLowerCase()]) || WEAPON_BY_NAME['dagger'];
   const enhanced = tier >= 1;

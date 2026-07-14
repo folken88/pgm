@@ -46,6 +46,48 @@
     if (changed) setTimeout(function () { blindGuide(); }, 120);
   }
 
+  // ── "Through the floor" audio (poker parity, client.js playUrl) ───────────
+  // While you're in the SHOP you've only stepped aside — the fight is still
+  // happening a few yards away, and you can hear it. A LOW-PASS biquad passes
+  // the bass and cuts the highs, so combat sounds DISTANT rather than merely
+  // quiet (poker uses the same filter both directions: the table hearing the
+  // dungeon below, and the dungeon hearing the table above). Falls back to a
+  // plain <audio> if Web Audio is unavailable.
+  var _ac = null;
+  function audioCtx() {
+    if (_ac === null) { try { _ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { _ac = false; } }
+    if (_ac && _ac.state === 'suspended') { try { _ac.resume(); } catch (e) {} }
+    return _ac || null;
+  }
+  function playSfx(url, volume, muffle, cutoff) {
+    if (!url || BM.isMuted()) return;
+    volume = Math.max(0, Math.min(1, volume));
+    if (volume <= 0) return;
+    if (muffle) {
+      var ctx = audioCtx();
+      if (ctx) {
+        try {
+          var a = new Audio(url);
+          var src = ctx.createMediaElementSource(a);
+          var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoff || 378; lp.Q.value = 0.7;
+          var g = ctx.createGain(); g.gain.value = volume;
+          src.connect(lp); lp.connect(g); g.connect(ctx.destination);
+          a.addEventListener('ended', function () { try { src.disconnect(); lp.disconnect(); g.disconnect(); } catch (e) {} });
+          a.play().catch(function () {});
+          return;
+        } catch (e) { /* fall through to plain playback */ }
+      }
+    }
+    try { var p = new Audio(url); p.volume = volume; p.play().catch(function () {}); } catch (e) {}
+  }
+  /** True while THIS player is browsing the shop — their combat SFX get muffled. */
+  function amShopping() {
+    var you = state.you;
+    if (!you || !Array.isArray(you.members)) return !!state.shopOpen;
+    var me = you.members.find(function (m) { return m.clientId === state.clientId; });
+    return !!(me && me.shopping) || !!state.shopOpen;
+  }
+
   // The running build, shown in the topbar. It goes in the subject line of every
   // patch-note email, so a tester can always read back which version they played.
   function showVersion(v) {
@@ -104,6 +146,19 @@
     });
     el('shop-btn').addEventListener('click', openShop);
     el('shop-close').addEventListener('click', closeShop);
+    var ssearch = el('shop-search');
+    if (ssearch) {
+      ssearch.addEventListener('input', function () { state.shopQuery = this.value; renderShop(); });
+      // Enter FILTERS — it must never submit anything or jump the player elsewhere
+      // (the same trap Josh hit in the avatar search).
+      ssearch.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        state.shopQuery = this.value; renderShop();
+        var n = shopFiltered().length;
+        BM.speak(n + ' ware' + (n === 1 ? '' : 's') + ' match. Press Escape for the shop menu to hear them.', 'urgent');
+      });
+    }
     // Chat prompt: play via typed commands (same grammar as voice); questions
     // route to the LLM GM when that layer lands.
     function sendChat() {
@@ -660,7 +715,7 @@
   // SFX — e.g. the Breath of Life clip when a dead adventurer is raised.
   function pubBuyService(service, target) {
     api('/api/pub/buy', { clientId: state.clientId, service: service, target: target || undefined }).then(function (r) {
-      if (r.ok && r.sound && !BM.isMuted()) { try { var a = new Audio(r.sound); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {} }
+      if (r.ok && r.sound) playSfx(r.sound, 0.7, false);
       BM.speak(r.ok ? (r.text || 'Done.') : (r.error || 'The barkeep shrugs.'), 'urgent');
       if (r.ok && r.snapshot) { state.you = r.snapshot; renderLobby(r.snapshot); renderPub(r.snapshot); }
     });
@@ -724,8 +779,11 @@
         if (/^You enter /.test(e.text) && e.seq > state.speakFloor) BM.flushSpeech();
         if (e.sound === 'earcon:dice' && e.seq > state.speakFloor) diceEarcon();
         if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak/play
-        if (e.sound && e.sound.indexOf('earcon:') !== 0 && !BM.isMuted()) {   // combat/spell SFX (poker's SND pools)
-          try { var sfx = new Audio(e.sound); sfx.volume = 0.55; sfx.play().catch(function () {}); } catch (err) {}
+        if (e.sound && e.sound.indexOf('earcon:') !== 0) {   // combat/spell SFX (poker's SND pools)
+          // In the shop you've only stepped aside — the fight carries on and you
+          // HEAR it, muffled through the wall (poker's dungeon:echo treatment).
+          if (amShopping()) playSfx(e.sound, 0.55 * 0.5, true, 378);
+          else playSfx(e.sound, 0.55, false);
         }
         if (e.priority === 'banter') {                 // companion quip -> their own voice
           BM.speakAs(e.text.replace(/^[^ ]+ /, ''), e.voiceId);
@@ -872,47 +930,174 @@
   // Opening it marks you "Shopping" server-side: your turns auto-skip and the
   // dungeon keeps going. The wares are a static vetted pool; gold is the party
   // purse. Native buttons keep it screen-reader friendly (Josh).
+  // ── THE STOREFRONT ───────────────────────────────────────────────────────
+  // A shopfront, not a table of rows: a FEATURED rail of the three rare pieces
+  // that rotate every 10 minutes, then the staples with search + category
+  // filters. Every control is a native button/input, so the whole thing is
+  // keyboard- and screen-reader-navigable by construction (Josh) — and the
+  // blind path never depends on the layout: the shop registers its own Escape
+  // menu entries and speaks the stock on request.
+  var SHOP_CATS = [
+    { key: 'all', label: 'Everything', match: function () { return true; } },
+    { key: 'heal', label: 'Potions', match: function (i) { return i.type === 'consumable' && /heal/.test(i.desc); } },
+    { key: 'throw', label: 'Throwables', match: function (i) { return i.type === 'consumable' && /thrown/.test(i.desc); } },
+    { key: 'weapon', label: 'Weapons', match: function (i) { return i.gearType === 'weapon'; } },
+    { key: 'armor', label: 'Armor', match: function (i) { return i.gearType === 'armor'; } },
+    { key: 'component', label: 'Components', match: function (i) { return i.type === 'component'; } },
+  ];
+  function shopGold() {
+    var g = (myRun() || {}).gold;                          // live party purse (SSE keeps it fresh)
+    return g == null ? (state.shopGold != null ? state.shopGold : 0) : g;
+  }
+  /** The stat line, said out loud. The card shows "2d10 · crit 19-20/×2" because
+   *  that's what a sighted player wants to scan; a screen reader trips over the
+   *  glyphs, so the SPOKEN form spells them out. Same data, two audiences. */
+  function sayDesc(d) {
+    return String(d || '')
+      .replace(/·/g, ',')
+      .replace(/×/g, 'times ')
+      .replace(/(\d+)d(\d+)/g, '$1 d $2')          // 2d10 -> "2 d 10"
+      .replace(/crit (\d+)-(\d+)/g, 'crit $1 to $2')
+      .replace(/\s+/g, ' ').trim();
+  }
+  function shopFiltered() {
+    var cat = SHOP_CATS.find(function (c) { return c.key === (state.shopCat || 'all'); }) || SHOP_CATS[0];
+    var q = (state.shopQuery || '').trim().toLowerCase();
+    return (state.shopStock || []).filter(function (i) {
+      if (!cat.match(i)) return false;
+      if (!q) return true;
+      return i.name.toLowerCase().indexOf(q) >= 0 || (i.desc || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  /** One product card. `featured` cards get the lore and a rarity flag. */
+  function shopCard(it, gold, featured) {
+    var afford = gold >= it.price;
+    var card = document.createElement('div');
+    card.className = 'shop-card' + (featured ? ' is-featured' : '') + (afford ? '' : ' is-broke');
+    card.setAttribute('role', 'listitem');
+    var short = it.price - gold;
+    card.innerHTML =
+      '<span class="sc-icon" aria-hidden="true">' + (it.icon || '') + '</span>'
+      + '<div class="sc-body">'
+      +   '<div class="sc-name">' + esc(it.name) + (it.signature ? ' <span class="sc-tag">signature</span>' : '') + '</div>'
+      +   '<div class="sc-desc">' + esc(it.desc || '') + '</div>'
+      +   (featured && it.lore ? '<div class="sc-lore">' + esc(it.lore) + '</div>' : '')
+      + '</div>'
+      + '<div class="sc-buy">'
+      +   '<div class="sc-price">' + it.price.toLocaleString() + 'g</div>'
+      +   '<button class="sc-btn"' + (afford ? '' : ' disabled') + '>' + (afford ? 'Buy' : 'Short ' + short.toLocaleString() + 'g') + '</button>'
+      + '</div>';
+    // The button's accessible name carries everything a sighted player reads off
+    // the card — name, what it does, price, and whether you can afford it. The
+    // stat line is SPOKEN, not shown, so the compact glyphs get spelled out.
+    var b = card.querySelector('button');
+    b.setAttribute('aria-label', 'Buy ' + it.name + (it.desc ? ', ' + sayDesc(it.desc) : '')
+      + ', ' + it.price + ' gold' + (afford ? '' : ' — you are ' + short + ' gold short'));
+    b.addEventListener('click', function () { buyItem(it.key, it.name); });
+    return card;
+  }
   function renderShop() {
     var list = el('shop-list'); if (!list) return;
-    var gold = (myRun() || {}).gold;                       // live party purse (updates via SSE)
-    if (gold == null) gold = state.shopGold != null ? state.shopGold : 0;
-    el('shop-gold').textContent = 'Party gold: ' + gold;
-    var stock = state.shopStock || [];
+    var gold = shopGold();
+    el('shop-gold').textContent = 'Party gold: ' + gold.toLocaleString();
+
+    // Featured rail — the three that rotate.
+    var frail = el('shop-featured-list');
+    if (frail) {
+      frail.innerHTML = '';
+      (state.shopFeatured || []).forEach(function (it) { frail.appendChild(shopCard(it, gold, true)); });
+    }
+    // Category chips.
+    var cats = el('shop-cats');
+    if (cats && !cats.childElementCount) {
+      SHOP_CATS.forEach(function (c) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'shop-cat'; b.textContent = c.label;
+        b.setAttribute('aria-pressed', String((state.shopCat || 'all') === c.key));
+        b.addEventListener('click', function () {
+          state.shopCat = c.key;
+          Array.prototype.forEach.call(cats.children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          renderShop();
+          var n = shopFiltered().length;
+          BM.speak(c.label + '. ' + n + ' item' + (n === 1 ? '' : 's') + '.', 'urgent');
+        });
+        cats.appendChild(b);
+      });
+    }
+    // Staples.
+    var rows = shopFiltered();
     list.innerHTML = '';
-    if (!stock.length) { list.innerHTML = '<p class="delve-empty">The merchant has nothing today.</p>'; return; }
-    stock.forEach(function (it) {
-      var row = document.createElement('div'); row.className = 'shop-item'; row.setAttribute('role', 'listitem');
-      var afford = gold >= it.price;
-      row.innerHTML = '<span class="si-icon">' + (it.icon || '') + '</span>'
-        + '<span class="si-name">' + esc(it.name) + '</span>'
-        + '<button class="si-buy"' + (afford ? '' : ' disabled') + ' aria-label="Buy ' + esc(it.name) + ' for ' + it.price + ' gold">Buy ' + it.price + 'g</button>';
-      var b = row.querySelector('button');
-      b.addEventListener('click', function () { buyItem(it.key, it.name); });
-      list.appendChild(row);
+    rows.forEach(function (it) { list.appendChild(shopCard(it, gold, false)); });
+    var empty = el('shop-empty');
+    if (empty) empty.hidden = rows.length > 0;
+    shopTick();
+  }
+  /** Countdown to the next rotation — the merchant's stock is on a clock. */
+  function shopTick() {
+    var box = el('shop-rotate');
+    if (!box || !state.shopRotatesAt) return;
+    var left = Math.max(0, state.shopRotatesAt - Date.now());
+    var m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+    box.textContent = 'new stock in ' + m + ':' + (s < 10 ? '0' : '') + s;
+    if (left <= 0 && state.shopOpen) refreshShop();   // the stall changed over while we stood here
+  }
+  function refreshShop() {
+    api('/api/session/action', { clientId: state.clientId, action: 'shop_open' }).then(function (r) {
+      if (!r.ok) return;
+      applyShopPayload(r);
+      renderShop();
+      BM.speak('The merchant swaps out his rare stock. ' + featuredNames() + '.', 'event');
     });
+  }
+  function applyShopPayload(r) {
+    state.shopStock = r.stock || [];
+    state.shopFeatured = r.featured || [];
+    state.shopRotatesAt = r.rotatesAt || 0;
+    state.shopGold = r.gold;
+  }
+  function featuredNames() {
+    return (state.shopFeatured || []).map(function (f) { return f.name + ', ' + f.price + ' gold'; }).join('; ');
+  }
+  /** Read the staples aloud, cheapest first, flagging what the purse can't reach. */
+  function speakStaples() {
+    var gold = shopGold();
+    var rows = shopFiltered();
+    if (!rows.length) { BM.speak('Nothing in the stock matches that.', 'urgent'); return; }
+    BM.speak(rows.length + ' wares, cheapest first. ' + rows.map(function (i) {
+      return i.name + ', ' + i.price + ' gold' + (gold >= i.price ? '' : ' — too dear');
+    }).join('. ') + '.', 'urgent');
   }
   function openShop() {
     if (state.role !== 'player') { BM.speak('Only a player can shop.', 'urgent'); return; }
     api('/api/session/action', { clientId: state.clientId, action: 'shop_open' }).then(function (r) {
       if (!r.ok) { BM.speak(r.error || 'Cannot shop right now.', 'urgent'); return; }
-      state.shopStock = r.stock || []; state.shopGold = r.gold;
+      applyShopPayload(r);
+      state.shopOpen = true;              // muffles the combat you can still hear next door
+      state.shopCat = 'all'; state.shopQuery = '';
+      var sb = el('shop-search'); if (sb) sb.value = '';
       el('shop-panel').hidden = false;
       renderShop();
-      BM.speak('Shopping. Your turns will pass until you finish. ' + (state.shopStock.length) + ' wares. Party gold ' + r.gold + '.', 'urgent');
-      var first = el('shop-list').querySelector('button'); if (first) first.focus();
+      if (state.shopTimer) clearInterval(state.shopTimer);
+      state.shopTimer = setInterval(shopTick, 1000);
+      BM.speak('The merchant. Party gold ' + r.gold + '. On the good cloth: ' + featuredNames()
+        + '. Plus ' + state.shopStock.length + ' usual wares. Your turns pass while you shop — you can hear the fight through the wall. '
+        + 'Press Escape for the shop menu.', 'urgent');
+      el('shop-close').focus();          // a known, stable landing spot
     });
   }
   function closeShop() {
+    state.shopOpen = false;
+    if (state.shopTimer) { clearInterval(state.shopTimer); state.shopTimer = null; }
     el('shop-panel').hidden = true;
     api('/api/session/action', { clientId: state.clientId, action: 'shop_close' }).then(function (r) {
       if (r && r.ok) BM.speak('Done shopping — back to the delve.', 'urgent');
     });
-    el('shop-btn').focus();
+    var back = el('shop-btn'); if (back) back.focus();
   }
   function buyItem(key, name) {
     api('/api/session/action', { clientId: state.clientId, action: 'shop_buy', item: key }).then(function (r) {
       if (!r.ok) { BM.speak(r.error || 'No sale.', 'urgent'); return; }
-      state.shopGold = r.gold;
+      applyShopPayload(r);
       BM.speak(r.text || ('Bought ' + name + '.'), 'urgent');
       renderShop();
     });
@@ -1224,6 +1409,27 @@
         var mode = state.mode || 'landing';
         var run = myRun();
         var you = state.you;
+        // IN THE SHOP, Escape is the shop's menu — a blind player never has to
+        // find a card on screen. Every purchase is reachable as a numbered item:
+        // the three rare pieces by name and price, then the staples.
+        if (state.shopOpen) {
+          (state.shopFeatured || []).forEach(function (it) {
+            var afford = shopGold() >= it.price;
+            items.push({
+              label: (afford ? 'Buy ' : 'Cannot afford ') + it.name + ' — ' + sayDesc(it.desc) + ' — ' + it.price + ' gold'
+                + (afford ? '' : ' (short ' + (it.price - shopGold()) + ')'),
+              run: function () { if (afford) buyItem(it.key, it.name); else BM.speak('The purse is ' + (it.price - shopGold()) + ' gold short.', 'urgent'); },
+            });
+          });
+          items.push({ label: 'Read out the usual stock', run: function () { speakStaples(); } });
+          items.push({ label: 'How long until the rare stock changes', run: function () {
+            var left = Math.max(0, (state.shopRotatesAt || 0) - Date.now());
+            BM.speak('New rare stock in ' + Math.floor(left / 60000) + ' minutes ' + Math.floor((left % 60000) / 1000) + ' seconds.', 'urgent');
+          } });
+          items.push({ label: 'Party gold', run: function () { BM.speak('The party purse holds ' + shopGold() + ' gold.', 'urgent'); } });
+          items.push({ label: 'Leave the shop and rejoin the fight', run: function () { closeShop(); } });
+          return items;
+        }
         if (mode === 'game') {
           if (run && run.phase === 'cleared') items.push({ label: 'Open the next door — descend deeper', run: function () { if (info.descend) info.descend(); } });
           items.push({ label: 'Shop — buy potions and gear', run: function () { openShop(); } });

@@ -143,6 +143,20 @@ async function runCmd(who, cmd) {
     cantrip: () => session.action(clientId, { type: 'cantrip' }),
   };
   if (ACT[verb]) { return played(ACT[verb]()); }
+  // shop | shop buy <itemKey> | shop close — the merchant, through the real path.
+  if (verb === 'shop') {
+    const sub = parts[1];
+    if (sub === 'buy') return played(session.action(clientId, { type: 'shop_buy', item: parts[2] }));
+    if (sub === 'close') return played(session.action(clientId, { type: 'shop_close' }));
+    const r = session.action(clientId, { type: 'shop_open' });
+    if (!r || !r.ok) return played(r);
+    const featured = (r.featured || []).map(f => `${f.name} — ${f.desc} — ${f.price}g [${f.key}]`);
+    return { ok: true, said: [
+      `ON THE GOOD CLOTH (changes in ${Math.round(((r.rotatesAt || 0) - Date.now()) / 1000)}s):`,
+      ...featured.map(f => '  ' + f),
+      `USUAL STOCK: ${(r.stock || []).length} wares. Party gold ${r.gold}.`,
+    ] };
+  }
   if (verb === 'attack') {
     const t = findCombatant(run, parts.slice(1).join(' '), 'enemy');
     return played(session.action(clientId, { type: 'attack', target: t && t.id }));

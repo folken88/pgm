@@ -17,6 +17,7 @@ const casting = require('./casting');
 const characters = require('./characters');
 const SFX = require('./sounds');
 const { DungeonShim } = require('./pokerdungeon/shim');
+const { weaponOf } = require('./pokerdungeon/game/combat');   // resolves signature weapons + their intrinsic magic
 const { artFor } = require('./art');
 const { generatePartyRoom, generateMonRoom, STEALTH_OVERRIDES } = require('./roomgen');
 const treasure = require('./treasure');
@@ -752,22 +753,27 @@ function applyAction(run, clientId, action, roll = Math.random) {
       logEvent(run, `🛒 ${hero.name} steps aside to browse a merchant's wares — their turns pass until they return.`, 'event');
       const cb = current(run);
       if (run.phase === 'combat' && cb && cb.id === hero.id) { nextTurn(run); runUntilHeroTurn(run, roll); }   // it was their turn — let the dungeon flow on
-      return { ok: true, stock: shopStockPayload(), gold: run.gold };
+      return Object.assign({ ok: true, gold: run.gold }, shopStockPayload());
     }
     if (type === 'shop_close') {
       hero.shopping = false;
       logEvent(run, `🛒 ${hero.name} pockets their purchases and rejoins the party.`, 'event');
       return { ok: true, gold: run.gold };
     }
-    // shop_buy
-    const entry = items.SHOP_STOCK.find(s => s.key === action.item);
-    if (!entry) return { ok: false, error: 'the merchant does not carry that' };
-    const it = items.ITEM_BY_KEY[entry.key];
-    if ((run.gold || 0) < entry.value) return { ok: false, error: `not enough gold — ${it.name} costs ${entry.value}, the purse has ${run.gold || 0}` };
-    run.gold -= entry.value;
-    giveToPack(hero, entry.key, 1);
-    logEvent(run, `🛒 ${hero.name} buys ${it.name} for ${entry.value} gold.`, 'event');
-    return { ok: true, gold: run.gold, text: `Bought ${it.name} for ${entry.value} gold.` };
+    // shop_buy — staples any time; a FEATURED piece only while it's on the board.
+    // (Re-checked here, not trusted from the client: a stale tab must not be able
+    // to buy last window's Redeemer.)
+    const price = shopPriceOf(action.item);
+    if (price == null) return { ok: false, error: 'the merchant does not carry that — the rare stock may have changed over' };
+    const it = items.ITEM_BY_KEY[action.item];
+    if ((run.gold || 0) < price) return { ok: false, error: `not enough gold — ${it.name} costs ${price}, the purse has ${run.gold || 0}` };
+    run.gold -= price;
+    giveToPack(hero, action.item, 1);
+    const line = it.signature
+      ? `⚔️ ${hero.name} buys ${it.name} for ${price} gold — the merchant looks almost sorry to see it go.`
+      : `🛒 ${hero.name} buys ${it.name} for ${price} gold.`;
+    logEvent(run, line, 'event');
+    return Object.assign({ ok: true, gold: run.gold, text: `Bought ${it.name} for ${price} gold.` }, shopStockPayload());
   }
 
   // CANTRIP CYCLE (poker's C key): a free action, not turn-gated. With no key,
@@ -936,6 +942,17 @@ function equipItem(run, hero, itemKey) {
   if (!takeUsable(run, hero, itemKey)) return { ok: false, error: 'not in your pack — ask the leader to send it, or take party property first' };
   const c = hero.character;
   if (item.gearType === 'weapon') {
+    // A SIGNATURE weapon is its OWN stat block, not a Foundry base weapon —
+    // weaponOf resolves it and brings its intrinsic magic (`special`) with it.
+    // Route through weaponOf so the riders (flaming/holy/keen/reach/dual…) land;
+    // building it here from WEAPON_BY_NAME would silently drop them.
+    if (item.sigKey) {
+      const sw = weaponOf({ weapon: item.enh || 0 }, item.sigKey);
+      c.weapon = pokerWeapon(sw);
+      hero.weapon = c.weapon; c.weaponKey = item.sigKey; c.weaponName = item.short || item.name;
+      logEvent(run, `⚔️ ${hero.name} takes up ${item.name} — and it answers.`, 'event');
+      return { ok: true };
+    }
     const w = pf1.weapons.WEAPON_BY_NAME[item.weaponName];
     if (!w) { giveToPack(hero, itemKey); return { ok: false, error: 'unknown weapon' }; }
     const enh = item.enh || 0;
@@ -1039,6 +1056,18 @@ function clearRoom(run, roll = Math.random) {
   run.gold += hoard.coins;
   hoard.drops.forEach(d => addItem(run, d.key, d.qty));
   let found = treasure.prose(hoard);
+  // A NAMED WEAPON in the hoard. Deliberately OUTSIDE the value budget: a
+  // signature is worth more than most rooms are, so a budgeted pick would never
+  // afford one and they'd never appear. Instead it's a flat depth-gated chance
+  // (nothing above depth 3, climbing to ~10% in the deep dark) — the real reward
+  // for going down rather than for clearing one more room.
+  const sigKey = items.rollSignature(run.roomsCleared + 1, roll);
+  if (sigKey) {
+    addItem(run, sigKey, 1);
+    const sig = items.ITEM_BY_KEY[sigKey];
+    logEvent(run, `⚔️ Among the bones: ${sig.name}. ${sig.lore}`, 'event');
+    found += ` And, laid apart from the rest as if it mattered: ${sig.name}.`;
+  }
   if (hoard.diverted) logEvent(run, `(vetting: ${hoard.diverted} unvetted table result${hoard.diverted === 1 ? '' : 's'} diverted to gems)`, 'ambient');
   // TREASURE XP (Tobias 2026-07-12): a modest bonus for the haul, split evenly.
   const hoardVal = hoard.coins + hoard.drops.reduce((s2, d) => { const it = items.ITEM_BY_KEY[d.key]; return s2 + (it && it.value ? it.value * (d.qty || 1) : 0); }, 0);
@@ -1082,11 +1111,63 @@ function hpWordFor(e) {
 }
 
 /** The merchant's wares (static vetted pool) with display fields + RAW price. */
-function shopStockPayload() {
-  return items.SHOP_STOCK.map(s => {
-    const it = items.ITEM_BY_KEY[s.key] || { name: s.key, icon: '?', type: 'misc' };
-    return { key: s.key, name: it.name, icon: it.icon || '', type: it.type, price: s.value };
-  });
+function shopItemView(key, price) {
+  const it = items.ITEM_BY_KEY[key] || { name: key, icon: '?', type: 'misc' };
+  return {
+    key, name: it.name, icon: it.icon || '', type: it.type,
+    price: price != null ? price : it.value,
+    gearType: it.gearType || null,
+    signature: !!it.signature,
+    lore: it.lore || '',
+    desc: shopDesc(it),
+  };
+}
+
+/** One plain sentence of what this thing DOES — the shop's "product description". */
+function shopDesc(it) {
+  if (it.signature) {
+    const w = pf1.signatures.CUSTOM_WEAPONS[it.sigKey] || {};
+    const sp = w.special || {};
+    const bits = [`${w.dmgCount}d${w.dmgDie}`, `crit ${w.crit === 20 ? '20' : w.crit + '-20'}/×${w.mult}`];
+    if (sp.keen) bits.push('keen');
+    if (sp.flamingBurst) bits.push('flaming burst'); else if (sp.flaming) bits.push('flaming');
+    if (sp.frostBurst) bits.push('freezing burst'); else if (sp.frost) bits.push('frost');
+    if (sp.shock) bits.push('shock');
+    if (sp.holy) bits.push('holy');
+    if (sp.unholy) bits.push('unholy');
+    if (w.dual) bits.push('dual-wield');
+    if (w.reachFly) bits.push('reach — strikes flyers');
+    if (w.finesse2h) bits.push('finesse');
+    return bits.join(' · ');
+  }
+  if (it.gearType === 'weapon') return `weapon${it.enh ? ` · +${it.enh} to hit and damage` : ''}`;
+  if (it.gearType === 'armor') return `armor · AC +${it.acBonus}`;
+  if (it.effect && it.effect.kind === 'heal') return `heals ${it.effect.count}d${it.effect.sides}+${it.effect.bonus}`;
+  if (it.effect && it.effect.kind === 'throw') return `thrown · ${it.effect.count}d${it.effect.sides} ${it.effect.dtype}`;
+  if (it.type === 'component') return 'spell component';
+  return it.short || '';
+}
+
+/** Everything the merchant is showing right now: the staples, plus the 3 that rotate. */
+function shopStockPayload(now = Date.now()) {
+  const featured = items.featuredKeys(now).map(k => shopItemView(k));
+  return {
+    stock: items.SHOP_STOCK.map(s => shopItemView(s.key, s.value)),
+    featured,
+    rotatesAt: items.rotatesAt(now),
+    rotateMs: items.ROTATE_MS,
+  };
+}
+
+/** Is `key` actually for sale right now? Staples always; featured only in THIS window. */
+function shopPriceOf(key, now = Date.now()) {
+  const staple = items.SHOP_STOCK.find(s => s.key === key);
+  if (staple) return staple.value;
+  if (items.featuredKeys(now).includes(key)) {
+    const it = items.ITEM_BY_KEY[key];
+    if (it) return it.value;
+  }
+  return null;   // not a staple, and not on today's board
 }
 
 /** Client-facing view. Hidden (unrevealed) enemies are omitted entirely. */

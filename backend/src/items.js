@@ -45,6 +45,29 @@ const MAGIC_GEAR = [
   { key: 'g_chainshirt_p2', name: '+2 Chain Shirt', short: '+2 chain shirt', type: 'gear', gearType: 'armor', icon: '🛡️', value: 4250, acBonus: 6, enh: 2 },
 ];
 
+// SIGNATURE WEAPONS (Tobias 2026-07-14) — the named blades/guns from the poker
+// dungeon, as LOOT. Each is a gear item that carries a `sigKey` instead of a
+// `weaponName`: equipItem builds the weapon from pf1core's signature stat block,
+// so its intrinsic magic (flaming, holy, keen, frostBurst…) comes with it and is
+// ALWAYS ON, regardless of the +N tier. Priced by PF1 RAW (masterwork + eff²×2000
+// with the riders as effective-bonus adders) — these are prizes, not impulse buys.
+// `weight: 0` keeps them OUT of the ordinary weighted treasure roll; they surface
+// only through the deep-hoard roll and the merchant's rotating stock.
+const { CUSTOM_WEAPONS, priceOf } = require('./pf1core/pf1data/signatures');
+const SIGNATURE_GEAR = Object.values(CUSTOM_WEAPONS).map(w => ({
+  key: 'sig_' + w.key,
+  name: w.name,
+  short: w.name,
+  type: 'gear',
+  gearType: 'weapon',
+  signature: true,
+  icon: w.ranged ? '🏹' : (w.dual ? '⚔️' : '🗡️'),
+  value: priceOf(w),
+  weight: 0,
+  sigKey: w.key,
+  lore: w.lore || '',
+}));
+
 const GEAR = [
   { key: 'g_longsword', name: 'Longsword', short: 'longsword', type: 'gear', gearType: 'weapon', icon: '🗡️', value: 15, weight: 3, weaponName: 'longsword' },
   { key: 'g_battleaxe', name: 'Battle Axe', short: 'battle axe', type: 'gear', gearType: 'weapon', icon: '🪓', value: 10, weight: 3, weaponName: 'battle axe' },
@@ -74,16 +97,61 @@ const PRICED_MAGIC = CONSUMABLES.filter(c => c.key.startsWith('potion')).map(c =
 // value (full price to buy; sell is 50%, see loot_sell). Vetted pool only:
 // consumables (potions/throwables), spell components, and +N magic gear —
 // cheapest first so the list reads sensibly.
+// ── ITEMS OF THE DAY (Tobias 2026-07-14) ─────────────────────────────────────
+// The merchant always has the boring staples below. On TOP of that he lays out
+// exactly THREE rare pieces — the signature weapons and the priciest magic gear
+// — and they change every 10 minutes.
+//
+// The rotation is DERIVED, not stored: the window index (epoch / 10 min) seeds a
+// tiny deterministic PRNG, so every client, every delve and every server restart
+// inside the same 10-minute window sees the SAME three items, with no shared
+// state to keep in sync. Come back in 10 minutes and the stall has changed.
+const ROTATE_MS = 10 * 60 * 1000;
+const FEATURED_COUNT = 3;
+
+/** Deterministic PRNG (mulberry32) — same seed, same picks, anywhere. */
+function seeded(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The pool the rotating slots draw from: every signature weapon + the top magic gear. */
+const FEATURED_POOL = SIGNATURE_GEAR.map(g => g.key)
+  .concat(MAGIC_GEAR.filter(g => g.value >= 4000).map(g => g.key));
+
+/** The 3 items on offer in the 10-minute window containing `now`. */
+function featuredKeys(now = Date.now()) {
+  const window = Math.floor(now / ROTATE_MS);
+  const rnd = seeded(window);
+  const pool = FEATURED_POOL.slice();
+  const out = [];
+  for (let i = 0; i < FEATURED_COUNT && pool.length; i++) {
+    out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);   // draw without replacement — never 3 of the same
+  }
+  return out;
+}
+
+/** When the current window flips (ms epoch) — the client counts down to it. */
+function rotatesAt(now = Date.now()) { return (Math.floor(now / ROTATE_MS) + 1) * ROTATE_MS; }
+
 const SHOP_STOCK = CONSUMABLES.map(c => ({ key: c.key, value: c.value }))
   // Restoration reagent (diamond_dust) is a live need; the Raise Dead diamond is
   // NOT sold here (Tobias 2026-07-13: raise dead only surfaces when someone's
   // actually dead, at the pub) — it's a rare treasure find.
   .concat(COMPONENTS.filter(c => c.component !== 'raisedead').map(c => ({ key: c.key, value: c.value })))
-  .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))
+  .concat(GEAR.map(g => ({ key: g.key, value: g.value })))          // plain/masterwork steel — the boring, always-there stuff
+  .concat(MAGIC_GEAR.map(g => ({ key: g.key, value: g.value })))    // +1/+2 weapons & armor
   .filter(x => x.value > 0)
   .sort((a, b) => a.value - b.value);
+// Signature weapons are NOT staples — they only ever appear in the 3 rotating
+// slots, so walking past the stall is never the same twice.
 
-const ALL = CONSUMABLES.concat(GEAR).concat(MAGIC_GEAR).concat(COMPONENTS).concat(VALUABLES);
+const ALL = CONSUMABLES.concat(GEAR).concat(MAGIC_GEAR).concat(SIGNATURE_GEAR).concat(COMPONENTS).concat(VALUABLES);
 const ITEM_BY_KEY = Object.fromEntries(ALL.map(i => [i.key, i]));
 const TOTAL_WEIGHT = ALL.reduce((s, i) => s + i.weight, 0);
 
@@ -94,6 +162,20 @@ function rollTreasureItem(roll = Math.random) {
   return ALL[0].key;
 }
 
+/**
+ * A named weapon in the hoard. These are the best things in the game, so they are
+ * RARE and they get rarer the shallower you are: no chance at all above depth 3,
+ * then ~2% a room, creeping to a ceiling of ~10% in the deep dark. Returns an item
+ * key or null. (They carry weight:0, so they can never fall out of the ordinary
+ * weighted item roll — this is their ONLY way into a hoard.)
+ */
+function rollSignature(depth = 1, roll = Math.random) {
+  if (depth < 3) return null;
+  const chance = Math.min(0.10, 0.02 + (depth - 3) * 0.01);
+  if (roll() >= chance) return null;
+  return SIGNATURE_GEAR[Math.floor(roll() * SIGNATURE_GEAR.length)].key;
+}
+
 /** Roll a consumable's numeric effect amount (heal or damage). */
 function rollAmount(item, roll = Math.random) {
   const e = item.effect;
@@ -101,4 +183,5 @@ function rollAmount(item, roll = Math.random) {
 }
 
 module.exports = {
-  COMPONENTS, MAGIC_GEAR, VALUABLES, PRICED_MAGIC, SHOP_STOCK, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount };
+  COMPONENTS, MAGIC_GEAR, VALUABLES, PRICED_MAGIC, SHOP_STOCK, CONSUMABLES, GEAR, ITEMS: ALL, ITEM_BY_KEY, rollTreasureItem, rollAmount,
+  SIGNATURE_GEAR, FEATURED_POOL, featuredKeys, rotatesAt, ROTATE_MS, FEATURED_COUNT, rollSignature };

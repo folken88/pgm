@@ -7,6 +7,34 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.2.0  2026-07-14 THE MERCHANT + SIGNATURE WEAPONS. Poker's 28 named weapons (pf1data/staples.js
+//                    CUSTOM_WEAPONS) come across as pf1core/pf1data/signatures.js and become LOOT —
+//                    poker binds each to a character and a human can never pick one; here they drop in
+//                    deep hoards (depth 3+, ~2%→10%) and rotate through the shop. weaponOf resolves a
+//                    signature key FIRST, so its intrinsic `special` (flaming/holy/keen/frostBurst…)
+//                    reaches swing.js and is ALWAYS ON regardless of the +N tier; equipItem routes
+//                    through weaponOf instead of rebuilding from WEAPON_BY_NAME, which would have
+//                    silently dropped every rider (the See-Invisibility failure mode).
+//                    SHOP: staples always (potions, throwables, components, plain/masterwork steel,
+//                    +1/+2 gear) PLUS exactly 3 "items of the day" that rotate every 10 min. The
+//                    rotation is DERIVED (mulberry32 seeded on floor(epoch/10min)) — no stored state,
+//                    so every client/delve/restart inside a window sees the same three; shop_buy
+//                    re-checks the window server-side so a stale tab can't buy last window's Redeemer.
+//                    PRICING — poker never prices a weapon (riders are free, only the +N tier sells).
+//                    That put the Longue Carabine, a 2d10 ×4 rifle with NO magic, at 315g: the best buy
+//                    in the shop and cheaper than a +1 longsword. So price = PF1 magic curve
+//                    (masterwork + eff²×2000, riders as effective-bonus adders) PLUS a craft premium
+//                    for raw lethality (avg damage × crit factor). Cheapest named weapon now 3,815g;
+//                    Redeemer 38,615g; Rovadra 42,715g.
+//                    UI: a real storefront — featured rail, search, category chips, live countdown to
+//                    the next rotation, affordability on every card. Blind-first as always: emoji are
+//                    aria-hidden, buy buttons carry the whole card in their accessible name, the stat
+//                    line is SPOKEN in words ("2 d 10, crit 20, times 4") while the card shows the
+//                    compact glyphs, and Escape is the shop's own action hub (buy each rare piece by
+//                    number, read the stock, hear the countdown, leave) so nobody has to Tab the DOM.
+//                    AUDIO: while you shop you HEAR the fight through the wall — poker's through-the-
+//                    floor treatment (Web Audio lowpass ~378Hz, half volume), the same filter the poker
+//                    table uses to hear the dungeon below.
 //  1.1.1  2026-07-14 TESTS + a latent room-state leak, on top of 1.1.0. The seeing/invisibility work
 //                    shipped UNTESTED, so it gets a suite now (7 cases, written independently against
 //                    poker's spec and passing against 1.1.0's implementation — a real cross-check):
@@ -76,6 +104,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.1.1';
-const HEADLINE = 'Black Tentacles no longer follows you downstairs — the field now dies with the room you cast it in, like every other room effect. The new seeing/invisibility spells also get a proper test suite behind them.';
+const VERSION = '1.2.0';
+const HEADLINE = 'The merchant now lays out THREE rare pieces on the good cloth — named weapons like Redeemer and Ton Bokiri — and they change every ten minutes. Buy them if the purse can stand it, or find them yourself in the deep dark. And while you shop, you can hear the fight going on without you.';
 module.exports = { VERSION, HEADLINE };

@@ -277,13 +277,47 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .shop-gold { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; }
 .shop-head button { background: var(--ok); color: #0c1a0c; border: 0; border-radius: 8px; padding: .35rem .7rem; cursor: pointer; font-weight: 700; }
 .shop-note { color: var(--muted); font-size: .82rem; margin: .35rem 0 .6rem; }
-.shop-list { display: flex; flex-direction: column; gap: .3rem; }
-.shop-item { display: flex; align-items: center; gap: .6rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.15); }
-.shop-item .si-icon { font-size: 1.1rem; }
-.shop-item .si-name { flex: 1 1 auto; }
-.shop-item .si-buy { background: var(--panel); border: 1px solid var(--accent); color: var(--ink); border-radius: 6px; padding: .25rem .6rem; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.shop-item .si-buy:disabled { opacity: .4; cursor: not-allowed; border-color: var(--line); }
-.shop-item .si-buy:not(:disabled):hover { background: var(--accent); color: #1a1206; }
+/* ── THE STOREFRONT ───────────────────────────────────────────────────────
+   A shopfront, not a price list: a featured rail for the three rotating rare
+   pieces, then searchable/filterable staples. Storefront affordances (product
+   cards, category chips, a countdown) on darkwood-and-brass, not chrome. */
+.shop-featured { margin: .5rem 0 .9rem; padding: .6rem .65rem .7rem;
+  border: 1px solid var(--accent); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(179,154,114,.10), rgba(0,0,0,.18)); }
+.shop-feat-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.shop-feat-head h4 { margin: 0 0 .4rem; flex: 1 1 auto; font-size: .95rem; }
+.shop-rotate { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shop-feat-list, .shop-list { display: flex; flex-direction: column; gap: .35rem; }
+.shop-staples h4 { margin: 0 0 .45rem; font-size: .95rem; }
+.shop-tools { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .55rem; }
+.shop-search-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }  /* label exists for AT, not for sighted layout */
+#shop-search { flex: 1 1 11rem; min-width: 8rem; background: rgba(0,0,0,.25); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px; padding: .3rem .7rem; }
+.shop-cats { display: flex; gap: .3rem; flex-wrap: wrap; }
+.shop-cat { background: rgba(0,0,0,.2); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: .2rem .6rem; cursor: pointer; font-size: .8rem; }
+.shop-cat[aria-pressed="true"] { background: var(--accent); color: #1a1206; border-color: var(--accent); font-weight: 700; }
+.shop-empty { color: var(--muted); font-size: .85rem; margin: .3rem 0 0; }
+
+.shop-card { display: flex; align-items: center; gap: .6rem; padding: .4rem .55rem;
+  border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.15); }
+.shop-card .sc-icon { font-size: 1.2rem; flex: 0 0 auto; }
+.shop-card .sc-body { flex: 1 1 auto; min-width: 0; }
+.shop-card .sc-name { font-weight: 600; }
+.shop-card .sc-desc { color: var(--muted); font-size: .78rem; }
+.shop-card .sc-lore { color: var(--muted); font-size: .76rem; font-style: italic; margin-top: .15rem; opacity: .85; }
+.shop-card .sc-buy { flex: 0 0 auto; text-align: right; }
+.shop-card .sc-price { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.shop-card .sc-btn { margin-top: .2rem; background: var(--panel); border: 1px solid var(--accent); color: var(--ink);
+  border-radius: 6px; padding: .25rem .6rem; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.shop-card .sc-btn:disabled { opacity: .45; cursor: not-allowed; border-color: var(--line); }
+.shop-card .sc-btn:not(:disabled):hover { background: var(--accent); color: #1a1206; }
+/* A signature piece announces itself. */
+.shop-card.is-featured { border-color: var(--accent); background: rgba(0,0,0,.28); align-items: flex-start; }
+.shop-card.is-featured .sc-icon { font-size: 1.5rem; }
+.shop-card.is-broke { opacity: .72; }
+.sc-tag { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px; padding: 0 .35rem; vertical-align: middle; }
 .hero-card .hc-meta { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .hero-card .hc-conds { color: var(--danger); font-size: .78rem; }
 

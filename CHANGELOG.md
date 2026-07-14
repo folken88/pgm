@@ -15,6 +15,48 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.2.0 — 2026-07-14
+
+**The merchant got interesting, and there are named weapons in the world now.**
+
+**Signature weapons.** The 28 named weapons from the poker dungeon — Redeemer, Ton Bokiri, the
+Longue Carabine, Voidshard, HAMMERTIME and the rest — exist in PGM. In poker they belong to
+specific characters and you can never pick one up. Here they're **loot**.
+
+- Their magic is **built into the weapon**, not bought. Redeemer burns and sears the wicked even
+  at +0; Ton Bokiri is keen, unholy, and reaches far enough to pull things out of the air.
+  Enchanting one with a +1, +2 and so on stacks *on top* of what it already is.
+- **Find them in the deep.** Nothing above the third room down. Below that, the chance climbs the
+  further you go — the reward for pressing on rather than for clearing one more room.
+- **Or buy one**, if the party purse can stand it (see below).
+
+**A real shop.** The merchant always has the boring, necessary things: cure potions, alchemist's
+fire and acid, spell components, plain and masterwork steel, and +1/+2 gear. On top of that he
+lays out **three rare pieces on the good cloth — and they change every ten minutes.** There's a
+countdown on the stall. If you can't afford the thing you want, you can come back, but it won't
+be there.
+
+The shopfront itself is new: search it, filter it by kind, and every item tells you what it does
+and whether you can actually afford it.
+
+**You can hear the fight while you shop.** You only stepped aside — the dungeon didn't stop for
+you, and your turns are still passing. Now you *hear* that: the combat carries on, muffled,
+through the wall. (It's the same effect the poker table uses to hear the dungeon below.)
+
+**For blind players**, the shop is fully playable without touching the screen: press **Escape**
+for the shop's own menu — buy any of the three rare pieces by number, have the rest of the stock
+read out, ask how long until the stall changes, check the purse, or leave. Weapon stats are read
+out in words ("two d ten, crit twenty, times four") rather than as symbols.
+
+**A note on pricing.** Poker gives these weapons away free to the characters who own them, so it
+never had to price them. Putting them in a shop exposed that: priced by enchantment alone, the
+Longue Carabine — a 2d10 sniper rifle with no magic on it at all — came out at 315 gold, making
+it the cheapest *and* the deadliest thing on the shelf. Raw lethality now costs. The humblest
+named weapon runs about 3,800 gold; Redeemer and Rovadra are end-of-campaign prizes at nearly
+40,000.
+
+---
+
 ## v1.1.1 — 2026-07-14
 
 **Black Tentacles stopped following you around.** A grasping-tentacle field is supposed to fill
