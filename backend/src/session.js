@@ -155,11 +155,21 @@ function joinDelve(sessionId, { name, icon, role, account }) {
     if (s.phase !== 'lobby') {
       const seat = [...s.members.values()].find(m => !m.ai
         && ((accountId && m.accountId === accountId) || m.name.toLowerCase() === name.toLowerCase()));
+      // An ACCOUNT match is proof it's the same person returning (a reload leaves
+      // a ghost client holding the seat, since clientId isn't persisted). Let them
+      // back in and evict any stale client on that seat. A name-only match still
+      // requires the seat to be unclaimed (don't let a stranger boot an active player).
+      const byAccount = !!(seat && accountId && seat.accountId === accountId);
       const claimed = seat && [...clients.values()].some(c => c.sessionId === s.id && c.memberId === seat.memberId);
-      if (seat && !claimed) {
+      if (seat && (byAccount || !claimed)) {
+        if (claimed) {   // boot the ghost/other client holding this seat
+          for (const [cid, c] of [...clients.entries()]) {
+            if (c.sessionId === s.id && c.memberId === seat.memberId) clients.delete(cid);
+          }
+        }
         const clientId = newClientId();
         clients.set(clientId, { sessionId, role: 'player', memberId: seat.memberId });
-        delveLog(s, `PLAYER RECLAIMED SEAT: ${seat.name}`);
+        delveLog(s, `PLAYER RECLAIMED SEAT: ${seat.name}${claimed ? ' (evicted a stale session)' : ''}`);
         return { ok: true, clientId, sessionId, role: 'player', reclaimed: true };
       }
       return { ok: false, error: 'That delve has already set out — you can spectate. (Party members can rejoin under their own name.)', canSpectate: true, sessionId };

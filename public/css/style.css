@@ -124,6 +124,34 @@ button { cursor: pointer; }
   }
 }
 
+/* Left landing panel — mirror of the delve list, in the empty left margin.
+   Only on wide screens; on narrow the right panel (in normal flow) suffices. */
+.side-window-left {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  padding: .7rem .8rem; margin: 0 auto 1.5rem; max-width: 760px;
+}
+.side-window-left h2 { font-size: 1rem; margin: 0 0 .5rem; color: var(--accent); border: 0; padding: 0; }
+@media (min-width: 1100px) {
+  .side-window-left {
+    position: fixed; top: .8rem; left: .8rem; width: 300px; max-width: 300px;
+    margin: 0; max-height: calc(100vh - 5.5rem); overflow-y: auto; z-index: 5;
+  }
+}
+@media (max-width: 1099px) { .side-window-left { display: none; } }
+
+/* Pack item: the whole item is a click-to-use button (Drink/Throw/Equip). */
+.pack-item { padding: 0; border: 0; background: none; display: flex; gap: .35rem; align-items: stretch; }
+.pack-item .bi-main {
+  flex: 1 1 auto; display: flex; align-items: center; gap: .5rem; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .55rem; cursor: pointer;
+}
+.pack-item .bi-main:hover:not(:disabled) { border-color: var(--accent); }
+.pack-item .bi-main:disabled { opacity: .7; cursor: default; }
+.pack-item .bi-main .bi-name { flex: 1 1 auto; }
+.pack-item .bi-main .bi-verb { color: var(--accent); font-size: .8rem; font-weight: 700; }
+.pack-item .bi-sell { align-self: center; background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 6px; padding: .3rem .5rem; cursor: pointer; white-space: nowrap; font-size: .82rem; }
+.pack-item .bi-sell:hover { border-color: var(--accent); }
+
 /* Companion picker */
 #companions-area h3 { font-size: 1rem; color: var(--muted); margin: .8rem 0 .2rem; }
 .companion-picker { display: flex; flex-wrap: wrap; gap: .4rem; margin: .3rem 0; }

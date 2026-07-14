@@ -175,6 +175,13 @@
     </section>
   </main>
 
+  <!-- Active delves, mirrored on the LEFT of the landing (join/spectate from
+       there too — uses the otherwise-empty left margin on wide screens). -->
+  <aside id="side-window-left" class="side-window-left" aria-labelledby="swl-h" hidden>
+    <h2 id="swl-h">Join a delve</h2>
+    <div id="delve-list-left" class="delve-list" aria-live="polite"></div>
+  </aside>
+
   <!-- Concurrent delves side window -->
   <aside id="side-window" aria-labelledby="sw-h">
     <h2 id="sw-h">Active delves</h2>

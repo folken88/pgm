@@ -26,6 +26,7 @@
   function showScreen(id) {
     SCREENS.forEach(function (s) { el(s).hidden = (s !== id); });
     document.body.classList.toggle('in-game', id === 'game');
+    var swl = el('side-window-left'); if (swl) swl.hidden = (id !== 'landing');   // left delve list: landing only
     // The concurrent-delves window docks into the right column during play
     // (Tobias: side window with other sessions' status), floats elsewhere.
     var sw = el('side-window');
@@ -43,6 +44,7 @@
   function boot() {
     BM.init({ onCommand: handleCommand });
     registerBlindInfo();
+    var swl0 = el('side-window-left'); if (swl0) swl0.hidden = false;   // landing is the initial screen → show the left delve list
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
       state.meta = meta;
       fill('race', meta.races); fill('cls', meta.classes);
@@ -149,8 +151,14 @@
   }
 
   // ---------- side window (all delves) ----------
+  // Rendered into BOTH the right dock and the left landing panel (Tobias
+  // 2026-07-13: use the empty left margin to join/spectate from the landing).
   function renderSideWindow(sessions) {
-    var box = el('delve-list'); box.innerHTML = '';
+    fillDelveList(el('delve-list'), sessions);
+    var left = el('delve-list-left'); if (left) fillDelveList(left, sessions);
+  }
+  function fillDelveList(box, sessions) {
+    box.innerHTML = '';
     if (!sessions.length) { box.innerHTML = '<p class="delve-empty">No active delves. Start one!</p>'; return; }
     sessions.forEach(function (s) {
       var card = document.createElement('div'); card.className = 'delve-card';
@@ -676,18 +684,21 @@
     if (pack.length) {
       var kh = document.createElement('h4'); kh.textContent = 'Your pack'; box.appendChild(kh);
       pack.forEach(function (i) {
-        var row = document.createElement('div'); row.className = 'bag-item';
-        var btns = '';
-        if (i.type === 'gear' && run.phase === 'cleared' && isPlayer) btns += '<button data-act="equip">Equip</button>';
-        else if (i.type === 'consumable' && myTurn) btns += '<button data-act="use">' + (i.verb === 'drink' ? 'Drink' : 'Throw') + '</button>';
-        if (i.sellGp && isPlayer) btns += '<button data-act="loot_sell" title="Sell for 50% of value into the party purse">Sell ' + i.sellGp + 'g</button>';
-        row.innerHTML = '<span>' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.name) + ' ×' + i.qty + '</span>' + btns;
-        row.querySelectorAll('button').forEach(function (b) {
-          b.addEventListener('click', function () {
-            if (b.dataset.act === 'loot_sell') lootAction('loot_sell', i.key);
-            else doGameAction({ id: b.dataset.act, item: i.key, label: i.name });
-          });
-        });
+        var row = document.createElement('div'); row.className = 'bag-item pack-item';
+        // Click the ITEM to activate it (Tobias 2026-07-13). Consumables → use
+        // (drink/throw); gear → equip. Off-turn a use QUEUES (doGameAction shows
+        // "fires when your turn comes"); the server gates equip timing.
+        var primary = i.type === 'consumable' ? 'use' : (i.type === 'gear' ? 'equip' : null);
+        var verb = i.type === 'consumable' ? (i.verb === 'drink' ? 'Drink' : 'Throw') : (i.type === 'gear' ? 'Equip' : '');
+        var main = '<button class="bi-main"' + (primary ? '' : ' disabled') + ' aria-label="' + (verb ? verb + ' ' : '') + esc(i.name) + '">'
+          + '<span class="bi-icon">' + (i.icon || '') + '</span><span class="bi-name">' + esc(i.name) + ' ×' + i.qty + '</span>'
+          + (verb ? '<span class="bi-verb">' + verb + '</span>' : '') + '</button>';
+        var sell = (i.sellGp && isPlayer) ? '<button class="bi-sell" title="Sell for 50% of value into the party purse">Sell ' + i.sellGp + 'g</button>' : '';
+        row.innerHTML = main + sell;
+        var mb = row.querySelector('.bi-main');
+        if (mb && primary) mb.addEventListener('click', function () { doGameAction({ id: primary, item: i.key, label: i.name }); });
+        var sb = row.querySelector('.bi-sell');
+        if (sb) sb.addEventListener('click', function () { lootAction('loot_sell', i.key); });
         box.appendChild(row);
       });
     }
