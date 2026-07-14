@@ -95,6 +95,12 @@
     el('signin-btn').addEventListener('click', doSignIn);
     el('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSignIn(); } });
     renderAccountPicker();   // show remembered players immediately
+    // Auto-restore the most-recent remembered player so Resume/Rejoin work right
+    // away after a reload — no manual sign-in click first (fills name + token).
+    try {
+      var _accts = JSON.parse(localStorage.getItem('pgmAccounts') || '[]');
+      if (_accts.length && _accts[0].token) signInWithToken(_accts[0].token);
+    } catch (e) {}
     connectSSE(null);
     setTimeout(function () {
       BM.speak('Welcome to Personal Game Master. Enter your name and pick an icon, then start a new delve, or join an active delve from the panel. Hold space or the microphone to speak.', 'event');
@@ -314,7 +320,11 @@
     });
   }
   function joinDelveAs(sessionId, role) {
-    var name = requireName(); if (!name) return;
+    // A signed-in player rejoins under their account even if the name field is
+    // blank (Tobias 2026-07-13: rejoin failed with "enter a name" after a reload,
+    // since the seat is reclaimed by account token anyway).
+    var name = el('handle').value.trim() || state.account || '';
+    if (!name) { el('join-error').textContent = 'Enter a name first.'; BM.speak('Enter a name first.', 'urgent'); el('handle').focus(); return; }
     api('/api/session/join', { sessionId: sessionId, name: name, icon: state.icon, role: role, token: state.token }).then(function (r) {
       if (!r.ok) { el('join-error').textContent = r.error + (r.canSpectate ? ' (You can watch instead.)' : ''); BM.speak(r.error, 'urgent'); return; }
       afterJoin(r, r.role);
