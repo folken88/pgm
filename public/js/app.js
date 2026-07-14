@@ -46,6 +46,15 @@
     if (changed) setTimeout(function () { blindGuide(); }, 120);
   }
 
+  // The running build, shown in the topbar. It goes in the subject line of every
+  // patch-note email, so a tester can always read back which version they played.
+  function showVersion(v) {
+    var box = el('app-version');
+    if (!box || !v) return;
+    box.textContent = 'v' + v;
+    box.setAttribute('aria-label', 'Version ' + v.split('.').join(' point '));
+  }
+
   // ---------- setup ----------
   function boot() {
     BM.init({ onCommand: handleCommand, onBlindOn: blindGuide });
@@ -56,6 +65,7 @@
       fill('race', meta.races); fill('cls', meta.classes);
       buildIconPicker(meta.icons);
       if (meta.voice) BM.setGMVoice(meta.voice.enabled);   // ElevenLabs GM voice ("Ultron") when configured
+      showVersion(meta.version);
     });
     loadTokens();   // character-art token gallery (manifest.json)
     var tsearch = el('token-search');

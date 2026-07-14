@@ -124,6 +124,28 @@ exact mechanical formula for how strongly the rating weights each system is
 explicitly left open in the design spec — needs real design work during
 planning, not just the concept.
 
+## Versioning + patch notes — MANDATORY on every change (Tobias 2026-07-14)
+
+PGM is versioned exactly like poker. **One** source of truth:
+`backend/src/version.js` exports `VERSION` (semver) and `HEADLINE`. It is read
+by the boot log, `/api/version`, `/api/meta` and the client topbar badge.
+
+Every time you ship, in the SAME commit:
+
+1. **Bump `VERSION`** — MINOR for a feature batch, PATCH for a fix-only batch.
+2. **Add a one-line dev entry** to the comment block at the top of `version.js`
+   (newest first) — this is the log *I* read to know what happened.
+3. **Add/extend the `## vX.Y.Z` section in `CHANGELOG.md`** — this is what
+   *humans* read. Plain language, no jargon, say what it means for a player.
+4. **Rewrite `HEADLINE`** — one or two player-facing sentences about this build.
+
+`backend/test/version.test.js` enforces 1–4: a bump with no notes fails `npm test`.
+
+**Emails to Josh (or any tester) MUST carry APP + VERSION in the SUBJECT** —
+e.g. `PGM v1.0.0 — patch notes`, never a bare "Re:". He is blind and scans
+subjects; without the version he cannot tell which build a note describes.
+Body format for Josh: **one item per line**, plain text (see his standing ask).
+
 ## Deployment — same proven pattern, no new plumbing needed
 
 Mirrors birdquiz exactly: Express + better-sqlite3 backend, nginx serving

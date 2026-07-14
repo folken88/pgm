@@ -27,6 +27,7 @@ const eleven = require('./elevenlabs');
 const gm = require('./gm');
 const accounts = require('./accounts');
 const devtools = require('./devtools');
+const { VERSION, HEADLINE } = require('./version');
 const { RACES, CLASSES, planCharacter } = require('./characters');
 
 const PORT = process.env.PORT || 4173;
@@ -91,8 +92,15 @@ const server = http.createServer(async (req, res) => {
   const url = req.url.split('?')[0];
 
   // ---- API ----
+  // The build the client is talking to. Josh's patch-note emails carry this in
+  // the subject line, so it must be readable from a running server.
+  if ((url === '/api/version' || url === '/api/health') && req.method === 'GET') {
+    return sendJSON(res, 200, { ok: true, version: VERSION, headline: HEADLINE });
+  }
+
   if (url === '/api/meta' && req.method === 'GET') {
     return sendJSON(res, 200, {
+      version: VERSION, headline: HEADLINE,
       races: RACES, classes: CLASSES, icons: session.ICONS,
       companions: require('./cast').ROSTER.map(r => ({ name: r.name, race: r.race, cls: r.cls, icon: r.icon })),
       voice: { enabled: eleven.enabled(), name: eleven.voiceName() },
@@ -296,7 +304,8 @@ session.setNotify(() => { try { broadcast(); } catch (e) {} });
 setInterval(() => { try { if (session.sweepAfk()) broadcast(); } catch (e) {} }, 5000).unref();
 
 server.listen(PORT, () => {
-  console.log(`[PGM v0] listening on http://localhost:${PORT}`);
+  console.log(`[PGM v${VERSION}] listening on http://localhost:${PORT}`);
+  console.log(`[PGM v${VERSION}] ${HEADLINE}`);
 });
 
 module.exports = server;

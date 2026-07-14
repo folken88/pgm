@@ -1,0 +1,50 @@
+// PGM — the ONE app version (semver). The boot log, /api/version, /api/meta and
+// the client topbar all read this. MANDATE (Tobias 2026-07-14, mirroring poker):
+//   · bump MINOR for each feature batch, PATCH for fix-only batches
+//   · note the change in one line below, newest first, and keep each line short
+//   · rewrite HEADLINE with every bump (it is what players see)
+//   · every patch-note email to Josh must carry APP + VERSION in the SUBJECT,
+//     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
+//   · the player-facing notes go in CHANGELOG.md; this block is the dev log
+//
+//  1.0.0  2026-07-14 VERSIONING FORMALIZED — PGM now has a version, a dev log and a player-facing
+//                    CHANGELOG.md, so Josh, Tobias and I can all point at the same build. Shipped with
+//                    it: BLIND PARITY WITH POKER (Josh's "not close to poker-dungeon" report). Root
+//                    cause — PGM made a screen-reader user TAB the live DOM, and every SSE re-render
+//                    strands the VoiceOver cursor; poker never does that, it drives off STABLE HOTKEYS
+//                    + speech. So ESCAPE is now a context-aware ACTION HUB: it speaks a numbered menu of
+//                    exactly what this screen can do (Landing → start a delve / join each active one;
+//                    Lobby → "Start the adventure" as item 1 — the button he could not find; Pub → set
+//                    out again; Dungeon → open the next door / shop / retreat / main menu). Also: the
+//                    narrator strips emoji instead of reading them as garbage, A = repeat last report
+//                    (his poker muscle memory), every screen has a repeatable spoken guide instead of a
+//                    one-time key flood, H reports the lobby roster, and card/roster icons are
+//                    aria-hidden. Earlier the same day: icon labels spoken on cycle, race/class changes
+//                    announced, Enter in avatar search no longer skips to skills, delves are joinable.
+//
+// ---- pre-1.0, reconstructed from git history (the unversioned era) ----
+//  0.9.x  2026-07-13 FEATURE BATCH: in-dungeon Shop (buy items; "Shopping" auto-skips your turns so the
+//                    dungeon flows on) · sell anything for 50% into the party purse · AI companions
+//                    auto-claim party loot no human took · AI/enemy turns take a 1–2s deliberation delay
+//                    (streamed over SSE) instead of resolving instantly · 14 room archetypes × phrasings
+//                    × sensory details, depth-scaled · health + XP bars on cards, enemy HP as a bar in
+//                    25% buckets with no numbers · click a pack item to use it · hero token picker (a
+//                    wide gallery of Tobias's own art) · Raise Dead moved onto the dead member's card
+//                    with its cost + the Breath of Life sound · combat banter · delete-delve (owner
+//                    confirms; localhost admin path) · navigation buttons + landing-overlap fix.
+//  0.8.x  2026-07-12 PROGRESSION OVERHAUL: fair foes, PF1 leveling, clear/skill/treasure XP · free-action
+//                    toggles (Rage, Power Attack, Mage Armor, Overland Flight) cost no turn · the poker
+//                    action bar ported (Melee/Ranged, ability buttons, Spellbook) · off-turn action queue
+//                    · dev backdoor (play every function by command) · darkwood theme.
+//  0.7.x  2026-07-11 THE FOUNDATION: player accounts that remember you · savable/resumable delves · TPK
+//                    graves + corpse recovery · the Swashgoblin (the pub between delves) · PF1 death
+//                    model (dying to −CON, negative levels) · PF1 RAW treasure tables · party loot ·
+//                    players roll their own initiative · LLM combat banter in the companions' voices.
+//  0.1–0.6 ≤2026-07-10 the unversioned bring-up (see git history): the poker-dungeon rules engine
+//                    transplanted behind a shim, the blind-first frontend, SSE, and the first delves.
+//
+// HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
+// Rewrite it with every bump; keep it short.
+const VERSION = '1.0.0';
+const HEADLINE = 'PGM now plays by ear as well as poker does: press Escape anywhere for a spoken menu of exactly what you can do on this screen, and A to repeat the last report. Hard refresh to pick it up.';
+module.exports = { VERSION, HEADLINE };
