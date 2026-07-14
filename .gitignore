@@ -11,3 +11,4 @@ data/
 public/assets/characters/*.webp
 public/assets/characters/*.png
 .sync-backup/
+.parity-backup/
