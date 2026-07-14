@@ -36,6 +36,12 @@ talks to you. PGM now works the same way.
   is" instead of a one-time flood of key names you'd have to memorize.
 - **The narrator stopped reading emoji.** Icons no longer come through as garbage in the middle
   of a sentence, and `12/20` now reads as "12 of 20".
+- **Help mode is no longer a trap.** Josh: "once you go into help mode you can't get out — `?`
+  only tells you about help mode, Escape only tells you about the escape menu." `?` now toggles
+  help off again, and Escape is a second way out.
+- **The spacebar belongs to your screen reader again.** PGM was swallowing every Space for
+  push-to-talk, which broke VoiceOver's own click (VO+Space) and Space on a focused button.
+  Push-to-talk now only takes a bare Space when you aren't on a control.
 - **`H` in the lobby reads the party roster** — who's in, and what they are.
 - **Character creation announces your choices.** Cycling an icon speaks its name; changing race
   or class confirms the new pick out loud; pressing Enter in the avatar search filters the list

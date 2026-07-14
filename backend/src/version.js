@@ -21,6 +21,12 @@
 //                    one-time key flood, H reports the lobby roster, and card/roster icons are
 //                    aria-hidden. Earlier the same day: icon labels spoken on cycle, race/class changes
 //                    announced, Enter in avatar search no longer skips to skills, delves are joinable.
+//                    Also in this build: HELP MODE was a DEAD END (the learn-mode guard ran before the
+//                    '?' toggle, so '?' and Escape only described themselves — '?' now toggles first,
+//                    Escape is a second exit); SPACEBAR is no longer stolen from VoiceOver (push-to-talk
+//                    preventDefault'd every Space, killing VO+Space and Space-on-a-button — it now grabs
+//                    only a BARE space on a non-actionable target). Plus a poker sync (v3.37.51):
+//                    See Invisibility / Invisibility Purge handlers + an enemy re-invis lockout.
 //
 // ---- pre-1.0, reconstructed from git history (the unversioned era) ----
 //  0.9.x  2026-07-13 FEATURE BATCH: in-dungeon Shop (buy items; "Shopping" auto-skips your turns so the
