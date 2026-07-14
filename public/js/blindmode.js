@@ -51,6 +51,7 @@
   var blindOnHook = null;   // app-provided: speaks context-aware guidance when blind mode turns on
   var info = {};                   // app-registered providers: foes/spells/status/health/buffs/debuffs/money/descend/cantrip/chatFocus/…
   var helpMode = false;            // '?' learn mode
+  var pttActive = false;           // did WE capture this Space for push-to-talk? (see isActionable)
   var browse = null;               // {kind:'foes'|'spells'|'party'|'session', list, idx}
 
   var logs = [];
@@ -381,9 +382,22 @@
     if (browse && browseKeydown(e)) return;
     var k = (e.key || '').toLowerCase();
     var hk = e.key === 'Escape' ? 'escape' : k;
+    // '?' ALWAYS toggles help mode, and it MUST be tested BEFORE the learn-mode guard
+    // below. It used to sit after it — so once help mode was on, HELP['?'] just spoke
+    // its own description and returned, and HELP['escape'] did the same. There was NO
+    // way out. (Josh, trapped: "once you go into help mode you can't get out. Hitting ?
+    // only tells you about help mode. Escape only tells you about the escape menu.")
+    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak(helpMode ? 'Help mode on. Press any key to hear what it does, without doing it. Question mark or Escape to exit.' : 'Help mode off.', 'urgent'); return; }
+    if (helpMode && e.key === 'Escape') { e.preventDefault(); helpMode = false; speak('Help mode off.', 'urgent'); return; }   // second, obvious way out
     if (helpMode && HELP[hk]) { e.preventDefault(); speak(HELP[hk], 'urgent'); return; }   // learn mode: speak, don't fire
-    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak(helpMode ? 'Help mode on. Press any key to hear what it does, without doing it. Question mark again to exit.' : 'Help mode off.', 'urgent'); return; }
-    if (e.code === 'Space') { e.preventDefault(); startListen(); return; }
+    // SPACE = push-to-talk — but NEVER steal it from a screen reader or a focused control.
+    // VoiceOver ACTIVATES with VO+Space (Ctrl+Option+Space), and a bare Space on a focused
+    // button/link must click it. We used to preventDefault() every Space, so a VoiceOver
+    // user could not press anything. (Josh: "anytime I hit spacebar it wants to capture
+    // sound. It doesn't activate anything.") Only grab a BARE space on a non-actionable target.
+    if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey && !isActionable(document.activeElement)) {
+      e.preventDefault(); pttActive = true; startListen(); return;
+    }
     if (k === 's') { e.preventDefault(); stopSpeaking(); return; }
     if (k === 'h') { e.preventDefault(); speak((info.health && info.health()) || lastText || 'Nothing yet.', 'urgent'); return; }
     if (k === 'l') { e.preventDefault(); speak((info.status && info.status()) || 'No character yet.', 'urgent'); return; }
@@ -404,7 +418,19 @@
     if (e.key === '=' || e.key === '+') { nudgeVolume(0.1); return; }
     if (e.key === '-' || e.key === '_') { nudgeVolume(-0.1); return; }
   }
-  function onKeyup(e) { if (e.code === 'Space' && on) { e.preventDefault(); stopListen(); } }
+  // Only stop a push-to-talk we actually STARTED — otherwise a Space we deliberately
+  // let through (VoiceOver activation, a focused button) would still be swallowed here.
+  function onKeyup(e) { if (e.code === 'Space' && on && pttActive) { pttActive = false; e.preventDefault(); stopListen(); } }
+  // Is focus on something a Space press is supposed to ACTIVATE? If so, push-to-talk
+  // must keep its hands off (see the Space branch in onKeydown).
+  function isActionable(el) {
+    if (!el || el === document.body) return false;
+    var t = (el.tagName || '').toUpperCase();
+    if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA' || t === 'SUMMARY') return true;
+    if (el.isContentEditable) return true;
+    var r = ((el.getAttribute && el.getAttribute('role')) || '').toLowerCase();
+    return r === 'button' || r === 'link' || r === 'checkbox' || r === 'radio' || r === 'menuitem' || r === 'menuitemcheckbox' || r === 'tab' || r === 'option' || r === 'switch';
+  }
 
   // ---- ui helpers ----
   var toastTimer = null;
