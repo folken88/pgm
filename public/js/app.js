@@ -53,7 +53,19 @@
       if (meta.voice) BM.setGMVoice(meta.voice.enabled);   // ElevenLabs GM voice ("Ultron") when configured
     });
     loadTokens();   // character-art token gallery (manifest.json)
-    var tsearch = el('token-search'); if (tsearch) tsearch.addEventListener('input', function () { buildTokenPicker(this.value); });
+    var tsearch = el('token-search');
+    if (tsearch) {
+      tsearch.addEventListener('input', function () { buildTokenPicker(this.value); });
+      // Enter in the token filter must NOT submit the create form (Josh: "hit
+      // enter to search the avatar list and it moved past to skills"). It filters.
+      tsearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); buildTokenPicker(this.value); if (BM.isOn()) BM.speak('Tokens filtered. Tab into the list to choose one.', 'urgent'); }
+      });
+    }
+    // Speak race/class selections so a screen reader confirms the choice (Josh:
+    // the select button still read "Human"/"Fighter" after he'd chosen otherwise).
+    var raceSel = el('race'); if (raceSel) raceSel.addEventListener('change', function () { BM.speak('Race: ' + (this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : this.value) + '.', 'urgent'); });
+    var clsSel = el('cls'); if (clsSel) clsSel.addEventListener('change', function () { BM.speak('Class: ' + (this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : this.value) + '.', 'urgent'); });
     el('start-delve').addEventListener('click', startDelve);
     el('create-form').addEventListener('submit', onCreate);
     el('skill-begin').addEventListener('click', confirmCharacter);
@@ -126,9 +138,9 @@
     var accts = [];
     try { accts = JSON.parse(localStorage.getItem('pgmAccounts') || '[]'); } catch (e) {}
     if (accts.length) {
-      BM.speak('Welcome back, ' + accts[0].name + '. To keep playing, press Tab to reach your saved characters and active delves, then Enter to resume one. Or type a new name to start fresh.', 'event');
+      BM.speak('Welcome back, ' + accts[0].name + '. Two ways to play: to start your OWN delve, find the "Start a new delve" button. To JOIN an existing one, Tab to the Active delves list and press its Join button. Question mark for help.', 'event');
     } else {
-      BM.speak('Welcome to Personal Game Master. To begin, type your name, then Tab to the Start button to create a delve. Press question mark any time to learn the keys.', 'event');
+      BM.speak('Welcome to Personal Game Master. To start your OWN adventure, type your name, then find the "Start a new delve" button. To JOIN one already running, Tab to the Active delves list and press its Join button. Question mark any time for help.', 'event');
     }
   }
 
@@ -137,12 +149,24 @@
     items.forEach(function (v) { var o = document.createElement('option'); o.value = v; o.textContent = cap(v); sel.appendChild(o); });
     if (id === 'cls') sel.value = 'fighter';
   }
+  // Real names for the icon emoji so a screen reader announces what each is
+  // (Josh 2026-07-13: "icons are unlabeled, just choosing a random one").
+  var ICON_LABELS = {
+    '🧙': 'wizard', '🧝': 'elf', '🛡️': 'shield', '⚔️': 'crossed swords', '🏹': 'bow and arrow',
+    '🗡️': 'dagger', '🪓': 'axe', '🔮': 'crystal ball', '🐉': 'dragon', '🐺': 'wolf',
+    '🦅': 'eagle', '💀': 'skull', '👑': 'crown', '🎭': 'theater masks', '🕯️': 'candle', '⚗️': 'alembic',
+  };
+  function iconLabelOf(ic, i) { return ICON_LABELS[ic] || ('icon ' + (i + 1)); }
   function buildIconPicker(icons) {
     var box = el('icon-picker'); box.innerHTML = '';
     (icons || []).forEach(function (ic, i) {
       var b = document.createElement('button');
+      var label = iconLabelOf(ic, i);
       b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(i === 0));
-      b.setAttribute('aria-label', 'Icon ' + (i + 1)); b.textContent = ic;
+      // include the selection state in the label too — some screen readers don't
+      // reliably speak aria-checked on custom radios (Josh feedback).
+      b.setAttribute('aria-label', label + (i === 0 ? ', selected' : '')); b.title = label; b.dataset.label = label;
+      b.textContent = ic;
       b.addEventListener('click', function () { selectIcon(ic, b); });
       box.appendChild(b);
       if (i === 0) state.icon = ic;
@@ -150,7 +174,11 @@
   }
   function selectIcon(ic, btn) {
     state.icon = ic;
-    [].forEach.call(el('icon-picker').children, function (b) { b.setAttribute('aria-checked', String(b === btn)); });
+    [].forEach.call(el('icon-picker').children, function (b) {
+      var on = b === btn; b.setAttribute('aria-checked', String(on));
+      b.setAttribute('aria-label', b.dataset.label + (on ? ', selected' : ''));
+    });
+    BM.speak('Icon: ' + (btn.dataset.label || ic) + ', selected.', 'event');
   }
 
   // ── Character TOKEN picker (player art, Tobias 2026-07-13) ──
@@ -239,9 +267,13 @@
       var canAct = !state.clientId;
       // You may delete a delve you OWN (its host is your account).
       var mine = !!(s.hostAccount && state.account && state.account.trim().toLowerCase() === s.hostAccount);
+      var nm = esc(s.name);
+      var joinWord = s.phase === 'lobby' ? 'Join' : 'Rejoin';
       var actions = canAct
-        ? '<div class="dactions">' + (s.phase === 'lobby' ? '<button data-join="' + s.id + '">Join</button>' : '<button data-join="' + s.id + '">Rejoin</button>') + '<button data-watch="' + s.id + '">Watch</button>'
-          + (mine ? '<button class="del-btn ghost-btn" data-del="' + s.id + '">🗑 Delete</button>' : '') + '</div>'
+        ? '<div class="dactions">'
+          + '<button data-join="' + s.id + '" aria-label="' + joinWord + ' the delve ' + nm + '">' + joinWord + '</button>'
+          + '<button data-watch="' + s.id + '" aria-label="Watch the delve ' + nm + '">Watch</button>'
+          + (mine ? '<button class="del-btn ghost-btn" data-del="' + s.id + '" aria-label="Delete the delve ' + nm + '">🗑 Delete</button>' : '') + '</div>'
         : '';
       card.innerHTML = '<div class="dtitle"><span>' + esc(s.name) + '</span><span class="dphase">' + s.phase + '</span></div>'
         + '<div class="dmeta">' + meta + '</div>'
