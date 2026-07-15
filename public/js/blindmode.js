@@ -376,8 +376,26 @@
   function onKeydown(e) {
     if (isTyping(document.activeElement)) return;
     if (e.key === '`') { e.preventDefault(); toggle(); return; }   // toggle works even when off
-    if (/^[1-9]$/.test(e.key) && commandHandler) { commandHandler('#choice ' + e.key); return; }   // numbers work for everyone
+    // In the DUNGEON, poker's transplanted keymap (dungeon-blind.js) owns numbers
+    // and gameplay letters — don't also route them through the menu choices.
+    var inDungeon = document.body.dataset.screen === 'dungeon';
+    if (/^[1-9]$/.test(e.key) && commandHandler && !inDungeon) { commandHandler('#choice ' + e.key); return; }   // numbers work for everyone (except in-dungeon)
     if (!on) return;
+    // The dungeon keymap lives in dungeon-blind.js (poker's real code). Here, keep
+    // only the GLOBAL controls Josh expects everywhere — stop, repeat, rate,
+    // volume, push-to-talk — and hand the rest to it.
+    if (inDungeon) {
+      if (e.key === '?') return;                                   // dungeon-blind.js owns help mode in the dungeon
+      var kk = (e.key || '').toLowerCase();
+      if (kk === 's') { e.preventDefault(); stopSpeaking(); return; }
+      if (kk === 'a') { e.preventDefault(); repeat(); return; }
+      if (e.key === ']') { faster(); return; }
+      if (e.key === '[') { slower(); return; }
+      if (e.key === '=' || e.key === '+') { nudgeVolume(0.1); return; }
+      if (e.key === '-' || e.key === '_') { nudgeVolume(-0.1); return; }
+      if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey && !isActionable(document.activeElement)) { e.preventDefault(); pttActive = true; startListen(); return; }
+      return;
+    }
 
     if (browse && browseKeydown(e)) return;
     var k = (e.key || '').toLowerCase();

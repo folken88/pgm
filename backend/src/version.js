@@ -7,6 +7,27 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.3.0  2026-07-14 THE DUNGEON'S ACTUAL BLIND CONTROLS — poker's real code, not a re-implementation.
+//                    Josh: PGM's keys and narration were "different than the dungeon so that's
+//                    disorienting" (A attacked instead of repeating, options read once and couldn't
+//                    repeat, "a bunch of sparkles then report what spell"). ROOT CAUSE (Tobias, at
+//                    length): PGM had a HAND-WRITTEN blind layer that only approximated poker's, so it
+//                    never converged. FIX: transplant poker's ACTUAL dungeon blind layer verbatim —
+//                    the 868-line keydown handler (client.js:2028-2895) and the onDungeonState
+//                    narration (blindMode.js:1367-1578) — into public/js/dungeon-blind.js, driven by
+//                    PGM's snapshot through an adapter (toDungeonState in app.js reshapes publicRun into
+//                    poker's dungeon-state; a dungeonAction() shim maps poker's socket verbs onto PGM's
+//                    /api/session/action). Frontend-only, no backend change. Now Josh's keys ARE the
+//                    dungeon's: 1=attack, 2..N=abilities, spellbook by level, E inspect, F foes, L life,
+//                    H party, M money, B buffs, D debuffs, C cantrip, 0 door, Escape session menu —
+//                    A repeat / S stop stay global. Narration is poker's exact play-by-play: the turn
+//                    earcon + "Your turn. Enemy: X, 80%", emoji-stripped combat lines, big-room
+//                    condense, CC-idle collapse, "Room clear. Open the next door." PGM's own duplicate
+//                    turn-prompt + "it is X's turn" chatter suppressed in blind mode so nothing doubles.
+//                    Verified in real play: keys + narration match poker byte-for-byte. (PGM's coarse
+//                    25%-bucket enemy HP is preserved — the one deliberate divergence.) The sighted UI
+//                    is untouched. STILL PGM-hand-rolled (not yet poker's): the lobby/create/pub entry
+//                    flow, where Josh also gets stranded — that's the next target.
 //  1.2.1  2026-07-14 SIGNATURE PRICES NOW COME FROM THE FOUNDRY DB, not from me (Tobias: "pull them
 //                    from the original items that inspired these versions, the foundryvtt db has their
 //                    original prices"). v1.2.0 priced them on the PF1 enchantment curve plus a
@@ -121,6 +142,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.2.1';
-const HEADLINE = 'The named weapons are priced properly now — straight from the Pathfinder books, using the real cost of the weapon each one is built from. A keen blade costs what a keen blade costs; the rifles cost what rifles cost; and Redeemer is the 50,000gp prize it always should have been.';
+const VERSION = '1.3.0';
+const HEADLINE = 'The dungeon controls are the real thing now. Josh — the keys and the spoken play-by-play in a delve are no longer an imitation of the poker dungeon; they ARE the poker dungeon's, transplanted whole. Same 1-to-attack, same spellbook, same Your-turn readout, same everything. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

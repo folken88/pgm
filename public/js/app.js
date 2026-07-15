@@ -26,6 +26,8 @@
   function showScreen(id) {
     SCREENS.forEach(function (s) { el(s).hidden = (s !== id); });
     document.body.classList.toggle('in-game', id === 'game');
+    // dungeon-blind.js's keymap only arms while dataset.screen === 'dungeon'.
+    if (id === 'game') document.body.dataset.screen = 'dungeon'; else delete document.body.dataset.screen;
     // CSS drives the delve panels off these body classes (see .side-window-left /
     // body.on-landing): left panel on the landing, right panel elsewhere.
     document.body.classList.toggle('on-landing', id === 'landing');
@@ -101,6 +103,10 @@
   function boot() {
     BM.init({ onCommand: handleCommand, onBlindOn: blindGuide });
     registerBlindInfo();
+    // Bridges dungeon-blind.js (poker's transplanted blind layer) uses to act:
+    // its dungeonAction() shim funnels every dungeon key here.
+    window.__pgmAction = function (a) { doGameAction({ id: a.type, target: a.target, spell: a.spell, item: a.item }); };
+    window.__pgmLeave = leaveToMenu;
     document.body.classList.add('on-landing');   // landing is the initial screen (CSS shows the left delve list)
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
       state.meta = meta;
@@ -733,7 +739,62 @@
   }
 
   // ---------- game ----------
-  function enterGame() { showScreen('game'); document.body.classList.add('in-game'); el('log').innerHTML = ''; state.lastSeq = 0; state.speakFloor = null; state.lastAnnouncedTurn = null;
+  // ── Adapter: PGM's publicRun → poker's dungeon-state shape ──────────────────
+  // The whole seam that lets poker's transplanted blind layer (dungeon-blind.js)
+  // drive off PGM's data. Field names are poker's; values are PGM's snapshot.
+  function adaptKit(kit) {
+    if (!kit) return null;
+    return {
+      caster: !!kit.caster,
+      atwill: kit.atwill ? { key: kit.atwill.key, name: kit.atwill.name } : { name: 'Attack' },
+      // slot = the ability KEY; dungeon-blind.js's dungeonAction shim turns a
+      // poker `ability` emit into PGM's { type:'cast', spell:<key> }.
+      abilities: (kit.abilities || []).map(function (a) {
+        return { key: a.key, name: a.name, slvl: a.slvl, slot: a.key, available: a.available, effect: a.effect, target: a.target };
+      }),
+      _cantrip: kit.cantrip ? { current: kit.cantrip.current, choices: (kit.cantrip.choices || []).map(function (nm, i) { return { key: 'c' + i, name: typeof nm === 'string' ? nm : (nm && nm.name) }; }) } : null,
+    };
+  }
+  function toDungeonState(you) {
+    var run = you && you.run; if (!run) return null;
+    var myId = state.myId;
+    var phase = run.phase;
+    var status = (phase === 'combat' || phase === 'initiative') ? 'combat'
+      : phase === 'cleared' ? 'exploring'
+      : phase === 'defeated' ? 'dead'
+      : phase === 'retreated' ? 'bailed' : 'exploring';
+    var mineKit = (run.turn && run.turn.ownerClientId === myId) ? adaptKit(run.turn.kit) : null;
+    var mk = function (list) { return (list || []).map(function (x) { return typeof x === 'string' ? { key: x, label: x } : { key: x.key || x.label, label: x.label || x.key }; }); };
+    var enemies = (run.combatants || []).filter(function (c) { return c.side === 'enemy'; }).map(function (c) {
+      return {
+        uid: c.id, name: c.name,
+        hp: (c.hpPct != null ? c.hpPct : (c.down ? 0 : 100)), maxHp: 100,   // PGM hides exact enemy HP → percent, per its 25%-bucket design
+        alive: !c.down && (c.hpPct == null || c.hpPct > 0),
+        flying: !!c.flying, boss: !!c.boss, cr: c.crNum || c.cr || 0,
+        conditions: mk(c.conditions || c.debuffs), buffs: mk(c.buffs),
+      };
+    });
+    var party = (run.combatants || []).filter(function (c) { return c.side === 'hero'; }).map(function (c) {
+      var mine = c.ownerClientId === myId;
+      return {
+        playerId: c.ownerClientId, nickname: c.name, hp: c.hp, maxHp: c.maxHp,
+        dead: !!c.dead, downed: !!c.down, left: !!c.left, level: c.level, cls: c.cls,
+        kit: mine ? mineKit : null,
+        cantrip: (mine && mineKit) ? mineKit._cantrip : null,
+        buffs: mk(c.buffs), conditions: mk(c.debuffs || c.conditions),
+      };
+    });
+    var turn = run.turn ? { kind: 'party', id: run.turn.ownerClientId } : (phase === 'combat' ? { kind: 'enemy', id: '_' } : null);
+    // Drop PGM-only log chatter poker's narration replaces with its own cues:
+    // "It is X's turn" (poker uses the turn prompt) and the initiative-roll line
+    // (poker's onDungeonState + the GM prompt cover it), so Josh isn't told twice.
+    var log = (run.log || [])
+      .filter(function (e) { return !/^(It is .*turn|.*Initiative rolled)/i.test(String(e.text || '').replace(/^[^A-Za-z]+/, '')); })
+      .map(function (e) { return { t: e.seq, text: e.text, voiced: e.priority === 'banter', side: undefined, phase: null, sound: e.sound }; });
+    return { depth: run.roomsCleared, status: status, phase: phase, round: run.round, runGold: run.gold, turn: turn, enemies: enemies, party: party, lootRoll: null, log: log };
+  }
+
+  function enterGame() { showScreen('game'); document.body.classList.add('in-game'); document.body.dataset.screen = 'dungeon'; if (window.DungeonBlind) window.DungeonBlind.resetNarration(); el('log').innerHTML = ''; state.lastSeq = 0; state.speakFloor = null; state.lastAnnouncedTurn = null;
     BM.speak(state.role === 'spectator' ? 'The adventure begins. You are watching.' : 'The adventure begins!', 'urgent'); }
 
   function renderGame(you) {
@@ -785,15 +846,26 @@
           if (amShopping()) playSfx(e.sound, 0.55 * 0.5, true, 378);
           else playSfx(e.sound, 0.55, false);
         }
-        if (e.priority === 'banter') {                 // companion quip -> their own voice
+        // Companion quips ride their own 11labs voice ALWAYS — the blind play-by-
+        // play (dungeon-blind.js) skips these `voiced` lines, so no overlap.
+        if (e.priority === 'banter') {
           BM.speakAs(e.text.replace(/^[^ ]+ /, ''), e.voiceId);
-        } else if (e.priority === 'urgent') {          // GM narration -> Ultron voice (serialized queue)
+        } else if (BM.isOn()) {
+          // BLIND MODE: dungeon-blind.js (poker's real narration) owns the spoken
+          // play-by-play. Don't also speak here or every line doubles. Keep the
+          // assertive announce region current for the urgent lines.
+          if (e.priority === 'urgent') { var a2 = el('announce'); if (a2) a2.textContent = e.text; }
+        } else if (e.priority === 'urgent') {          // sighted: GM narration -> Ultron voice
           BM.speakGM(e.text);
           var a = el('announce'); if (a) a.textContent = e.text;
         } else { BM.speak(e.text, e.priority); }
       }
     });
     renderGameChoices(run, myTurn);
+    // BLIND: hand poker's real narration + keymap (dungeon-blind.js) the snapshot,
+    // reshaped to the dungeon-state it expects. This is what makes Josh's play
+    // identical to the dungeon — same keys, same play-by-play, because it's his code.
+    if (window.DungeonBlind) { try { window.DungeonBlind.setDungeonState(toDungeonState(you), state.myId); } catch (e) {} }
     if (run.phase === 'initiative') {
       var initKey = 'init-' + run.roomsCleared;
       if (state.lastAnnouncedTurn !== initKey) {
@@ -1261,9 +1333,12 @@
       b.addEventListener('click', function () { doGameAction(c); });
       nav.appendChild(b);
     });
+    // The SPOKEN turn prompt is owned by dungeon-blind.js (poker's terse "Your
+    // turn. Enemy: …, press ? for keys") when blind. Only announce the enumerated
+    // choices here for the SIGHTED/non-blind case — otherwise Josh hears both.
     if (myTurn && run.turn && run.turn.combatantId !== state.lastAnnouncedTurn) {
       state.lastAnnouncedTurn = run.turn.combatantId;
-      BM.speak('Your turn. ' + choices.map(function (c, i) { return (i + 1) + ', ' + c.label; }).join('. ') + '.', 'event');
+      if (!BM.isOn()) BM.speak('Your turn. ' + choices.map(function (c, i) { return (i + 1) + ', ' + c.label; }).join('. ') + '.', 'event');
     }
   }
   // A d20 clattering across the table — WebAudio, no asset needed.

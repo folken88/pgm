@@ -15,6 +15,42 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.3.0 — 2026-07-14
+
+**The dungeon controls are the real thing now — not an imitation of them.**
+
+Josh, this one's for you. Playing a delve felt wrong because the keys and the spoken play-by-play
+were *different* from the poker dungeon you know — A did the wrong thing, your options only read
+out once and wouldn't repeat, and every action came with visual clutter ("a bunch of sparkles,
+then the spell"). The reason was simple and it was our fault: PGM had its *own* hand-built blind
+mode that only tried to copy the dungeon. It was never going to match.
+
+So we stopped copying it and **brought the dungeon's actual controls over, whole.** The keyboard
+and the narration in a PGM delve are now literally the poker dungeon's — the same code, so they
+behave the same, down to the letter:
+
+- **1** attacks, **2 and up** are your abilities, and casters get the **Spellbook** — pick a
+  level, then a number to cast, exactly as you're used to.
+- **E** inspects the enemies, **F** re-reads the foe list, **L** is your life, **H** the party's
+  health, **M** your gold, **B** buffs, **D** debuffs, **C** cycles your cantrip, **0** opens the
+  next door, **Escape** is the session menu.
+- **A** still repeats the last thing said and **S** still stops the talking — the same global keys
+  as everywhere else.
+- The narration is the dungeon's: the three-tone chime when your turn comes up, "Your turn,"
+  then the enemies deadliest-first, the clean hit-and-miss lines with the symbols stripped out,
+  and "Room clear — open the next door, or bail with your gold."
+
+If a key or a line sounds different from the dungeon now, that's a bug — tell us, because it's
+meant to be identical.
+
+*(One thing stays a PGM choice on purpose: enemy health reads as a percentage in quarters, not an
+exact number.)*
+
+**Still on the list:** the part *before* the delve — making your character, the lobby, the pub —
+is still PGM's own, and we know you get lost there too. That's next.
+
+---
+
 ## v1.2.1 — 2026-07-14
 
 **The named weapons are priced from the books now, not from my guesswork.**
