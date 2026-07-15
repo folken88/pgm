@@ -7,6 +7,22 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.8.0  2026-07-15 EMBERWOOD — a new look, and the banner art. Tobias delivered a firelit
+//                    key-art banner (a party at a glowing crimson doorway, "PGM — your personal
+//                    D&D game master"). It's now (a) the landing HERO image and (b) the social
+//                    link-preview card (Open Graph + Twitter summary_large_image → og:image
+//                    /img/pgm-card.jpg, 1200×630). Banner processed with PIL to webp (1920w hero
+//                    + 960w) and a letterboxed JPG card; the source PNG stays the master in
+//                    Downloads. THEME: blended the banner's palette INTO darkwood — the old
+//                    "darkwood" becomes "emberwood": ebony dragged toward the art's black
+//                    (--bg #0d0605), walnut steeped in oxblood, and the doorway's blood-crimson
+//                    (--crimson #a81d18) + ember-orange (--ember #e8461f) added as the energy
+//                    color beside the steady brass. Primary CTAs now glow like the doorway
+//                    (crimson→ember gradient + ember bloom on hover); a faint ember radial sits
+//                    behind the header; headings underline crimson→brass. Brass stays the calm
+//                    accent; the cool-blue focus ring is kept on purpose (crisp against the warm
+//                    theme). Banner is aria-hidden (the header <h1> already names the app, so no
+//                    double announce — blind mode unchanged). Static/asset + version bump only.
 //  1.7.0  2026-07-15 ORDER OF THE LION IS LIVE — the first of the five new cavalier orders to get its
 //                    FULL mechanics (Challenge modifier + L2/L8/L15 deeds), so it flips `built` and
 //                    becomes selectable on the Leveling screen. The guardian order:
@@ -232,6 +248,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.7.0';
-const HEADLINE = 'New Cavalier order: the Order of the Lion, the guardian. Choose it on the Leveling screen — a dodge bonus while you press a challenge, and as you level, a rally that steels the party, a battle-cry that lends them your Charisma, and an aura that shields every ally. More orders coming. Hard refresh.';
+const VERSION = '1.8.0';
+const HEADLINE = 'A new look: PGM now opens on its banner — a party at a firelit doorway — and the whole theme has taken on that crimson-and-ember glow over the darkwood. Same game, warmer fire. Hard refresh to see it.';
 module.exports = { VERSION, HEADLINE };

@@ -15,6 +15,22 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.8.0 — 2026-07-15
+
+**A new look — and PGM's banner art.**
+
+PGM now greets you with its **key art**: a party of adventurers stepping toward a glowing crimson
+doorway. It's the **hero image on the landing page**, and it's also the **link-preview card** — share
+a PGM link and that banner is what shows up.
+
+The whole theme has shifted to match it. The old darkwood look is now **"emberwood"**: the same warm
+wood and polished brass, but plunged into the banner's firelit dark, with **blood-crimson and
+ember-orange** glowing through. The main buttons now glow like that doorway, and a faint ember light
+sits behind the header. Nothing about how the game plays or reads aloud changed — it's purely a
+warmer, more dramatic coat of paint.
+
+---
+
 ## v1.7.0 — 2026-07-15
 
 **Order of the Lion — the first of the new Cavalier orders.**

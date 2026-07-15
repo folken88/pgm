@@ -4,6 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PGM — Personal Game Master</title>
+  <meta name="description" content="PGM — your personal Pathfinder dungeon crawl, playable entirely by ear. Gather a party and delve." />
+  <meta name="theme-color" content="#0d0605" />
+  <!-- Social / link-preview card (the banner art) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PGM — Personal Game Master" />
+  <meta property="og:title" content="PGM — Your Personal D&amp;D Game Master" />
+  <meta property="og:description" content="A Pathfinder dungeon crawl, playable entirely by ear. Gather a party and delve." />
+  <meta property="og:url" content="https://pgm.folkengames.com/" />
+  <meta property="og:image" content="https://pgm.folkengames.com/img/pgm-card.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="A party of adventurers approaching a fiery red doorway, beneath the title PGM." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PGM — Your Personal D&amp;D Game Master" />
+  <meta name="twitter:description" content="A Pathfinder dungeon crawl, playable entirely by ear. Gather a party and delve." />
+  <meta name="twitter:image" content="https://pgm.folkengames.com/img/pgm-card.jpg" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -20,6 +36,10 @@
   <main id="main">
     <!-- Landing: start a new delve, or join/watch an existing one (side window) -->
     <section id="landing" aria-labelledby="landing-h">
+      <!-- Hero banner. Decorative: the header <h1> already names the app, so this is
+           aria-hidden to avoid a screen reader announcing "PGM" twice. -->
+      <img class="hero-banner" src="/img/pgm-banner.webp" width="1920" height="764"
+        alt="" aria-hidden="true" decoding="async" fetchpriority="high" />
       <h2 id="landing-h">Enter the dungeon</h2>
       <!-- One-click login buttons for players remembered on this device -->
       <div id="account-picker" class="account-picker" aria-label="Previous players" hidden></div>

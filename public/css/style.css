@@ -1,20 +1,27 @@
 :root {
-  /* DARKWOOD (Tobias 2026-07-12): ebony table, walnut panels, cream ink,
-     brass fittings. Texture slots are CSS vars — swap --tex-panel/--tex-body
-     for generated images (scripts/gen-textures.js) when a key is available. */
-  --bg: #150c05;               /* ebony table */
-  --panel: #2b1a0d;            /* walnut panel */
-  --panel-2: #38220f;          /* raised walnut (inputs, hover) */
-  --ink: #ecdcb8;              /* warm cream lettering */
-  --muted: #b39a72;            /* faded brass */
-  --accent: #d9b45c;           /* polished brass */
+  /* EMBERWOOD (Tobias 2026-07-15): the darkwood table, plunged into the banner's
+     firelit dark — ebony deepened toward black, walnut warmed toward oxblood, and
+     the doorway's blood-crimson + ember-orange glow blended in as the energy color
+     alongside the polished brass. (Was DARKWOOD 2026-07-12; brass stays the calm
+     accent, crimson/ember drive the CTAs, glows and danger.) */
+  --bg: #0d0605;               /* ebony, dragged toward the banner's black */
+  --panel: #241009;            /* walnut steeped in oxblood */
+  --panel-2: #331608;          /* raised walnut (inputs, hover) */
+  --ink: #efdcba;              /* warm cream lettering */
+  --muted: #b7967a;            /* faded brass-in-firelight */
+  --accent: #d9b45c;           /* polished brass — the steady accent */
   --accent-ink: #241304;       /* wood under brass */
   --gold: #d9b45c;
-  --danger: #c4472e;
+  --crimson: #a81d18;          /* the PGM title blood-red */
+  --ember: #e8461f;            /* the doorway's ember glow (energy / CTA / highlight) */
+  --ember-bright: #fe533a;     /* the hottest point of the doorway */
+  --ember-soft: rgba(232,70,31,.42);  /* ember bloom for glows */
+  --danger: #d13b22;           /* aligned to the ember-crimson family */
   --ok: #7fb069;
-  --focus: #6fb3ff;
-  --line: #59391c;             /* carved trim */
-  --wood-edge: #0d0703;
+  --focus: #6fb3ff;            /* cool focus ring — deliberately complementary so it
+                                  stays crisp against the warm ember/crimson theme */
+  --line: #5a2a17;             /* carved trim, firelit */
+  --wood-edge: #090301;
   --tex-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
   --tex-wood: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='140'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.011 0.16' numOctaves='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0'/></filter><rect width='420' height='140' filter='url(%23w)'/></svg>");
   --tex-body: var(--tex-wood);   /* generated-image slots (fallback: SVG grain) */
@@ -28,7 +35,8 @@ body {
   font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   background:
     var(--tex-body),
-    repeating-linear-gradient(93deg, #1a0f06 0 34px, #150c05 34px 71px, #1e1108 71px 118px),
+    radial-gradient(120% 42% at 50% -6%, var(--ember-soft) 0%, rgba(232,70,31,0) 60%),
+    repeating-linear-gradient(93deg, #170b06 0 34px, #100705 34px 71px, #1a0d07 71px 118px),
     var(--bg);
   color: var(--ink);
   line-height: 1.55;
@@ -56,7 +64,27 @@ h1 { margin: 0; font-size: 1.6rem; color: var(--accent); letter-spacing: .5px; }
 
 main { max-width: 760px; margin: 0 auto; padding: 1rem 1.25rem 6rem; }
 
-h2 { font-size: 1.15rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+/* Hero banner (landing) — the firelit-doorway art, framed like a page plate.
+   Decorative (aria-hidden); the header <h1> carries the app name for readers. */
+.hero-banner {
+  display: block; width: 100%; height: auto;
+  margin: 0 0 1.15rem; border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow:
+    0 0 0 1px var(--wood-edge),
+    0 10px 34px -10px var(--ember-soft),
+    0 3px 12px rgba(0,0,0,.6);
+}
+@media (max-width: 700px) { .hero-banner { margin-bottom: .8rem; border-radius: 9px; } }
+
+/* Header title: brass, now catching a little of the doorway's ember. */
+h1 { text-shadow: 0 0 18px var(--ember-soft); }
+
+h2 {
+  font-size: 1.15rem; padding-bottom: .4rem;
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, var(--crimson), var(--accent) 55%, transparent) 1;
+}
 
 /* Forms */
 .field { margin: .9rem 0; display: flex; flex-direction: column; gap: .3rem; }
@@ -529,9 +557,17 @@ button {
 }
 button:hover { filter: brightness(1.25); }
 #start-delve, #chat-send, #lobby-start, #skill-begin, .create-actions button, #signin-btn {
-  background-image: var(--tex-grain), linear-gradient(180deg, #7a2412, #4d1207);
-  border-color: #2a0a03; font-weight: 700; color: #f2dfb8;
+  background-image: var(--tex-grain), linear-gradient(180deg, #b5271a, #5f1207);
+  border: 1px solid #2a0a03; font-weight: 700; color: #f7e4c0;
+  box-shadow: 0 2px 10px rgba(0,0,0,.6), 0 0 18px -5px var(--ember-soft), inset 0 1px 0 rgba(255,150,90,.22);
+  transition: box-shadow .15s ease, background-position .15s ease, transform .05s ease;
 }
+#start-delve:hover, #chat-send:hover, #lobby-start:hover, #skill-begin:hover,
+.create-actions button:hover, #signin-btn:hover {
+  background-image: var(--tex-grain), linear-gradient(180deg, var(--ember-bright), #7a1a0a);
+  box-shadow: 0 2px 12px rgba(0,0,0,.6), 0 0 22px -3px var(--ember-soft), inset 0 1px 0 rgba(255,170,110,.32);
+}
+#start-delve:active, #lobby-start:active, #skill-begin:active { transform: translateY(1px); }
 #choices button .num { background: var(--accent); color: var(--accent-ink); border-radius: 4px; }
 #choices button.big-roll {
   background-image: var(--tex-grain), radial-gradient(circle at 50% 35%, #9c3018, #4d1207 75%);
