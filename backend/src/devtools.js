@@ -157,6 +157,19 @@ async function runCmd(who, cmd) {
       `USUAL STOCK: ${(r.stock || []).length} wares. Party gold ${r.gold}.`,
     ] };
   }
+  // level | level <choiceKey> <optionKey> — the leveling screen, real session path.
+  if (verb === 'level') {
+    if (parts[1] && parts[2]) {
+      const r = session.levelAction(clientId, { type: 'level_choose', choice: parts[1], option: parts[2] });
+      return { ok: !!r.ok, said: [r.ok ? (r.text || 'chosen') : ('refused: ' + r.error)] };
+    }
+    const r = session.levelAction(clientId, { type: 'level_open' });
+    if (!r.ok) return { ok: false, said: ['refused: ' + r.error] };
+    const lines = ['BUILD: ' + r.build.name + ', level ' + r.build.level + ' ' + r.build.cls + ', ' + r.build.hp + ' HP.'];
+    (r.pending || []).forEach(p => { lines.push('CHOICE ' + p.key + ': ' + p.prompt); (p.options || []).forEach(o => lines.push('  [' + o.key + '] ' + o.name + ' — ' + o.blurb)); });
+    (r.made || []).forEach(mm => lines.push('MADE: ' + mm.key + ' = ' + mm.name));
+    return { ok: true, said: lines };
+  }
   if (verb === 'attack') {
     const t = findCombatant(run, parts.slice(1).join(' '), 'enemy');
     return played(session.action(clientId, { type: 'attack', target: t && t.id }));

@@ -407,7 +407,7 @@ function driveTurnsPaced(run, roll) {
     if (!cb || cb.down) { nextTurn(run); continue; }
     if (!tickFor(run, cb, roll)) { nextTurn(run); continue; }   // condition cost the turn (instant — not deliberation)
     if (cb.side === 'hero' && !cb.ai) {
-      if (cb.shopping) { nextTurn(run); continue; }   // shopping: turn passes, dungeon flows on (no delay)
+      if (cb.shopping || cb.leveling) { nextTurn(run); continue; }   // shopping/leveling: turn passes, dungeon flows on (no delay)
       if (cb.queuedAction) {
         const q = cb.queuedAction; cb.queuedAction = null;
         logEvent(run, `⏳ ${cb.name}'s pre-loaded ${q.label} triggers!`, 'event');
@@ -473,7 +473,7 @@ function runTurnsSync(run, roll) {
     if (cb.side === 'enemy' && cb.summoned) { summonTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'enemy' && cb.dominated > 0) { dominatedTurn(run, cb, roll); nextTurn(run); continue; }
     if (cb.side === 'hero' && !cb.ai) {
-      if (cb.shopping) { nextTurn(run); continue; }   // shopping: turn passes, dungeon flows on
+      if (cb.shopping || cb.leveling) { nextTurn(run); continue; }   // shopping/leveling: turn passes, dungeon flows on
       // A pre-loaded action fires the instant your turn arrives (poker parity).
       // On success its own applyAction advances the loop; a fizzle hands the
       // turn back to you live.
@@ -1174,7 +1174,7 @@ function shopPriceOf(key, now = Date.now()) {
 function publicRun(run) {
   const cb = current(run);
   let turn = null;
-  if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai && !cb.shopping) {   // a shopping player never gets a turn payload — their turns pass
+  if (run.phase === 'combat' && cb && cb.side === 'hero' && !cb.ai && !cb.shopping && !cb.leveling) {   // a shopping/leveling player never gets a turn payload — their turns pass
     let kit = [];
     try { kit = run.shim._abilitiesFor(cb) || []; } catch (e) {}
     const kd = pf1.abilities.kitFor(cb.cls);
@@ -1263,7 +1263,7 @@ function publicRun(run) {
       maxHp: c.side === 'enemy' ? null : c.maxHp,
       hpPct: hpPctFor(c), ac: c.ac, down: c.down,
       ai: !!c.ai, summoned: !!c.summoned, ownerClientId: c.ownerClientId || null,
-      dead: !!c.dead, negLevels: c.negLevels || 0, shopping: !!c.shopping,
+      dead: !!c.dead, negLevels: c.negLevels || 0, shopping: !!c.shopping, leveling: !!c.leveling,
       queued: c.queuedAction ? c.queuedAction.label : null,
       pack: c.side === 'hero' ? (c.pack || []).map(s2 => {
         const it = items.ITEM_BY_KEY[s2.key] || { name: s2.key, icon: '?', type: 'misc' };
@@ -1350,4 +1350,4 @@ function sweepAfk(run, roll = Math.random) {
   return true;
 }
 
-module.exports = { createPartyRun, applyAction, publicRun, summary, spawnRoom, sweepAfk, AFK_MS };
+module.exports = { createPartyRun, applyAction, publicRun, summary, spawnRoom, sweepAfk, current, AFK_MS };

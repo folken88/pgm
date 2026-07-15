@@ -417,6 +417,64 @@ function pubBuy(clientId, serviceKey, targetName) {
   return { ok: false, error: 'nothing happened' };
 }
 
+// ── LEVELING SCREEN (Tobias 2026-07-15) ─────────────────────────────────────
+// A shop-modeled screen where a player resolves pending CLASS CHOICES (cavalier
+// Order, later domains/bloodline) — at creation (lobby) or on level-up (mid-delve).
+// It's SESSION-level so it works with or without a run: the choice records on the
+// member's character (which the run's hero combatant shares by reference, so it
+// takes effect instantly). While the screen is open IN A DELVE, the hero's turns
+// auto-skip (the `leveling` flag, like `shopping`) so the party isn't blocked.
+function levelHero(s, m) {
+  return (s && s.run) ? s.run.heroes.find(h => h.ownerClientId === m.clientId) : null;
+}
+function levelPayload(m) {
+  const ch = m.character || {};
+  const choices = require('./pf1core').choices;
+  const madeNames = Object.entries(ch.choices || {}).map(([k, v]) => {
+    const o = choices.chosenOption(ch, k); return { key: k, option: v, name: o ? o.name : v };
+  });
+  return {
+    pending: choices.pendingChoices(ch).map(cp => ({
+      key: cp.key, prompt: cp.prompt,
+      options: cp.options.map(o => ({ key: o.key, name: o.name, icon: o.icon || '', desc: o.desc || '', blurb: o.blurb || '' })),
+    })),
+    made: madeNames,
+    build: { name: ch.name, cls: ch.cls, race: ch.race, level: (ch.derived && ch.derived.level) || ch.level || 1,
+      hp: ch.maxHp, ac: ch.ac },
+  };
+}
+function levelAction(clientId, act) {
+  const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
+  const m = s.members.get(memberIdOf(clientId)); if (!m || !m.character) return { ok: false, error: 'no character' };
+  const type = act && act.type;
+  if (type === 'level_open') {
+    // Leveling is available OUT of combat only (Tobias): the lobby, or between
+    // rooms. If a fight is on and it's your turn, it's not the moment.
+    const hero = levelHero(s, m);
+    if (s.run && s.run.phase === 'combat') {
+      const cur = partyrun.current(s.run);
+      if (cur && hero && cur.id === hero.id) return { ok: false, error: 'finish this fight — level up when the room is clear' };
+    }
+    if (hero) hero.leveling = true;
+    return Object.assign({ ok: true }, levelPayload(m));
+  }
+  if (type === 'level_close') {
+    const hero = levelHero(s, m); if (hero) hero.leveling = false;
+    return { ok: true };
+  }
+  if (type === 'level_choose') {
+    const choices = require('./pf1core').choices;
+    if (!choices.isLegalChoice(m.character, act.choice, act.option)) return { ok: false, error: 'not a choice you can make' };
+    m.character.choices = m.character.choices || {};
+    m.character.choices[act.choice] = act.option;
+    // An Order grants features (read live from the kit) — no stat re-derive needed.
+    const opt = choices.chosenOption(m.character, act.choice);
+    saveSession(s);
+    return Object.assign({ ok: true, text: (opt ? opt.name : act.option) + ' chosen.' }, levelPayload(m));
+  }
+  return { ok: false, error: 'unknown leveling action' };
+}
+
 function startRun(clientId) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
   if (!s.members.has(memberIdOf(clientId))) return { ok: false, error: 'only a player can start' };
@@ -573,9 +631,12 @@ function leave(clientId) {
 }
 
 function memberView(m, clientId) {
+  let pendingLevel = 0;
+  try { pendingLevel = m.character ? require('./pf1core').choices.pendingChoices(m.character).length : 0; } catch (e) {}
   return { memberId: m.memberId, name: m.name, icon: m.icon, ready: m.ready, ai: m.ai,
     cls: m.character ? m.character.cls : null, race: m.character ? m.character.race : null,
     dead: !!m.dead, negLevels: m.negLevels || 0,
+    pendingLevel,                         // >0 → the "Level up" affordance shows (a choice awaits)
     isYou: m.memberId === clientId };
 }
 
@@ -686,7 +747,7 @@ restoreSessions();
 module.exports = {
   ICONS, COMPANIONS, MAX_PARTY, MAX_SPECTATORS,
   createDelve, joinDelve, setCharacter, addCompanion, removeCompanion,
-  startRun, action, leave, sweepAfk, pubBuy, pubSell, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
+  startRun, action, leave, sweepAfk, pubBuy, pubSell, levelAction, saveSession, setNotify, delvesForAccount, snapshotFor, sessionSnapshotFor, allSummaries,
   removeDelve, deleteDelve, adminListDelves,
   _reset() { sessions.clear(); clients.clear(); seq = 0; sid = 0; },
   _testInternals(clientId) { return sessionOf(clientId); },

@@ -237,6 +237,15 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
   }
 
+  // Leveling screen — resolve pending class choices (cavalier Order, …). Works in
+  // the lobby (creation-time) and mid-delve; opening it auto-skips the hero's turns.
+  if (url === '/api/session/level' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = session.levelAction(body.clientId, { type: body.action, choice: body.choice, option: body.option });
+    if (r.ok) broadcast();
+    return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));
+  }
+
   if (url === '/api/pub/sell' && req.method === 'POST') {
     const body = await readBody(req);
     const r = session.pubSell(body.clientId, String(body.item || ''));
