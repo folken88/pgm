@@ -185,12 +185,18 @@ function enemyCombatant(e, i) {
 
 function spawnRoom(run, roll) {
   const apl = Math.round(run.heroes.reduce((s, h) => s + (h.character.derived.level || 1), 0) / run.heroes.length);
+  // RESTING (Tobias) draws notice: each rest taken in the just-cleared room makes
+  // the NEXT room tougher by +1 CR (modeled as a bump to the party level the
+  // encounter budget is fitted to). Consumed here, then cleared for the new room.
+  const restCR = run._restCR || 0;
+  const genApl = apl + restCR;
+  run._restCR = 0; run._rested = false;
   // POKER BESTIARY (155 MON stat blocks, vetted-by-provenance) behind PGM's
   // CR/XP budget; special flags (healer/shout/sr/shaman casts...) drive
   // _enemyAct. Stealth: default DC 10, sneaky lurkers overridden.
   const { MON, MON_GANGS } = pf1.monsters;
   const xpForCR = pf1.xp.xpForCR;
-  const room = generateMonRoom(run.heroes.length, apl, run.roomsCleared, MON, xpForCR, roll, MON_GANGS);
+  const room = generateMonRoom(run.heroes.length, genApl, run.roomsCleared, MON, xpForCR, roll, MON_GANGS);
   run.room = { flavor: room.flavor, reward: room.reward };
   // BOSS ROOM every 5th (poker's BOSS_EVERY): the toughest thematic foe the
   // party can handle, ADVANCED +2-4 levels with pre-cast wards, leading mooks.
@@ -202,7 +208,7 @@ function spawnRoom(run, roll) {
     // into a proper boss. A big party (action economy) earns a slightly higher
     // cap. Milestone bosses (ogre/golem/devil) only appear once the party is
     // high enough level to face them — never dropped on an under-levelled party.
-    const effApl = apl + (run.heroes.length >= 5 ? 1 : 0);
+    const effApl = genApl + (run.heroes.length >= 5 ? 1 : 0);
     const baseCap = Math.max(1, effApl + 1);
     const cand = Object.keys(MON).filter(k => (MON[k].crNum || 99) <= baseCap && !MON[k].boss);
     const top = cand.sort((a, b) => (MON[b].crNum || 0) - (MON[a].crNum || 0)).slice(0, 3);
@@ -807,6 +813,11 @@ function applyAction(run, clientId, action, roll = Math.random) {
     if (!it || !it.effect || it.effect.kind !== 'heal') return { ok: false, error: 'only healing draughts between fights' };
     return useItem(run, hero, action.item, action.target, roll);
   }
+  if (run.phase === 'cleared' && type === 'rest') {
+    if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
+    if (run._rested) return { ok: false, error: 'the party has already made camp here — descend to press on' };
+    return restParty(run);
+  }
   if (run.phase === 'cleared' && type === 'equip') {
     const hero = run.heroes.find(h => h.ownerClientId === clientId);
     if (!hero) return { ok: false, error: 'not a party member' };
@@ -1033,6 +1044,34 @@ function applyLevelUp(run, hero, from, to) {
   logEvent(run, `⭐ LEVEL UP! ${hero.name} reaches level ${to} (${c.cls})! ${parts.join(' · ') || 'steady growth'}`, 'urgent', '/audio/spell_channel_charge.mp3');
 }
 
+// Classes that carry healing (cure spells / channel) — they tend the party at camp.
+const HEAL_CLASSES = new Set(['cleric', 'oracle', 'druid', 'paladin', 'bard', 'inquisitor', 'warpriest', 'shaman']);
+
+// REST (Tobias 2026-07-14): between rooms the party can make camp. A night's sleep
+// heals everyone (to full if a healer is along — they expend the day's remaining
+// cures on the wounded "at bedtime"), and spell prayers renew by dawn (PGM already
+// refreshes slots each room). The cost: the campfire draws notice, so the NEXT room
+// comes +1 CR (see spawnRoom's restCR). Once per cleared room.
+function restParty(run) {
+  const alive = run.heroes.filter(h => !h.dead && !h.left);
+  if (!alive.length) return { ok: false, error: 'no one left to rest' };
+  const healers = alive.filter(h => !h.down && HEAL_CLASSES.has(h.cls));
+  let restored = 0;
+  const healTo = (h, to) => { const before = Math.max(0, h.hp); if (h.hp < to) { h.hp = to; restored += to - before; } h.down = false; h.stable = false; };
+  for (const h of alive) {
+    healTo(h, Math.min(h.maxHp, Math.max(0, h.hp) + Math.max(1, Math.ceil(h.maxHp * 0.5))));  // a night's sleep: +50% max HP
+    if (healers.length) healTo(h, h.maxHp);   // a healer along tops the party off — the bedtime cure dump
+  }
+  run._restCR = (run._restCR || 0) + 1;
+  run._rested = true;
+  const who = healers.map(h => h.nickname || h.name);
+  const tend = who.length
+    ? `${who.join(' and ')} pour out the last of the day's healing over the wounded, and the party wakes whole. `
+    : `With no healer among you, a night's sleep still mends much. `;
+  logEvent(run, `\u{1F3D5}️ The party makes camp. ${tend}Spell prayers renew by dawn — but a fire in the dark draws notice, and the next room comes a step deadlier (+1 CR).`, 'event');
+  return { ok: true, restored };
+}
+
 function clearRoom(run, roll = Math.random) {
   run.combatants.forEach(c => { if (c.summoned && !c.down) { c.down = true; } });
   run.phase = 'cleared';
@@ -1253,6 +1292,7 @@ function publicRun(run) {
   const shown = run.combatants.filter(c => c.side === 'hero' || c.revealed);
   return {
     phase: run.phase, round: run.round, gold: run.gold, roomsCleared: run.roomsCleared,
+    rested: !!run._rested,   // party already made camp in this cleared room (Rest offered until then)
     room: run.room ? { flavor: run.room.flavor } : null,
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,

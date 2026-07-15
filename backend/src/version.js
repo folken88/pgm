@@ -7,6 +7,22 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.10.0 2026-07-15 REST / MAKE CAMP between rooms (Tobias: "the party can also rest, but resting
+//                    adds 1 cr to the next room… heals a certain amount, restores spell slots, and
+//                    causes healing classes to expend all their remaining healing on the party at
+//                    bedtime"). In a cleared room a new "🏕️ Rest & make camp" action: a night's sleep
+//                    heals everyone +50% max HP, and if a HEALER (cleric/oracle/druid/paladin/bard/
+//                    inquisitor/warpriest/shaman) is along they pour out the day's remaining cures to
+//                    top the party to FULL — the bedtime healer dump. Spell prayers renew by dawn (PGM
+//                    already refreshes slots each room). The cost: the campfire draws notice, so the
+//                    NEXT room comes +1 CR (modeled as a bump to the party level the encounter budget
+//                    fits to — spawnRoom's genApl). Once per cleared room; the +1 CR is consumed on
+//                    descend, then cleared. Wired everywhere: sighted action-bar button (hidden once
+//                    camped), the numbered blind choice list, AND the Escape action hub — so a blind
+//                    player rests by ear too. publicRun exposes `rested`. 5 new tests; 161/161.
+//                    NOTE: "clerics heal between rounds" is delivered as this bedtime dump (they spend
+//                    their about-to-refresh cures on the party at camp); a manual out-of-combat cure
+//                    cast UI can follow if wanted.
 //  1.9.0  2026-07-15 BUFF ICONS ON THE CARDS (poker parity — Tobias: "cards don't show buff icons,
 //                    again a feature that fully works in poker-dungeon"). Every active buff now
 //                    shows as its own little chip on the hero/unit card — Rage 😤, Power Attack 💥,
@@ -269,6 +285,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.9.0';
-const HEADLINE = 'Buff icons are back: every spell and stance now shows as its own little chip on your card — Rage, Bless, Haste, Shield, your cavalier order buffs, and the rest — so you can see at a glance what is running. Blind players hear the full list on the B key. Hard refresh.';
+const VERSION = '1.10.0';
+const HEADLINE = 'You can now REST between rooms: make camp to heal the party — a healer along tends everyone to full — but the campfire draws notice and the next room comes one step deadlier. Rest, or press on. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

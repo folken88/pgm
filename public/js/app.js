@@ -1387,6 +1387,8 @@
       bar.innerHTML = '<button class="ab-btn ab-primary ab-roll" data-dact="initiative">' + String.fromCodePoint(0x1F3B2) + ' Roll for initiative!</button>';
     } else if (run.phase === 'cleared') {
       bar.innerHTML = '<span class="ab-status">' + String.fromCodePoint(0x1F6AA) + ' The room is yours.</span>' +
+        (run.rested ? '<span class="ab-status">' + String.fromCodePoint(0x1F3D5) + '️ Camp made.</span>'
+                    : '<button class="ab-btn" data-dact="rest" title="Heal the party (to full with a healer along); the next room comes +1 CR harder">' + String.fromCodePoint(0x1F3D5) + '️ Rest & make camp</button>') +
         '<button class="ab-btn ab-primary" data-dact="descend">' + String.fromCodePoint(0x1F6AA) + ' Open the next door</button>';
     } else if (run.phase !== 'combat') {
       bar.innerHTML = '<button class="ab-btn" data-dact="leave">' + String.fromCodePoint(0x21A9) + ' Return to start</button>';
@@ -1486,6 +1488,7 @@
       usableItems(run).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
         choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
       });
+      if (!run.rested) choices.push({ id: 'rest', label: 'Rest and make camp — heal the party, but the next room comes one step harder' });
       choices.push({ id: 'descend', label: 'Descend deeper' });
     } else if (run.phase === 'defeated' || run.phase === 'retreated') { choices.push({ id: 'leave', label: 'Return to start' }); }
     state.choices = choices;
@@ -1682,6 +1685,7 @@
           return items;
         }
         if (mode === 'game') {
+          if (run && run.phase === 'cleared' && !run.rested) items.push({ label: 'Rest and make camp — heal the party; the next room comes one step harder', run: function () { doGameAction({ id: 'rest' }); } });
           if (run && run.phase === 'cleared') items.push({ label: 'Open the next door — descend deeper', run: function () { if (info.descend) info.descend(); } });
           // Level up is out-of-combat only; offered when a choice awaits (or to review).
           if (run && run.phase !== 'combat' && run.phase !== 'initiative') items.push({ label: pendingLevelCount() ? 'Level up — you have a choice to make' : 'Level up — review your build', run: function () { openLevel(); } });

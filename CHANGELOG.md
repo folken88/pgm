@@ -15,6 +15,22 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.10.0 — 2026-07-15
+
+**Rest and make camp.**
+
+Cleared a room but the party's battered? You can now **make camp** before opening the next door.
+A night's sleep heals everyone, and if you've a **healer** along — cleric, druid, paladin, bard,
+and the like — they pour out the day's remaining healing over the wounded and the party wakes
+**fully restored**. Your spell prayers renew by morning.
+
+The catch: a fire in the dark **draws notice**. The next room comes **one step deadlier (+1 CR)**.
+So it's a real choice — patch up and face a harder fight, or press on while you still have surprise.
+You can camp **once** per cleared room. Fully playable by ear: Rest is on the action bar, in the
+numbered choice list, and in the Escape menu.
+
+---
+
 ## v1.9.0 — 2026-07-15
 
 **Buff icons on the cards.**
