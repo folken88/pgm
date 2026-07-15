@@ -89,6 +89,14 @@
     var me = you.members.find(function (m) { return m.clientId === state.clientId; });
     return !!(me && me.shopping) || !!state.shopOpen;
   }
+  /** The through-the-wall muffle for combat audio when you've stepped aside. Leveling
+   *  muffles HARDER than the shop (lower cutoff + volume) so the TTS reading the
+   *  choices is crystal clear over the fight (Tobias). Returns null when at the fight. */
+  function backgroundMuffle() {
+    if (state.levelOpen) return { vol: 0.55 * 0.25, cutoff: 250 };
+    if (amShopping()) return { vol: 0.55 * 0.5, cutoff: 378 };
+    return null;
+  }
 
   // The running build, shown in the topbar. It goes in the subject line of every
   // patch-note email, so a tester can always read back which version they played.
@@ -152,6 +160,7 @@
     });
     el('shop-btn').addEventListener('click', openShop);
     el('shop-close').addEventListener('click', closeShop);
+    if (el('level-close')) el('level-close').addEventListener('click', closeLevel);
     var ssearch = el('shop-search');
     if (ssearch) {
       ssearch.addEventListener('input', function () { state.shopQuery = this.value; renderShop(); });
@@ -673,6 +682,9 @@
     if (canAdd) buildCompanionPicker();
 
     var readyCount = you.members.filter(function (m) { return m.ready; }).length;
+    // A pending class choice (a new cavalier's Order) → a visible Level-up button
+    // before the group is ready. Blind players reach it via Escape (see sessionMenu).
+    ensureLevelBtn('lobby-start', pendingLevelCount() > 0 && you.phase === 'lobby');
     el('lobby-start').hidden = !(you.role === 'player' && you.phase === 'lobby' && readyCount >= 1);
     el('lobby-wait').textContent = you.phase !== 'lobby' ? 'The adventure has begun.'
       : (readyCount === 0 ? 'Waiting for a ready adventurer…' : (you.role === 'spectator' ? 'Waiting for the party…' : ''));
@@ -895,9 +907,10 @@
         if (e.sound === 'earcon:dice' && e.seq > state.speakFloor) diceEarcon();
         if (e.seq <= state.speakFloor) return;         // backlog: show, don't speak/play
         if (e.sound && e.sound.indexOf('earcon:') !== 0) {   // combat/spell SFX (poker's SND pools)
-          // In the shop you've only stepped aside — the fight carries on and you
-          // HEAR it, muffled through the wall (poker's dungeon:echo treatment).
-          if (amShopping()) playSfx(e.sound, 0.55 * 0.5, true, 378);
+          // Stepped aside (shop or leveling) → the fight carries on, heard muffled
+          // through the wall; leveling muffles harder so the choice TTS stays clear.
+          var mf = backgroundMuffle();
+          if (mf) playSfx(e.sound, mf.vol, true, mf.cutoff);
           else playSfx(e.sound, 0.55, false);
         }
         // TWO VOICES, ONE QUEUE (the whole point of Tobias's question): the 11labs
@@ -1234,6 +1247,86 @@
     });
   }
 
+  // ── THE LEVELING SCREEN ────────────────────────────────────────────────────
+  // Where you resolve class choices (cavalier Order, later domains/bloodline) —
+  // at creation (lobby) or on level-up. Shop-modeled: turns auto-pass while open,
+  // battle audio muffled hard so the choice TTS is clear (Tobias). Blind-navigable:
+  // Escape is the leveling menu; option descriptions are spoken in full.
+  function myMember() {
+    var you = state.you; if (!you || !Array.isArray(you.members)) return null;
+    return you.members.find(function (m) { return m.memberId === state.myId; }) || null;
+  }
+  function pendingLevelCount() { var me = myMember(); return me ? (me.pendingLevel || 0) : 0; }
+  /** Show/hide a sighted "Level up" button just before `anchorId`. */
+  function ensureLevelBtn(anchorId, show) {
+    var anchor = el(anchorId); if (!anchor) return;
+    var btn = el('level-btn');
+    if (!show) { if (btn) btn.hidden = true; return; }
+    if (!btn) {
+      btn = document.createElement('button'); btn.id = 'level-btn'; btn.type = 'button'; btn.className = 'level-up-btn';
+      btn.textContent = '⭐ Level up';
+      btn.addEventListener('click', openLevel);
+      anchor.parentNode.insertBefore(btn, anchor);
+    } else if (btn.nextSibling !== anchor) {
+      anchor.parentNode.insertBefore(btn, anchor);
+    }
+    btn.hidden = false;
+  }
+  function applyLevelPayload(r) { state.levelPending = r.pending || []; state.levelMade = r.made || []; state.levelBuild = r.build || null; }
+  function openLevel() {
+    if (state.role !== 'player') { BM.speak('Only a player can level up.', 'urgent'); return; }
+    api('/api/session/level', { clientId: state.clientId, action: 'level_open' }).then(function (r) {
+      if (!r.ok) { BM.speak(r.error || 'Cannot level up right now.', 'urgent'); return; }
+      applyLevelPayload(r);
+      state.levelOpen = true;
+      el('level-panel').hidden = false;
+      renderLevel();
+      var np = state.levelPending.length;
+      BM.speak('Level up. ' + (np ? (np + (np === 1 ? ' choice' : ' choices') + ' to make. Press Escape for the menu, or Tab to the options.') : 'No choices right now — this is your build. Press Escape to leave.'), 'urgent');
+      el('level-close').focus();
+    });
+  }
+  function closeLevel() {
+    state.levelOpen = false;
+    el('level-panel').hidden = true;
+    api('/api/session/level', { clientId: state.clientId, action: 'level_close' }).then(function () {});
+    var back = el('level-btn') || el('shop-btn'); if (back) back.focus();
+  }
+  function chooseLevelOption(choiceKey, optionKey, spokenName) {
+    api('/api/session/level', { clientId: state.clientId, action: 'level_choose', choice: choiceKey, option: optionKey }).then(function (r) {
+      if (!r.ok) { BM.speak(r.error || 'Cannot choose that.', 'urgent'); return; }
+      applyLevelPayload(r);
+      renderLevel();
+      BM.speak((spokenName || 'Chosen') + '. ' + (state.levelPending.length ? (state.levelPending.length + ' more to make.') : 'All set — press Escape to leave.'), 'urgent');
+      if (!state.levelPending.length) { var c = el('level-close'); if (c) c.focus(); }
+    });
+  }
+  function renderLevel() {
+    var build = state.levelBuild || {};
+    var bb = el('level-build'); if (bb) bb.textContent = build.name ? ('Level ' + build.level + ' ' + (build.race || '') + ' ' + (build.cls || '') + ' · ' + build.hp + ' HP · AC ' + build.ac) : '';
+    var pend = el('level-pending'); if (pend) {
+      pend.innerHTML = '';
+      (state.levelPending || []).forEach(function (cp) {
+        var box = document.createElement('div'); box.className = 'level-choice'; box.setAttribute('role', 'group');
+        box.innerHTML = '<div class="lc-prompt">' + esc(cp.prompt) + '</div>';
+        var opts = document.createElement('div'); opts.className = 'lc-opts';
+        (cp.options || []).forEach(function (o) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'lc-opt';
+          b.innerHTML = '<span class="lco-icon" aria-hidden="true">' + (o.icon || '') + '</span><span class="lco-name">' + esc(o.name) + '</span><span class="lco-desc">' + esc(o.desc) + '</span>';
+          b.setAttribute('aria-label', 'Choose ' + o.name + '. ' + o.desc);
+          b.addEventListener('click', function () { chooseLevelOption(cp.key, o.key, o.name); });
+          opts.appendChild(b);
+        });
+        box.appendChild(opts); pend.appendChild(box);
+      });
+    }
+    var made = el('level-made'); if (made) {
+      made.innerHTML = (state.levelMade || []).length
+        ? '<div class="lm-h">Chosen</div>' + state.levelMade.map(function (m) { return '<div class="lm-row">' + esc(m.name) + '</div>'; }).join('')
+        : '';
+    }
+  }
+
   // What THIS hero may consume right now: their pack + party-flagged pile
   // items (+ the whole pile for the leader — dividing to yourself is implied).
   function matchLoot(name) {
@@ -1564,8 +1657,22 @@
           items.push({ label: 'Leave the shop and rejoin the fight', run: function () { closeShop(); } });
           return items;
         }
+        // ON THE LEVELING SCREEN, Escape is the leveling menu — each pending choice's
+        // options are numbered items, spoken with what they do; then leave.
+        if (state.levelOpen) {
+          (state.levelPending || []).forEach(function (cp) {
+            (cp.options || []).forEach(function (o) {
+              items.push({ label: 'Choose ' + o.name + ' — ' + o.desc, run: function () { chooseLevelOption(cp.key, o.key, o.name); } });
+            });
+          });
+          items.push({ label: 'Read my build', run: function () { var b = state.levelBuild || {}; BM.speak('Level ' + b.level + ' ' + (b.race || '') + ' ' + (b.cls || '') + ', ' + b.hp + ' hit points, armor class ' + b.ac + '.', 'urgent'); } });
+          items.push({ label: 'Leave the leveling screen', run: function () { closeLevel(); } });
+          return items;
+        }
         if (mode === 'game') {
           if (run && run.phase === 'cleared') items.push({ label: 'Open the next door — descend deeper', run: function () { if (info.descend) info.descend(); } });
+          // Level up is out-of-combat only; offered when a choice awaits (or to review).
+          if (run && run.phase !== 'combat' && run.phase !== 'initiative') items.push({ label: pendingLevelCount() ? 'Level up — you have a choice to make' : 'Level up — review your build', run: function () { openLevel(); } });
           items.push({ label: 'Shop — buy potions and gear', run: function () { openShop(); } });
           if (run && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative')) items.push({ label: 'Retreat — end the run for the party, keep the gold', run: doRetreat });
           items.push({ label: 'Main menu — leave; your delve is saved', run: leaveToMenu });
@@ -1573,6 +1680,8 @@
           if (you && you.phase === 'pub') {
             items.push({ label: 'Set out again — begin a new delve', run: startAdventure });
           } else {
+            // A pending class choice (a new cavalier's Order) — resolve it before setting out.
+            if (pendingLevelCount()) items.push({ label: 'Level up — choose your ' + ((myMember() && myMember().cls) === 'cavalier' ? 'Order' : 'class option'), run: function () { openLevel(); } });
             items.push({ label: 'Start the adventure', run: startAdventure });
             var cast = (state.meta && state.meta.companions) || [];
             if (cast.length) items.push({ label: 'Add a random AI companion', run: function () { addCompanion(cast[Math.floor(Math.random() * cast.length)].name); } });

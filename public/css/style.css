@@ -318,6 +318,32 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .shop-card.is-broke { opacity: .72; }
 .sc-tag { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; color: var(--accent);
   border: 1px solid var(--accent); border-radius: 999px; padding: 0 .35rem; vertical-align: middle; }
+
+/* ── THE LEVELING SCREEN ──────────────────────────────────────────────────── */
+.level-panel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 40;
+  width: min(560px, 92vw); max-height: 82vh; overflow-y: auto;
+  background: var(--panel); border: 2px solid var(--accent); border-radius: 12px;
+  padding: 1rem 1.1rem; box-shadow: 0 12px 40px rgba(0,0,0,.6);
+}
+.level-pending { display: flex; flex-direction: column; gap: .8rem; margin-top: .5rem; }
+.level-choice { border: 1px solid var(--accent); border-radius: 10px; padding: .55rem .65rem;
+  background: linear-gradient(180deg, rgba(179,154,114,.10), rgba(0,0,0,.18)); }
+.level-choice .lc-prompt { font-weight: 600; margin-bottom: .45rem; }
+.level-choice .lc-opts { display: flex; flex-direction: column; gap: .35rem; }
+.lc-opt { display: grid; grid-template-columns: auto 1fr; gap: .1rem .5rem; align-items: baseline;
+  text-align: left; background: rgba(0,0,0,.18); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: .4rem .55rem; cursor: pointer; }
+.lc-opt:hover { border-color: var(--accent); background: rgba(0,0,0,.28); }
+.lc-opt .lco-icon { grid-row: span 2; font-size: 1.3rem; }
+.lc-opt .lco-name { font-weight: 700; }
+.lc-opt .lco-desc { grid-column: 2; color: var(--muted); font-size: .8rem; }
+.level-made { margin-top: .8rem; }
+.level-made .lm-h { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+.level-made .lm-row { color: var(--accent); font-weight: 600; }
+/* the sighted Level-up affordance (lobby + cleared room) */
+.level-up-btn { background: var(--accent); color: #1a1206; border: 0; border-radius: 8px;
+  padding: .4rem .8rem; font-weight: 700; cursor: pointer; }
 .hero-card .hc-meta { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .hero-card .hc-conds { color: var(--danger); font-size: .78rem; }
 

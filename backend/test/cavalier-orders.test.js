@@ -38,12 +38,14 @@ test('choosing an Order clears the pending choice', () => {
   assert.strictEqual(chosenOption(cav, 'order').name, 'Order of the Flame');
 });
 
-test('only real orders are legal picks', () => {
+test('only BUILT orders are legal picks (no half-built order goes live)', () => {
   const cav = createCharacter({ name: 'C', race: 'human', cls: 'cavalier' });
-  assert.ok(isLegalChoice(cav, 'order', 'flame'));
-  assert.ok(isLegalChoice(cav, 'order', 'cockatrice'));
+  assert.ok(isLegalChoice(cav, 'order', 'flame'), 'Flame is built');
+  assert.ok(!isLegalChoice(cav, 'order', 'cockatrice'), 'Cockatrice not built yet → not selectable');
   assert.ok(!isLegalChoice(cav, 'order', 'nonsense'));
   assert.ok(!isLegalChoice(cav, 'domains', 'flame'), 'a cavalier has no domains choice');
+  // pendingChoices offers only built options.
+  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame']);
 });
 
 test('the Flame deeds are gated by the ORDER, not the name', () => {

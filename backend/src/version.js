@@ -7,6 +7,23 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.6.0  2026-07-15 THE LEVELING SCREEN + CAVALIER ORDERS (choice framework). A class can now make a
+//                    defining choice (the Cavalier's Order; domains/bloodline later), resolved on a
+//                    new blind-first Leveling screen modeled on the shop: opening it auto-skips your
+//                    turns and muffles the battle HARDER than the shop (lowpass ~250Hz, ~0.25× vol) so
+//                    the TTS reading the choices is clear. Available out of combat (lobby for a new
+//                    character, between rooms on level-up); if others descend while you choose, your
+//                    turns pass and you catch up. Escape is the leveling menu (numbered options, each
+//                    spoken with what it does); sighted players get a ⭐ Level-up button.
+//                    Orders unlock from the CHOICE, not a name: character.choices.order gates the deeds
+//                    (shim _orderOf / _charAllows override re-reads the synced Flame deeds' Gweyir gate
+//                    as order:'flame'); Lord Gweyir stays Flame by identity. All PGM-only (choices.js,
+//                    shim.js) so the poker sync can't clobber it. Verified end to end: create a cavalier
+//                    → lobby Level-up → pick Order of the Flame → the action bar shows Challenge,
+//                    Glorious Challenge, Blaze of Glory. Six orders defined (Flame + Cockatrice, Dragon,
+//                    Lion, Shield, Star; Sword deferred with mounts) but only FULLY-BUILT orders are
+//                    selectable (a `built` flag) — right now that's Flame; the other five flip on as
+//                    their L2/L8/L15 mechanics land (next pass). 153/153.
 //  1.5.0  2026-07-14 CAVALIER + GUNSLINGER ARE PLAYABLE (Tobias: "where is the cavalier class with the
 //                    order of the flame?"). Both were fully built in the engine (SELECTABLE_CLASSES)
 //                    but missing from the create dropdown (characters.js was out of sync) — added.
@@ -196,6 +213,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.5.0';
-const HEADLINE = 'You can play a Cavalier now (and a Gunslinger) — both were built but hidden from character creation. Fixing that also fixed a bug where a class special like the Cavalier Challenge would not show up on the action bar. Lord Gweyir, the Order of the Flame cavalier, is still recruitable as a companion. Hard refresh.';
+const VERSION = '1.6.0';
+const HEADLINE = 'New: a Leveling screen. Make a Cavalier and you now choose your Order on it — Order of the Flame is live. Like the shop, your turns pass while you level and the battle goes quiet so you can hear the choices clearly. More orders are on the way. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

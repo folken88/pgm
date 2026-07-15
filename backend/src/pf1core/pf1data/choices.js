@@ -16,7 +16,10 @@
 // The MECHANICS live in the shim (challenge modifiers) + pgmCavalierOrders (deeds);
 // this is the player-facing metadata the Leveling screen presents.
 const CAVALIER_ORDERS = [
-  { key: 'flame', name: 'Order of the Flame', icon: '🔥',
+  // `built: true` gates an order to selectable. The five new orders flip to built
+  // as each one's full mechanics (challenge modifier + L2/L8/L15 deeds) land — no
+  // half-built order is ever pickable (Tobias's rule).
+  { key: 'flame', name: 'Order of the Flame', icon: '🔥', built: true,
     desc: 'Glory through a rising kill-streak. Glorious Challenge compounds bonus damage for every foe you drop; Blaze of Glory is a final surge; you are never caught flat-footed, and a critical hit daunts the whole room.',
     blurb: 'Kill-streak glory — build the Flame on the weak, then loose it on the mighty.' },
   { key: 'cockatrice', name: 'Order of the Cockatrice', icon: '🐔',
@@ -45,13 +48,20 @@ const CLASS_CHOICES = {
   // future: cleric domains, sorcerer bloodline, wizard school …
 };
 
-/** Choice-points a character is ELIGIBLE for but has not yet resolved. */
+/** Only options whose mechanics are fully implemented are offered (Tobias's rule).
+ *  As each order's deeds land, flip its `built: true`. */
+function builtOptions(cp) {
+  const opts = (cp.options || []).filter(o => o.built);
+  return Object.assign({}, cp, { options: opts.length ? opts : cp.options });
+}
+
+/** Choice-points a character is ELIGIBLE for but has not yet resolved (built options only). */
 function pendingChoices(character) {
   if (!character) return [];
   const points = CLASS_CHOICES[character.cls] || [];
   const lvl = (character.derived && character.derived.level) || character.level || 1;
   const made = character.choices || {};
-  return points.filter(cp => lvl >= cp.level && made[cp.key] === undefined);
+  return points.filter(cp => lvl >= cp.level && made[cp.key] === undefined).map(builtOptions);
 }
 
 /** The chosen option object for a resolved choice, or null. */
@@ -69,7 +79,8 @@ function isLegalChoice(character, choiceKey, optionKey) {
   if (!cp) return false;
   const lvl = (character.derived && character.derived.level) || character.level || 1;
   if (lvl < cp.level) return false;
-  return cp.options.some(o => o.key === optionKey);
+  const o = cp.options.find(x => x.key === optionKey);
+  return !!(o && o.built);   // only fully-built orders are legal to pick
 }
 
 module.exports = { CLASS_CHOICES, CAVALIER_ORDERS, pendingChoices, chosenOption, isLegalChoice };

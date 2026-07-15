@@ -15,6 +15,29 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.6.0 — 2026-07-15
+
+**A Leveling screen — and Cavaliers now choose their Order.**
+
+Some classes make a choice that defines them, and now there's a place to make it. Create a
+**Cavalier** and you'll be prompted to choose your **Order** before you set out — **Order of the
+Flame** is live, and a cavalier who takes it gets the full order: Glorious Challenge, Blaze of
+Glory, and its passives, right on the action bar.
+
+The Leveling screen works like the shop: **you can take your time.** While it's open your turns
+pass automatically, and if the rest of the party opens the next door, they press on without you —
+you catch up when you're done. The battle goes **quiet and muffled** while you're choosing (more
+so than in the shop) so your screen reader can read the options clearly. It's fully key-driven for
+blind players: **Escape** opens the leveling menu with each option numbered and described aloud.
+
+Lord Gweyir, the recruitable Order-of-the-Flame companion, is unchanged.
+
+*(Five more Orders — Cockatrice, Dragon, Lion, Shield, Star — are designed and coming; each turns
+on once its full set of abilities is built, so you'll never pick an order that doesn't work yet.
+Order of the Sword waits for mounted combat.)*
+
+---
+
 ## v1.5.0 — 2026-07-14
 
 **The Cavalier (and the Gunslinger) are playable now.** Both classes were fully built but just

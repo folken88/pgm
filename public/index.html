@@ -201,6 +201,19 @@
         </section>
       </div>
 
+      <!-- LEVELING SCREEN: resolve class choices (cavalier Order, …). Shop-modeled:
+           turns auto-pass while open; battle audio muffled harder so the TTS is clear. -->
+      <div id="level-panel" class="level-panel" hidden role="dialog" aria-labelledby="level-h" aria-modal="false">
+        <div class="shop-head">
+          <h3 id="level-h">⭐ Level up</h3>
+          <span id="level-build" class="shop-gold" aria-live="polite"></span>
+          <button id="level-close" type="button">✓ Done</button>
+        </div>
+        <p class="shop-note">Take your time — your turns pass while you choose, and the party can press on without you. You'll catch up.</p>
+        <div id="level-pending" class="level-pending" aria-label="Choices to make"></div>
+        <div id="level-made" class="level-made" aria-label="Choices already made"></div>
+      </div>
+
       <!-- Urgent announcements (victory/defeat) get an assertive region -->
       <div id="announce" class="visually-hidden" role="alert" aria-live="assertive"></div>
     </section>
