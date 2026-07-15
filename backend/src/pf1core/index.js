@@ -20,6 +20,7 @@ module.exports = {
   monsters: require('./pf1data/monsters'),
   weapons: require('./pf1data/weapons'),
   signatures: require('./pf1data/signatures'),
+  choices: require('./pf1data/choices'),
   xp: require('./pf1data/xp'),
   abilityScores: require('./pf1data/abilityScores'),
   skills: require('./pf1data/skills'),

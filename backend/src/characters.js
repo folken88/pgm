@@ -85,6 +85,11 @@ function createCharacter(opts) {
     skillPoints: points,
     skills: selected,        // chosen skill keys (1 rank each at level 1)
     skillSheet,              // full display sheet
+    // Class choices (cavalier Order, later domains/bloodline). Authored builds
+    // (companions) can supply their own; player picks are made on the Leveling
+    // screen and stored here. See pf1core/pf1data/choices.js.
+    choices: opts.choices || {},
+    level: 1,                // convenience mirror of derived.level for choice checks
   };
 }
 

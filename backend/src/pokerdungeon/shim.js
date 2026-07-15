@@ -187,10 +187,35 @@ Object.assign(DungeonShim.prototype, {
     if (!party.length) return 1;
     return Math.max(1, Math.min(...party.map(m => m.level || 1)));
   },
+  // The cavalier's chosen Order (character.choices.order). Lord Gweyir is the
+  // Order of the Flame by identity even without an explicit pick, so his build
+  // needs no edit. PGM-only — order content never touches the synced files.
+  _orderOf(m) {
+    const o = m && m.character && m.character.choices && m.character.choices.order;
+    if (o) return o;
+    const who = (m && (m.trueNick || m.nickname || m.playerId) || '').toLowerCase();
+    return who === 'lord gweyir' ? 'flame' : null;
+  },
   // Order of the Flame: a GLORIOUS crit daunts the room (D:_dauntingSuccess).
   _isFlameCavalier(m) {
-    if (!m || m.cls !== 'cavalier') return false;
-    return (m.trueNick || m.nickname || m.playerId || '').toLowerCase() === 'lord gweyir';
+    return !!m && m.cls === 'cavalier' && this._orderOf(m) === 'flame';
+  },
+  // Order-gating for cavaliers. The synced Flame deeds (Glorious Challenge, Blaze
+  // of Glory) carry `char: 'Lord Gweyir'`; re-interpret that as `order: 'flame'`
+  // so ANY flame-order cavalier gets them. Abilities tagged `order:` (the PGM-only
+  // new-order deeds) are gated to a cavalier of that order. Everything else falls
+  // through to the original name/notChar gate (Rissa's Beast Mode, etc.).
+  _charAllows(ab, m) {
+    if (m && m.cls === 'cavalier' && ab) {
+      if (ab.order) return this._orderOf(m) === ab.order;
+      if (ab.char === 'Lord Gweyir') return this._orderOf(m) === 'flame';
+    }
+    if (!ab || (!ab.char && !ab.notChar)) return true;
+    const who = (m.trueNick || m.nickname || '').toLowerCase();
+    const pid = (m.playerId || '').toLowerCase();
+    if (ab.char) { const c = ab.char.toLowerCase(); if (who !== c && pid !== c) return false; }
+    if (ab.notChar) { const c = ab.notChar.toLowerCase(); if (who === c || pid === c) return false; }
+    return true;
   },
   _dauntingSuccess(m) {
     if (!this._isFlameCavalier(m) || (m.level || 1) < 8 || m._dauntedRoom) return;
