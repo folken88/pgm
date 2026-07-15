@@ -7,6 +7,21 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.9.0  2026-07-15 BUFF ICONS ON THE CARDS (poker parity — Tobias: "cards don't show buff icons,
+//                    again a feature that fully works in poker-dungeon"). Every active buff now
+//                    shows as its own little chip on the hero/unit card — Rage 😤, Power Attack 💥,
+//                    Bless ✨, Haste 💨, Shield 🛡️, Prayer 📿, Divine Favor 🙏, the Lion order buffs,
+//                    etc. Structure mirrors poker's _buffList: a BUFF_META map (key→icon/label/desc)
+//                    + a buffList(c) that reads m.buffApplied + m.runBuffApplied (TRUTHY, not
+//                    key-exists — a toggled-OFF stance like Deadly Aim stays as key:false) PLUS the
+//                    standalone flags (haste/smite/invisible/flying/mirror-image/displacement/DR/
+//                    fire-shield/fire-ward/true-seeing/see-invis/cavalier-challenge/slayer-studied).
+//                    Emoji not webp (PGM has no /dungeon/buffs art and is emoji-forward); chips are
+//                    gold-ringed, each carries aria-label=name + title="name — effect". publicRun now
+//                    sends buffIcons:[{key,icon,label,desc}] AND upgrades the blind B-key readout from
+//                    a single generic "blessed" to the actual named buffs. Dropped the old generic
+//                    'blessed' condition (buffs are named now). Verified: buffList excludes toggled-off
+//                    stances, chips render gold-ringed on the card. 156/156.
 //  1.8.1  2026-07-15 MIME fix (on top of 1.8.0): the static server had no content-type for images/
 //                    audio/fonts, so the new banner + OG card (and every token/mp3) served as
 //                    application/octet-stream. Browsers sniff and render those fine, but strict
@@ -254,6 +269,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.8.1';
-const HEADLINE = 'A new look: PGM now opens on its banner — a party at a firelit doorway — and the whole theme has taken on that crimson-and-ember glow over the darkwood. Same game, warmer fire. Hard refresh to see it.';
+const VERSION = '1.9.0';
+const HEADLINE = 'Buff icons are back: every spell and stance now shows as its own little chip on your card — Rage, Bless, Haste, Shield, your cavalier order buffs, and the rest — so you can see at a glance what is running. Blind players hear the full list on the B key. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

@@ -15,6 +15,20 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.9.0 — 2026-07-15
+
+**Buff icons on the cards.**
+
+Every buff and stance you have running now shows as its own little chip on your card — **Rage,
+Power Attack, Bless, Haste, Shield, Prayer, Divine Favor**, your **cavalier order** buffs, and more.
+A quick glance tells you everything that's active, and hovering a chip explains what it does. A
+toggled-off stance (like Deadly Aim) correctly disappears.
+
+For blind players, the **B** key now reads the full named list ("Rage, Power Attack, Bless…")
+instead of a single vague "blessed."
+
+---
+
 ## v1.8.1 — 2026-07-15
 
 Small fix on top of the new look: the banner and social card now serve with the correct image

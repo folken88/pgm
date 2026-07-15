@@ -1280,8 +1280,10 @@ function publicRun(run) {
         .concat(c.negLevels ? [c.negLevels + ' negative level' + (c.negLevels === 1 ? '' : 's')] : [])
         .concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
       // Split views for the blind B (buffs) / D (debuffs) readouts (poker keymap).
-      buffs: (c.buffs && ((c.buffs.toHit || 0) + (c.buffs.ac || 0) + (c.buffs.deflect || 0) + (c.buffs.save || 0)) > 0 ? ['blessed'] : [])
-        .concat(c.precast && c.precast.length ? c.precast : []),
+      // buffs = named buff LABELS (blind B reads them); buffIcons = the same as
+      // emoji chips for the card (poker parity — was a single "blessed").
+      buffs: buffList(c).map(b => b.label).concat(c.precast && c.precast.length ? c.precast : []),
+      buffIcons: buffList(c),
       debuffs: condList(c).filter(x => x !== 'blessed'),
       slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
     })),
@@ -1300,6 +1302,68 @@ function publicRun(run) {
   };
 }
 
+// ── Buff icons (poker parity) ────────────────────────────────────────────────
+// Poker shows each active buff as its own icon chip on the card. PGM has no buff
+// ART (poker's /dungeon/buffs/*.webp never synced) and is emoji-forward, so the
+// chips are EMOJI, keyed off the same combatant flags poker reads. `label`/`desc`
+// drive the sighted tooltip AND the blind B-key readout (was a bare "blessed").
+const BUFF_META = {
+  // Sticky room buffs / stance toggles held in m.buffApplied (truthy = ON — a
+  // toggled-off stance stays as key:false, so we truthiness-check, never key-exists).
+  rage:          { icon: '😤', label: 'Rage',            desc: '+hit & damage, −AC' },
+  bloodrage:     { icon: '🩸', label: 'Bloodrage',       desc: '+hit & damage, −AC' },
+  powerattack:   { icon: '💥', label: 'Power Attack',    desc: '−hit, +damage' },
+  deadlyaim:     { icon: '🏹', label: 'Deadly Aim',      desc: '−hit, +ranged damage' },
+  fightdefensively: { icon: '💂', label: 'Fighting Defensively', desc: '−hit, +AC' },
+  shield:        { icon: '🛡️', label: 'Shield',          desc: '+4 AC' },
+  prayer:        { icon: '📿', label: 'Prayer',          desc: 'allies +1 all, foes −1' },
+  bless:         { icon: '✨', label: 'Bless',           desc: '+1 to hit (whole delve)' },
+  inspire:       { icon: '🎺', label: 'Inspire Courage', desc: 'allies +hit & damage' },
+  divinefavor:   { icon: '🙏', label: 'Divine Favor',    desc: '+hit & damage' },
+  heroism:       { icon: '🦸', label: 'Heroism',         desc: '+2 hit, saves & skills' },
+  magearmor:     { icon: '🔷', label: 'Mage Armor',      desc: '+4 armor AC' },
+  greatermagicweapon: { icon: '🗡️', label: 'Greater Magic Weapon', desc: 'party weapons +N' },
+  protevil:      { icon: '✝️', label: 'Protection from Evil', desc: '+2 AC & saves' },
+  stoneskincomm: { icon: '🪨', label: 'Stoneskin',       desc: 'DR vs physical' },
+  stoneskin:     { icon: '🪨', label: 'Stoneskin',       desc: 'DR vs physical' },
+  catsgrace:     { icon: '🐈', label: "Cat's Grace",     desc: '+Dex' },
+  bullsstrength: { icon: '💪', label: "Bull's Strength", desc: '+Str' },
+  bearsendurance:{ icon: '🐻', label: "Bear's Endurance", desc: '+Con, temp HP' },
+  blazeofglory:  { icon: '☄️', label: 'Blaze of Glory',  desc: '+4 to all attacks' },
+  // Order of the Lion order buffs (PGM):
+  lions_call:    { icon: '🦁', label: "Lion's Call",     desc: '+1 hit, +2 saves' },
+  for_the_king:  { icon: '👑', label: 'For the King!',   desc: '+Cha hit & damage' },
+  shield_liege:  { icon: '🛡️', label: 'Shield the Liege', desc: '+4 AC / +2 deflection' },
+};
+
+/** Active buffs on a combatant as icon chips: [{key, icon, label, desc}].
+ *  Poker-parity — reads the same flags poker's _buffList does. */
+function buffList(c) {
+  if (!c || c.dead || c.down || c.hp <= 0) return [];
+  const out = [];
+  const seen = new Set();
+  const push = (key, meta) => { if (meta && !seen.has(key)) { seen.add(key); out.push({ key, icon: meta.icon, label: meta.label, desc: meta.desc || '' }); } };
+  // (a) keyed buff maps — sticky room buffs + run-long buffs. Truthiness, not key-existence.
+  for (const src of [c.buffApplied || {}, c.runBuffApplied || {}]) {
+    for (const key of Object.keys(src)) { if (src[key] && BUFF_META[key]) push(key, BUFF_META[key]); }
+  }
+  // (b) standalone flags not tracked in the buff maps.
+  if (c.hasted > 0)     push('haste',   { icon: '💨', label: 'Haste', desc: 'an extra attack each turn' });
+  if (c.smiteActive)    push('smite',   { icon: '⚔️', label: 'Smite', desc: '+hit & big damage vs evil' });
+  if (c.greaterInvis || c.invisible) push('invisible', { icon: '👻', label: 'Invisible', desc: 'unseen' });
+  if (c.flying)         push('fly',     { icon: '🕊️', label: 'Flying', desc: 'airborne' });
+  if (c.images > 0)     push('mirrorimage', { icon: '🪞', label: 'Mirror Image', desc: c.images + ' decoy' + (c.images === 1 ? '' : 's') });
+  if (c.displaced)      push('displacement', { icon: '🌀', label: 'Displacement', desc: 'attacks may pass through' });
+  if (c.dr > 0)         push('dr',      { icon: '🪨', label: 'Damage Reduction', desc: 'DR ' + c.dr + ' vs physical' });
+  if (c.fireShield)     push('fireshield', { icon: '🔥', label: 'Fire Shield', desc: 'burns melee attackers' });
+  if (c.protectFire > 0) push('protectfire', { icon: '🧯', label: 'Fire Ward', desc: 'absorbs fire damage' });
+  if (c.trueSeeing)     push('trueseeing', { icon: '👁️', label: 'True Seeing', desc: 'pierces illusion & invisibility' });
+  else if (c.seeInvis)  push('seeinvis', { icon: '👀', label: 'See Invisibility', desc: 'sees the invisible' });
+  if (c.challengedId != null) push('challenge', { icon: '⚔️', label: 'Challenge', desc: '+damage vs your quarry' });
+  if (c.studiedId != null)    push('studied',   { icon: '🎯', label: 'Studied Target', desc: '+hit & damage vs your mark' });
+  return out;
+}
+
 /** Human-readable active conditions on a combatant (for the status panels). */
 function condList(c) {
   const out = [];
@@ -1315,7 +1379,8 @@ function condList(c) {
   if (c.charmed) out.push('charmed');
   if (c.acid && c.acid.rounds > 0) out.push('burning (acid)');
   if (c._bleeding) out.push('bleeding');
-  if (c.buffs && ((c.buffs.toHit || 0) + (c.buffs.ac || 0) + (c.buffs.deflect || 0) + (c.buffs.save || 0)) > 0) out.push('blessed');
+  // (positive buffs used to surface here as a generic 'blessed'; they now render as
+  // named buff icons via buffList — conditions is debuffs/afflictions only.)
   return out;
 }
 

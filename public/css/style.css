@@ -386,6 +386,17 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .unit .u-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
 .unit .u-hp { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .unit .u-conds { color: var(--danger); font-size: .72rem; min-height: .9rem; }
+/* Active-buff icon chips (poker parity). A row of emoji, each ringed in ember-gold
+   so a buff reads as "something good is on". Emoji are aria-labelled on the span. */
+.buff-chips { display: flex; flex-flow: row wrap; gap: 3px; justify-content: center; margin: 2px 0; }
+.hero-card .buff-chips { justify-content: flex-start; }
+.buff-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.35rem; height: 1.35rem; font-size: .92rem; line-height: 1;
+  border-radius: 5px; background: rgba(0,0,0,.45);
+  box-shadow: inset 0 0 0 1px rgba(217,180,92,.75), 0 0 6px -1px var(--ember-soft);
+  cursor: default;
+}
 /* HP bar on the initiative tile. Heroes read green→amber→red by fill; enemies
    are always the danger tint (quantized to 25% — no numbers shown). */
 .unit .u-hpbar { height: 6px; width: 80%; margin: .2rem auto; background: #2b2b2b; border-radius: 4px; overflow: hidden; }

@@ -946,6 +946,16 @@
       }
     }
   }
+  // Active-buff icon chips (poker parity). Emoji, each with an accessible label
+  // (name) + hover tooltip (name — effect). Blind players hear buffs via the B key.
+  function buffChips(list) {
+    if (!list || !list.length) return '';
+    return '<div class="buff-chips">' + list.map(function (b) {
+      var t = b.desc ? b.label + ' — ' + b.desc : b.label;
+      return '<span class="buff-chip" role="img" aria-label="' + esc(b.label) + '" title="' + esc(t) + '">' + b.icon + '</span>';
+    }).join('') + '</div>';
+  }
+
   // Battlefield: enemies across the top, allies just under — INITIATIVE order
   // left→right (run.combatants is already initiative-sorted server-side).
   function renderBattlefield(run) {
@@ -962,6 +972,7 @@
         + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.myId ? ' ✦' : '') + '</div>'
         + '<div class="u-hpbar" role="img" aria-label="' + (c.down ? 'down' : 'health ' + pct + ' percent') + '"><div style="width:' + pct + '%"></div></div>'
         + (hpText ? '<div class="u-hp">' + hpText + '</div>' : '')
+        + buffChips(c.buffIcons)
         + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
       if (c.side === 'enemy' && !c.down) { d.style.cursor = 'pointer'; d.title = 'Click to attack / target'; d.addEventListener('click', function () {
         var atk = state.choices.find(function (x) { return x.id === 'attack' && x.target === c.id; });
@@ -990,6 +1001,7 @@
             return '<div class="xpbar" role="img" aria-label="experience ' + xpP + ' percent to next level" title="' + c.xpInto + ' / ' + c.xpSpan + ' XP to level ' + ((c.level || 1) + 1) + '"><div style="width:' + xpP + '%"></div></div>';
           })()
         + '<div class="hc-meta">' + (c.level ? 'L' + c.level + ' · ' : '') + (c.down ? 'DOWN' : c.hp + '/' + c.maxHp + ' HP') + ' · AC ' + c.ac + (slots ? ' · ' + slots : '') + '</div>'
+        + buffChips(c.buffIcons)
         + ((c.conditions || []).length ? '<div class="hc-conds">' + esc(c.conditions.join(', ')) + '</div>' : '')
         + (c.shopping ? '<div class="hc-shopping">🛒 Shopping — turns passing</div>' : '')
         + (c.queued ? '<div class="hc-queued">⏳ queued: ' + esc(c.queued) + '</div>' : '');
