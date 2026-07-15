@@ -101,7 +101,7 @@
 
   // ---------- setup ----------
   function boot() {
-    BM.init({ onCommand: handleCommand, onBlindOn: blindGuide });
+    BM.init({ onCommand: handleCommand, onBlindOn: blindGuide, onHelp: stepHelp });
     registerBlindInfo();
     // Bridges dungeon-blind.js (poker's transplanted blind layer) uses to act:
     // its dungeonAction() shim funnels every dungeon key here.
@@ -205,18 +205,53 @@
   // when blind mode turns on and on first load in blind mode. NOT a wall of keys
   // (Tobias 2026-07-13). Question mark teaches keys on demand; each screen
   // narrates itself as you go. (BM.speak is silent when blind mode is off.)
+  // ONE short line per screen — never a wall (Tobias 2026-07-14: "blindmode says a
+  // ton of shit when you get to the main page. it should just say '? for help'").
+  // The detail lives behind ?, which steps through it one piece at a time (stepHelp).
   function blindGuide() {
     var mode = state.mode || 'landing';
-    // Every screen points to Escape — the one stable, key-driven action hub, so a
-    // blind player never has to Tab around to find a button (Josh 2026-07-14).
-    if (mode === 'game') { BM.speak('You are in the dungeon. I narrate every turn — just listen, and act on your turn with the number keys. Press Escape for the menu: descend, shop, retreat. Press A to repeat, question mark to learn the keys.', 'event'); return; }
-    if (mode === 'lobby') { BM.speak('You are in the lobby. Press Escape for the menu — Start the adventure, add a companion, or the main menu. Press H to hear your party. Press A to repeat.', 'event'); return; }
-    if (mode === 'create' || mode === 'skills') { BM.speak('Building your character. Tab through the fields; the last button moves you on. Press A to repeat.', 'event'); return; }
-    // landing
+    if (mode === 'game') { BM.speak('You are in the dungeon. Act on your turn with the number keys. Press question mark for help.', 'event'); return; }
+    if (mode === 'lobby') { BM.speak('The lobby. Press question mark for help.', 'event'); return; }
+    if (mode === 'create' || mode === 'skills') { BM.speak('Building your character. Press question mark for help.', 'event'); return; }
     var accts = [];
     try { accts = JSON.parse(localStorage.getItem('pgmAccounts') || '[]'); } catch (e) {}
-    var who = accts.length ? ('Welcome back, ' + accts[0].name + '. ') : 'Welcome to Personal Game Master. ';
-    BM.speak(who + 'Press Escape for the menu — start your own delve, or join an active one. Or type your name in the field to begin. Press A to repeat, question mark for the keys.', 'event');
+    var who = accts.length ? ('Welcome back, ' + accts[0].name + '. ') : 'Personal Game Master. ';
+    BM.speak(who + 'Press question mark for help.', 'event');
+  }
+  // ? steps through the help for THIS screen, one piece per press — not a flood
+  // (Tobias). Each screen's last step says "end of help"; the next press restarts.
+  var HELP_STEPS = {
+    landing: [
+      'Main page. Type your name in the first field and press Enter to sign in.',
+      'Then press Escape for the menu to start a new delve, or join one already in progress.',
+      'In any menu, press a number to choose, or Tab then Enter. Press A to repeat the last thing said.',
+      'End of help. Press question mark to hear it again.',
+    ],
+    create: [
+      'Character creation. Tab moves between fields.',
+      'The first field is your character name — who you are on the board.',
+      'Then choose your race and class, and pick a token from the gallery.',
+      'The last button moves you on to choose skills. End of help.',
+    ],
+    skills: [
+      'Skill points. Suggested skills are already selected for you.',
+      'Tab through the skills; Enter toggles one on or off.',
+      'When ready, press the Confirm button. End of help.',
+    ],
+    lobby: [
+      'The lobby, before the delve begins. Press H to hear your party.',
+      'Press Escape for the menu — item one starts the adventure; you can also add an AI companion.',
+      'End of help.',
+    ],
+  };
+  var _helpIdx = {};
+  function stepHelp() {
+    var mode = state.mode || 'landing';
+    var steps = HELP_STEPS[mode];
+    if (!steps) { BM.speak('Press Escape for the menu.', 'urgent'); return; }
+    var i = _helpIdx[mode] || 0;
+    BM.speak(steps[i], 'urgent');
+    _helpIdx[mode] = (i + 1) % steps.length;
   }
 
   function fill(id, items) {
@@ -533,14 +568,22 @@
       } catch (e) {}
     }
     showScreen('create');
-    var nf = el('name').closest('.field'); if (nf) nf.hidden = true;
+    // The character-name field is SHOWN now — it's who you are on the board (Toby's
+    // "Lien"), distinct from your account/login name. Prefill it with the account
+    // name as a sensible default the player can overwrite.
+    var nameEl = el('name');
+    var nf = nameEl && nameEl.closest('.field'); if (nf) nf.hidden = false;
+    if (nameEl && !nameEl.value) { var h = el('handle'); nameEl.value = (h && h.value.trim()) || ''; }
     if (state.rememberedBuild && state.rememberedBuild.token) state.charToken = state.rememberedBuild.token;
     buildTokenPicker(el('token-search') ? el('token-search').value : '');   // render the token gallery
     BM.speak('Choose your race and class, pick your token, then your skills.', 'event');
   }
   function onCreate(e) {
     e.preventDefault();
-    state.charInput = { name: el('handle').value.trim(), race: el('race').value, cls: el('cls').value };
+    // The CHARACTER name (who you are on the board) comes from #name; fall back to
+    // the account handle so a blank field still yields a name.
+    var charName = (el('name') && el('name').value.trim()) || (el('handle') && el('handle').value.trim()) || 'Adventurer';
+    state.charInput = { name: charName, race: el('race').value, cls: el('cls').value };
     api('/api/character/plan', state.charInput).then(function (plan) {
       state.plan = plan; state.selected = new Set(plan.smartDefault); showScreen('skills'); renderSkillStep();
     });
@@ -556,8 +599,11 @@
   // ---------- skills (unchanged logic) ----------
   function renderSkillStep() {
     renderSkillList(); updatePoints();
+    // Defensive: NEVER narrate skill points unless we're actually on the skills
+    // screen (Tobias heard "you have 3 skill points" mid-combat — a stray leak).
+    if (state.mode !== 'skills') return;
     var pts = state.plan.points;
-    BM.speak('You have ' + pts + ' skill ' + plural(pts, 'point') + '. Suggested skills are selected, including Perception. Say confirm when ready, or toggle a skill.', 'event');
+    BM.speak('You have ' + pts + ' skill ' + plural(pts, 'point') + '. Suggested skills are selected. Press question mark for help, or confirm when ready.', 'event');
   }
   function renderSkillList() {
     var list = el('skill-list'); list.innerHTML = '';
@@ -750,7 +796,9 @@
       // slot = the ability KEY; dungeon-blind.js's dungeonAction shim turns a
       // poker `ability` emit into PGM's { type:'cast', spell:<key> }.
       abilities: (kit.abilities || []).map(function (a) {
-        return { key: a.key, name: a.name, slvl: a.slvl, slot: a.key, available: a.available, effect: a.effect, target: a.target };
+        // `cost:'free'` marks a TOGGLE (Power Attack, Deadly Aim, Rage, a stance) —
+        // dungeon-blind.js confirms those with a SOUND, not a spoken line (Tobias).
+        return { key: a.key, name: a.name, slvl: a.slvl, slot: a.key, available: a.available, effect: a.effect, target: a.target, cost: a.cost };
       }),
       _cantrip: kit.cantrip ? { current: kit.cantrip.current, choices: (kit.cantrip.choices || []).map(function (nm, i) { return { key: 'c' + i, name: typeof nm === 'string' ? nm : (nm && nm.name) }; }) } : null,
     };
@@ -789,7 +837,9 @@
     // "It is X's turn" (poker uses the turn prompt) and the initiative-roll line
     // (poker's onDungeonState + the GM prompt cover it), so Josh isn't told twice.
     var log = (run.log || [])
-      .filter(function (e) { return !/^(It is .*turn|.*Initiative rolled)/i.test(String(e.text || '').replace(/^[^A-Za-z]+/, '')); })
+      // Drop lines poker's narration replaces with its own cues, PLUS developer
+      // bookkeeping the player should never hear ("(vetting: … diverted to gems)").
+      .filter(function (e) { var t = String(e.text || ''); if (/^\s*\(vetting:/i.test(t)) return false; return !/^(It is .*turn|.*Initiative rolled)/i.test(t.replace(/^[^A-Za-z]+/, '')); })
       // `voiced` = "an 11labs clip already speaks this" → the TTS play-by-play skips
       // it. Both banter (character voice) and urgent GM narration (Ultron) are voiced,
       // so dungeon-blind.js narrates ONLY the fast combat lines and the two 11labs

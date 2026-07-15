@@ -49,6 +49,7 @@
   } catch (e) {}
   var commandHandler = null, voice = null;
   var blindOnHook = null;   // app-provided: speaks context-aware guidance when blind mode turns on
+  var helpHook = null;      // app-provided: ? steps through per-screen help (outside the dungeon)
   var info = {};                   // app-registered providers: foes/spells/status/health/buffs/debuffs/money/descend/cantrip/chatFocus/…
   var helpMode = false;            // '?' learn mode
   var pttActive = false;           // did WE capture this Space for push-to-talk? (see isActionable)
@@ -405,7 +406,10 @@
     // its own description and returned, and HELP['escape'] did the same. There was NO
     // way out. (Josh, trapped: "once you go into help mode you can't get out. Hitting ?
     // only tells you about help mode. Escape only tells you about the escape menu.")
-    if (e.key === '?') { e.preventDefault(); helpMode = !helpMode; speak(helpMode ? 'Help mode on. Press any key to hear what it does, without doing it. Question mark or Escape to exit.' : 'Help mode off.', 'urgent'); return; }
+    // Outside the dungeon, ? STEPS THROUGH the screen's help one piece at a time
+    // (Tobias) rather than toggling the dungeon key-learn mode (which is meaningless
+    // off the battlefield). In the dungeon, dungeon-blind.js owns ? (learn mode).
+    if (e.key === '?') { e.preventDefault(); if (helpHook) { helpHook(); return; } helpMode = !helpMode; speak(helpMode ? 'Help mode on. Press any key to hear what it does, without doing it. Question mark or Escape to exit.' : 'Help mode off.', 'urgent'); return; }
     if (helpMode && e.key === 'Escape') { e.preventDefault(); helpMode = false; speak('Help mode off.', 'urgent'); return; }   // second, obvious way out
     if (helpMode && HELP[hk]) { e.preventDefault(); speak(HELP[hk], 'urgent'); return; }   // learn mode: speak, don't fire
     // SPACE = push-to-talk — but NEVER steal it from a screen reader or a focused control.
@@ -467,6 +471,7 @@
     opts = opts || {};
     commandHandler = opts.onCommand || null;
     blindOnHook = opts.onBlindOn || null;
+    helpHook = opts.onHelp || null;
     if (supportsTTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
 
     var bt = document.getElementById('blind-toggle');

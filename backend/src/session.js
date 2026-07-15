@@ -216,11 +216,16 @@ function setCharacter(clientId, charInput) {
   const s = sessionOf(clientId); if (!s) return { ok: false, error: 'no delve' };
   const m = s.members.get(memberIdOf(clientId)); if (!m) return { ok: false, error: 'not a player' };
   if (s.phase !== 'lobby') return { ok: false, error: 'delve already started' };
-  m.character = characters.createCharacter({ name: m.name, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
+  // The CHARACTER's name (Toby's "Lien" on the board) is distinct from the member's
+  // account/login name (m.name = "toby"). Use the sent character name; fall back to
+  // the account name so an old client that omits it still works.
+  const charName = (charInput.name && String(charInput.name).trim()) || m.name;
+  m.charName = charName;
+  m.character = characters.createCharacter({ name: charName, race: charInput.race, cls: charInput.cls, skills: charInput.skills });
   // Player-chosen art token — a bare, safe filename only (no path traversal).
   if (charInput.token != null) m.token = /^[a-z0-9][a-z0-9._-]*\.webp$/i.test(charInput.token) ? charInput.token : null;
   m.ready = true;
-  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls, charName: m.name, token: m.token || null });
+  if (m.accountId) accounts.rememberCharacter(m.accountId, { race: charInput.race, cls: charInput.cls, charName: charName, token: m.token || null });
   saveSession(s);
   return { ok: true };
 }

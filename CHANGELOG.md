@@ -15,6 +15,29 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.4.0 — 2026-07-14
+
+**Quieter, clearer, and a few fixes.**
+
+- **Your character wears its own name.** If you name your fighter "Lien," the board says Lien — not
+  your account name. There's a proper character-name field when you build a character now.
+- **Blind mode stops repeating itself.** It no longer reads out every enemy's health percentage on
+  *every* one of your turns — it reads the lineup once, and again only when it actually changes (a
+  foe drops, a new one shows up). Otherwise it just says "Your turn." Press **F** any time to hear
+  the foes again. It also stopped narrating a couple of things it never should have (a developer
+  bookkeeping line, and a stray "you have N skill points" that leaked into combat).
+- **Toggles just make a sound.** Turning on Power Attack, Deadly Aim, or a stance plays a quick blip
+  to tell you it's active, instead of a spoken line.
+- **The main page doesn't lecture you.** It says one short line and points you at **?**. Pressing
+  **?** now walks you through the help one piece at a time, instead of dumping it all at once.
+- **Skeletal champions can be disarmed.** They swing a real battleaxe or longsword, so now you can
+  knock it out of their bony hands.
+
+*(Still coming: buff icons on the character cards, and a Rest system — heal and recover spells
+between rooms at the cost of a tougher next room.)*
+
+---
+
 ## v1.3.1 — 2026-07-14
 
 **The GM has a voice again in blind mode.** When v1.3.0 brought the dungeon's controls over, it

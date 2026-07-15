@@ -7,6 +7,31 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.4.0  2026-07-14 FEEDBACK BATCH (Tobias): less chatter + several fixes.
+//                    · BOARD SHOWS THE CHARACTER NAME, not the account name. Toby's "Lien" now
+//                      appears on the board (heroCombatant reads the character name). The create
+//                      screen has a real Character-name field, threaded through /api/session/character
+//                      → setCharacter → character; the member's account name (toby) stays separate.
+//                    · LESS OVER-TALKING (studied poker's discipline via a subagent — it narrates ONLY
+//                      on 4 deltas: new room, fresh log line, YOUR turn, run-end/loot; everything else
+//                      is key-gated). Applied: the turn prompt reads the enemy HP% list ONLY when the
+//                      lineup CHANGED since you last heard it (a foe died / appeared) — otherwise just
+//                      "Your turn." (F re-reads them). Filtered out developer bookkeeping lines
+//                      ("(vetting: … diverted to gems)") from narration. Guarded the skill-points line
+//                      so it can never leak off the skills screen (Tobias heard "3 skill points"
+//                      mid-combat).
+//                    · TOGGLES MAKE A SOUND, not a spoken line (Tobias). Power Attack / Deadly Aim /
+//                      stances (cost 'free', self-target) now play a two-tone blip to confirm they are
+//                      on, instead of speaking the label.
+//                    · LANDING/SCREEN GUIDES trimmed to one short line ending "press question mark for
+//                      help"; ? now STEPS THROUGH the screen's help one piece per press (onHelp hook +
+//                      HELP_STEPS), instead of a wall of text (Tobias: "says a ton of shit on the main
+//                      page").
+//                    · SKELETAL CHAMPIONS are disarmable now — removed from NATURAL_KEYS; they swing a
+//                      real 1H weapon (battleaxe/longsword/warhammer). (Same fix belongs upstream in
+//                      poker's monsters.js, which PGM syncs from.)
+//                    DEFERRED to next batch: buff icons on hero cards (poker parity); the Rest mechanic
+//                    + cleric between-rounds healing.
 //  1.3.1  2026-07-14 RESTORE THE 11LABS GM VOICE IN BLIND MODE (a v1.3.0 regression I caused).
 //                    Tobias: "blind mode isn't doing narration with 11labs… it does everything with
 //                    tts, is there no way you can queue those 2 different voice elements together?"
@@ -157,6 +182,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.3.1';
-const HEADLINE = 'The GM speaks again in blind mode. Room descriptions and the big moments come through the ElevenLabs Ultron voice, the companions in their own voices, and the fast combat blow-by-blow stays on the quick screen-reader voice — all sharing one queue so they never talk over each other. Hard refresh.';
+const VERSION = '1.4.0';
+const HEADLINE = 'Quieter and clearer: blind mode stops re-reading every enemy HP each turn, toggles like Power Attack just make a sound, and the main page points you at question-mark help instead of a wall of text. Your character now shows its own name on the board, and skeletal champions can be disarmed. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

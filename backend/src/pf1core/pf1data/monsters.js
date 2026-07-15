@@ -658,7 +658,10 @@ const SPAWNABLE = Object.keys(MON).filter(k => !BOSS_KEYS.has(k));
 // manufactured weapon to knock away, so they CANNOT be DISARMED (Dungeon._abDisarm
 // also treats animals/vermin/oozes/magical beasts/aberrations as natural by TYPE).
 // Flag the monks (unarmed) and the named natural-attackers that aren't those types.
-const NATURAL_KEYS = ['zombie', 'ghoul', 'ghoul_crusader', 'shadow', 'wight', 'skeletal_champion', 'skeletal_ogre', 'harpy', 'gibbering_mouther', 'abyssal_horror', 'bog_brute', 'ettercap'];
+// A SKELETAL CHAMPION keeps its martial training and swings a real 1H weapon
+// (battleaxe / longsword / warhammer) — so it CAN be disarmed (Tobias 2026-07-14).
+// The skeletal OGRE (a bone slam) and plain undead (claws/bite) stay natural.
+const NATURAL_KEYS = ['zombie', 'ghoul', 'ghoul_crusader', 'shadow', 'wight', 'skeletal_ogre', 'harpy', 'gibbering_mouther', 'abyssal_horror', 'bog_brute', 'ettercap'];
 NATURAL_KEYS.push('charauka_warrior', 'bentbeak_charney', 'ikualoa',
   'amalokla', 'brogwort',   // bare knuckles, pain touch, athach limbs — nothing to disarm (the Black Sovereign now swings a SWORD — disarm away, if you dare)
   'imp', 'accuser_devil', 'bone_devil', 'pit_fiend', 'hound_archon',   // devils/archon that fight with sting/bite/claws (erinyes=bow, horned=chain, the angels=weapons → those CAN be disarmed)

@@ -31,7 +31,7 @@
     try {
       var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       var ctx = _beep._c || (_beep._c = new AC());
-      var seq = kind === 'turn' ? [660, 780, 920] : kind === 'clear' ? [523, 659, 784] : [520];
+      var seq = kind === 'turn' ? [660, 780, 920] : kind === 'clear' ? [523, 659, 784] : kind === 'toggle' ? [520, 880] : [520];
       seq.forEach(function (f, i) {
         var o = ctx.createOscillator(), g = ctx.createGain();
         o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
@@ -78,7 +78,7 @@
 
   // ============================ NARRATION ====================================
   // Poker's blindMode.js dungeon section (onDungeonState + helpers), verbatim.
-  var _dun = { depth: -1, logT: 0, turnKey: '', status: '', lootKey: '' };
+  var _dun = { depth: -1, logT: 0, turnKey: '', status: '', lootKey: '', enemySig: '' };
   function _stripGlyphs(s) {
     try { return String(s || '').replace(/\[[^\]]*\]/g, '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim(); }
     catch (_) { return String(s || '').replace(/\[[^\]]*\]/g, '').trim(); }
@@ -152,7 +152,13 @@
       _dun.turnKey = turnKey;
       if (st.status === 'combat' && st.turn && st.turn.kind === 'party' && st.turn.id === meId) {
         earcon('turn');
-        speak('Your turn. ' + _dunEnemyPhrase(st), 'event');
+        // Read the enemy lineup only when it CHANGED since you last heard it (a foe
+        // died or a new one appeared) — otherwise just "Your turn." Tobias: it read
+        // every enemy's HP every single turn, "constantly talking." F re-reads them.
+        var sig = (st.enemies || []).filter(function (e) { return e.alive; })
+          .map(function (e) { return e.uid + ':' + Math.round(100 * Math.max(0, e.hp | 0) / (e.maxHp || 1) / 25); }).join(',');
+        if (sig !== _dun.enemySig) { _dun.enemySig = sig; speak('Your turn. ' + _dunEnemyPhrase(st), 'event'); }
+        else speak('Your turn.', 'event');
       } else if (st.status === 'exploring' && _dun.status === 'combat') {
         earcon('clear');
         if (!st.lootRoll) speak('Room clear. Open the next door, or bail with your gold.', 'event');
@@ -420,7 +426,12 @@
           return;
         }
         var targetUidN = aliveN[0] && aliveN[0].uid;
-        BM.speak(act.label + '.', 'urgent');
+        // A TOGGLE (Power Attack, Deadly Aim, Rage, a stance — cost 'free', no enemy
+        // target) just makes a SOUND to confirm it's on (Tobias): no spoken line, and
+        // the toggle's log line is suppressed in the adapter. Everything else confirms
+        // by voice as before.
+        var isToggle = abN && abN.cost === 'free' && abN.target !== 'enemy' && abN.target !== 'aoe';
+        if (isToggle) earcon('toggle'); else BM.speak(act.label + '.', 'urgent');
         if (act.kind === 'attack') dungeonAction('attack', { targetUid: targetUidN });
         else dungeonAction('ability', { slot: act.slot, targetUid: targetUidN });
         return;
@@ -486,6 +497,6 @@
     state.dungeon = st;
     onDungeonState(st);
   }
-  function resetNarration() { _dun = { depth: -1, logT: 0, turnKey: '', status: '', lootKey: '' }; }
+  function resetNarration() { _dun = { depth: -1, logT: 0, turnKey: '', status: '', lootKey: '', enemySig: '' }; }
   window.DungeonBlind = { setDungeonState: setDungeonState, readEnemies: readEnemies, resetNarration: resetNarration };
 })();
