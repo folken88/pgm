@@ -343,5 +343,5 @@
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
 const VERSION = '1.13.0';
-const HEADLINE = 'The last two Cavalier orders arrive — Cockatrice (the lone glory-hog: bonus damage when you fight alone, a display that cows the room, steal a strike when an ally crits, and refuse to fall) and Shield (the protector: damage reduction, and you interrupt any foe that strikes an ally). All six orders are now playable. Hard refresh.';
+const HEADLINE = 'The last two Cavalier orders arrive — Cockatrice, the lone glory-hog who hits harder alone and steals a strike when an ally crits, and Shield, the protector who interrupts any foe that strikes an ally. All six orders are now playable. Hard refresh.';
 module.exports = { VERSION, HEADLINE };
