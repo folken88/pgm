@@ -15,6 +15,26 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.12.0 — 2026-07-15
+
+**Order of the Star — the faithful.**
+
+The fourth playable Cavalier order (after Flame, Lion, and Dragon). Where the Lion guards and the
+Dragon leads, the Star **endures and blesses**:
+
+- **Challenge** — a steady bonus to **all your saving throws** while you hold a challenge (+1, more
+  as you level). Hard to shake, hard to charm, hard to burn.
+- **Calling** (level 2) — a whispered prayer steels you: **+your level (up to +5) to your attacks and
+  all your saves** for the fight, twice per room.
+- **For the Faith** (level 8) — a battle-cry: the **whole party** fights in your light, gaining your
+  **Charisma to hit**.
+- **Retribution** (level 15) — call down **holy answering fire**: any foe that strikes you or an ally
+  is seared in return, for the rest of the fight.
+
+Pick it on the Leveling screen. Two orders remain — **Cockatrice** and **Shield**.
+
+---
+
 ## v1.11.0 — 2026-07-15
 
 **Order of the Dragon — the tactician.**

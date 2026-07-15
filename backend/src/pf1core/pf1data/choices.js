@@ -34,8 +34,8 @@ const CAVALIER_ORDERS = [
   { key: 'shield', name: 'Order of the Shield', icon: '🛡️',
     desc: 'The protector of the weak. Bonus damage against a foe that dared strike an ally; damage reduction in the thick of melee; a free strike when a foe attacks an ally; and the power to throw yourself in the way and counter.',
     blurb: 'The protector — punish those who harm the helpless.' },
-  { key: 'star', name: 'Order of the Star', icon: '⭐',
-    desc: 'The faithful. A bonus to all your saves while you challenge; a prayer that steels your next save or strike; a battle-cry that grants the party your Charisma to hit; and holy retribution when a foe strikes you or an ally.',
+  { key: 'star', name: 'Order of the Star', icon: '⭐', built: true,
+    desc: 'The faithful. A bonus to all your saves while you challenge; a prayer that steels your attacks and saves (L2); a battle-cry that grants the party your Charisma to hit (L8); and holy retribution that sears any foe who strikes you or an ally (L15).',
     blurb: 'The faithful — steadfast, and the party fights in your light.' },
 ];
 

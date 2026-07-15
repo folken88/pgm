@@ -21,7 +21,7 @@
  *
  * Orders are built ONE AT A TIME; only a fully-built order flips `built:true` in
  * choices.js and becomes selectable (Tobias's rule — no half-built order ships).
- * Built so far: Lion, Dragon. Pending: Cockatrice, Shield, Star. (Sword deferred
+ * Built so far: Lion, Dragon, Star. Pending: Cockatrice, Shield. (Sword deferred
  * with mounted combat.)
  */
 
@@ -96,6 +96,30 @@ const DEEDS = {
     });
     return out;
   },
+  star(m) {
+    const lvl = m.level || 1;
+    const out = [];
+    const cal = Math.min(lvl, 5);   // "+level competence" — capped, applied for the room (from PF1's "next save or attack")
+    if (lvl >= 2) out.push({
+      key: 'calling', name: 'Calling', icon: '⭐', order: 'star',
+      cost: 'room', uses: 2, effect: 'buff', target: 'self', sticky: true,
+      buff: { toHit: cal, save: cal }, sound: '/audio/spell_buff_invoke.mp3',
+      desc: `ORDER OF THE STAR (L2): a whispered prayer steels you — +${cal} to your attacks and to all your saves for the room. Twice per room.`,
+    });
+    if (lvl >= 8) out.push({
+      key: 'for_the_faith', name: 'For the Faith', icon: '🕯️', order: 'star',
+      cost: 'room', uses: 1, effect: 'buff', target: 'self', party: true, sticky: true,
+      buff: { toHit: chaMod(m) }, sound: '/audio/spell_buff_invoke.mp3',
+      desc: `ORDER OF THE STAR (L8): a battle-cry of faith — the WHOLE party fights in your light, +${chaMod(m)} to hit (your Charisma) for the room. Once per room.`,
+    });
+    if (lvl >= 15) out.push({
+      key: 'retribution', name: 'Retribution', icon: '☀️', order: 'star',
+      cost: 'room', uses: 1, effect: 'buff', target: 'self', party: true, sticky: true,
+      fireShield: true, sound: '/audio/spell_buff_invoke.mp3',
+      desc: 'ORDER OF THE STAR (L15): call down holy retribution — for the rest of the room, any foe that strikes you or an ally is seared by answering fire. Once per room.',
+    });
+    return out;
+  },
 };
 
 /** Ability defs to append to cavalier `m`'s kit for their chosen order + level. */
@@ -124,6 +148,16 @@ function orderAcBonus(shim, m) {
   return bonus;
 }
 
+/** Extra bonus to a hero's saving throws from cavalier orders (folded into the
+ *  shim's _partySaveMod). Heroes only. */
+function orderSaveBonus(shim, m) {
+  if (!m || m.cls !== 'cavalier' || !m.character) return 0;
+  // ORDER OF THE STAR — the faithful: a morale bonus to ALL saves while you hold an
+  // active challenge (+1, +1 per 4 levels).
+  if (shim._orderOf(m) === 'star' && m.challengedId != null) return challengeScale(m.level || 1);
+  return 0;
+}
+
 /** To-hit / bonus-damage adjustments applied when `attacker` swings at `target`,
  *  folded into the shim's _swingVsAC. `dmg` is injected via the challenge-damage
  *  path (see the shim wrapper); `toHit`/`ac` add to the roll. */
@@ -145,4 +179,4 @@ function swingMods(shim, attacker, target) {
   return mod;
 }
 
-module.exports = { challengeScale, orderDeeds, orderAcBonus, swingMods };
+module.exports = { challengeScale, orderDeeds, orderAcBonus, orderSaveBonus, swingMods };

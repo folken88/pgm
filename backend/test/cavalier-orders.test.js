@@ -43,11 +43,12 @@ test('only BUILT orders are legal picks (no half-built order goes live)', () => 
   assert.ok(isLegalChoice(cav, 'order', 'flame'), 'Flame is built');
   assert.ok(isLegalChoice(cav, 'order', 'lion'), 'Lion is built');
   assert.ok(isLegalChoice(cav, 'order', 'dragon'), 'Dragon is built');
+  assert.ok(isLegalChoice(cav, 'order', 'star'), 'Star is built');
   assert.ok(!isLegalChoice(cav, 'order', 'cockatrice'), 'Cockatrice not built yet → not selectable');
   assert.ok(!isLegalChoice(cav, 'order', 'nonsense'));
   assert.ok(!isLegalChoice(cav, 'domains', 'flame'), 'a cavalier has no domains choice');
   // pendingChoices offers only built options (in table order).
-  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'dragon', 'lion']);
+  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'dragon', 'lion', 'star']);
 });
 
 test('the Flame deeds are gated by the ORDER, not the name', () => {
@@ -140,6 +141,37 @@ test("Dragon's Challenge — allies hit the challenged foe harder, but not the D
   assert.strictEqual(orders.swingMods(shim, ally, foe).toHit, 2, 'an ally gets +2 vs the challenged foe at L8 (+1 per 4)');
   assert.strictEqual(orders.swingMods(shim, dragon, foe).toHit, 0, 'the Dragon himself gets no ally bonus (his own Challenge damage still applies)');
   assert.strictEqual(orders.swingMods(shim, ally, otherFoe).toHit, 0, 'no bonus vs a foe the Dragon has not challenged');
+});
+
+// ── Order of the Star (built 2026-07-15) ─────────────────────────────────────
+test('Order of the Star is a built, selectable pick', () => {
+  const cav = createCharacter({ name: 'S', race: 'human', cls: 'cavalier' });
+  assert.ok(isLegalChoice(cav, 'order', 'star'), 'Star is built');
+  assert.strictEqual(chosenOption(createCharacter({ name: 'S', race: 'human', cls: 'cavalier', choices: { order: 'star' } }), 'order').name, 'Order of the Star');
+});
+
+test('Star deeds appear at their level, and only for a Star', () => {
+  const kit = (level) => {
+    const { run, cb } = lionAt(level, 'star');
+    return (run.shim._abilitiesFor(cb) || []).filter(a => run.shim._charAllows(a, cb)).map(a => a.name);
+  };
+  assert.ok(!kit(1).includes('Calling'), 'no order deeds at L1');
+  assert.ok(kit(2).includes('Calling'), 'Calling at L2');
+  assert.ok(!kit(2).includes('For the Faith'), 'For the Faith not until L8');
+  const l15 = kit(15);
+  assert.ok(l15.includes('Calling') && l15.includes('For the Faith') && l15.includes('Retribution'), 'a L15 Star has all three deeds');
+  const dragon = lionAt(15, 'dragon');
+  const dk = (dragon.run.shim._abilitiesFor(dragon.cb) || []).filter(a => dragon.run.shim._charAllows(a, dragon.cb)).map(a => a.name);
+  assert.ok(!dk.includes('Calling'), 'Star deeds are gated to the Star order');
+});
+
+test("Star's Challenge — a save bonus while challenging, folded into the hero save", () => {
+  const { run, cb } = lionAt(5, 'star');   // L5 → challenge step = 2
+  const base = run.shim._partySaveMod(cb, ['will']);
+  cb.challengedId = 7;
+  assert.strictEqual(run.shim._partySaveMod(cb, ['will']) - base, 2, '+1 per 4 levels → +2 at L5 while challenging');
+  cb.challengedId = null;
+  assert.strictEqual(run.shim._partySaveMod(cb, ['will']), base, 'no bonus without an active challenge');
 });
 
 test("Lion's Challenge dodge and L15 aura reach the hero AC", () => {

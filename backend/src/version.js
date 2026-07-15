@@ -7,6 +7,23 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.12.0 2026-07-15 ORDER OF THE STAR IS LIVE — the third new cavalier order (Flame + Lion + Dragon
+//                    before it), built the same sync-safe way. The faithful:
+//                    · CHALLENGE — a morale bonus to ALL your saves (+1, +1 per 4 levels) while you
+//                      hold a challenge. Hooks the shim's _partySaveMod exactly like Lion hooks
+//                      _acBonus — a new cavOrders.orderSaveBonus folded into the hero-save math.
+//                    · L2 CALLING — a whispered prayer: +your level (capped +5) to your attacks AND
+//                      all your saves for the room, twice per room.
+//                    · L8 FOR THE FAITH — a battle-cry: the WHOLE party fights in your light, +your
+//                      Charisma to hit for the room.
+//                    · L15 RETRIBUTION — holy answering fire: for the room, any foe that strikes you
+//                      or an ally is seared (reuses poker's fireShield retaliate-on-melee, applied
+//                      party-wide). Once per room.
+//                    All deeds reuse the buff/fireShield handlers; the only new surface is the
+//                    save-bonus hook. Verified end to end: the +save lands through _partySaveMod
+//                    (0→+2 at L5 while challenging), and Retribution/Calling/For-the-Faith all apply
+//                    through the real _useAbility. +3 tests; 167/167. Remaining: Cockatrice, Shield
+//                    (their passive deeds need the combat-event hook layer — next).
 //  1.11.0 2026-07-15 ORDER OF THE DRAGON IS LIVE — the second new cavalier order (after Lion) to get
 //                    full mechanics, so it flips `built` and is selectable on the Leveling screen.
 //                    The tactician — you make the whole party better:
@@ -303,6 +320,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.11.0';
-const HEADLINE = 'New Cavalier order: the Order of the Dragon, the tactician. Your allies strike your challenged foe harder, and as you level you can hand a comrade a big opening, rally the whole party, and finally move everyone to strike as one. Choose it on the Leveling screen. Hard refresh.';
+const VERSION = '1.12.0';
+const HEADLINE = 'New Cavalier order: the Order of the Star, the faithful. Steadfast saves while you challenge, a prayer that steels you, a battle-cry that lends the party your Charisma, and holy retribution that sears any foe who strikes you or an ally. Four of six orders are now live. Hard refresh.';
 module.exports = { VERSION, HEADLINE };
