@@ -15,6 +15,20 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.3.1 — 2026-07-14
+
+**The GM has a voice again in blind mode.** When v1.3.0 brought the dungeon's controls over, it
+accidentally muted the ElevenLabs voices in blind mode — everything came through the plain
+screen-reader voice. Fixed. Now the three voices share one queue and take turns, so nothing talks
+over anything:
+
+- **The GM** (the Ultron voice) reads the room descriptions and the big moments.
+- **Your companions** speak their quips in their own voices.
+- **The blow-by-blow of combat** — hits, misses, whose turn — stays on the fast screen-reader
+  voice, so it never lags behind the fight.
+
+---
+
 ## v1.3.0 — 2026-07-14
 
 **The dungeon controls are the real thing now — not an imitation of them.**

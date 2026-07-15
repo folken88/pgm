@@ -7,6 +7,21 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.3.1  2026-07-14 RESTORE THE 11LABS GM VOICE IN BLIND MODE (a v1.3.0 regression I caused).
+//                    Tobias: "blind mode isn't doing narration with 11labs… it does everything with
+//                    tts, is there no way you can queue those 2 different voice elements together?"
+//                    The queue ALREADY does: blindmode.js's speakGM/speakAs fetch the ElevenLabs clip
+//                    and push it as an `audioPromise` into the SAME serialized queue as the browser-TTS
+//                    lines, so 11labs clips and the screen reader take turns (no overlap). v1.3.0 broke
+//                    it — when I transplanted poker's narration I routed the GM `urgent` lines through
+//                    browser TTS and SUPPRESSED speakGM in blind mode, so blind play went all-TTS.
+//                    Fix, voices split by line priority through the one queue: banter → the companion's
+//                    own 11labs voice (speakAs); urgent GM narration (room flavor, "room cleared", big
+//                    beats) → the Ultron 11labs voice (speakGM), blind AND sighted; the fast combat
+//                    play-by-play stays browser TTS (dungeon-blind.js narrates it for blind, app.js for
+//                    sighted). toDungeonState marks banter+urgent lines `voiced` so the TTS play-by-play
+//                    SKIPS them — 11labs owns them alone, no double-speak. Verified: room flavor +
+//                    room-clear route to speakGM, hit/miss/turn lines to speak, nothing doubles.
 //  1.3.0  2026-07-14 THE DUNGEON'S ACTUAL BLIND CONTROLS — poker's real code, not a re-implementation.
 //                    Josh: PGM's keys and narration were "different than the dungeon so that's
 //                    disorienting" (A attacked instead of repeating, options read once and couldn't
@@ -142,6 +157,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.3.0';
-const HEADLINE = 'The dungeon controls are the real thing now. Josh — the keys and the spoken play-by-play in a delve are no longer an imitation of the poker dungeon; they ARE its own controls, transplanted whole. Same 1-to-attack, same spellbook, same Your-turn readout, same everything. Hard refresh.';
+const VERSION = '1.3.1';
+const HEADLINE = 'The GM speaks again in blind mode. Room descriptions and the big moments come through the ElevenLabs Ultron voice, the companions in their own voices, and the fast combat blow-by-blow stays on the quick screen-reader voice — all sharing one queue so they never talk over each other. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

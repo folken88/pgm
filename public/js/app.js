@@ -790,7 +790,11 @@
     // (poker's onDungeonState + the GM prompt cover it), so Josh isn't told twice.
     var log = (run.log || [])
       .filter(function (e) { return !/^(It is .*turn|.*Initiative rolled)/i.test(String(e.text || '').replace(/^[^A-Za-z]+/, '')); })
-      .map(function (e) { return { t: e.seq, text: e.text, voiced: e.priority === 'banter', side: undefined, phase: null, sound: e.sound }; });
+      // `voiced` = "an 11labs clip already speaks this" → the TTS play-by-play skips
+      // it. Both banter (character voice) and urgent GM narration (Ultron) are voiced,
+      // so dungeon-blind.js narrates ONLY the fast combat lines and the two 11labs
+      // voices carry the flavor — one queue, no overlap.
+      .map(function (e) { return { t: e.seq, text: e.text, voiced: e.priority === 'banter' || e.priority === 'urgent', side: undefined, phase: null, sound: e.sound }; });
     return { depth: run.roomsCleared, status: status, phase: phase, round: run.round, runGold: run.gold, turn: turn, enemies: enemies, party: party, lootRoll: null, log: log };
   }
 
@@ -846,19 +850,24 @@
           if (amShopping()) playSfx(e.sound, 0.55 * 0.5, true, 378);
           else playSfx(e.sound, 0.55, false);
         }
-        // Companion quips ride their own 11labs voice ALWAYS — the blind play-by-
-        // play (dungeon-blind.js) skips these `voiced` lines, so no overlap.
+        // TWO VOICES, ONE QUEUE (the whole point of Tobias's question): the 11labs
+        // clips and the screen-reader TTS share BlindMode's single serialized queue
+        // (speakGM/speakAs push an audioPromise into it), so they take turns and
+        // never talk over each other — blind mode AND sighted alike.
+        //   · banter  → the companion's own 11labs voice (speakAs)
+        //   · urgent  → the GM's 11labs "Ultron" voice (speakGM) — room flavor, big beats
+        //   · combat  → fast browser TTS: dungeon-blind.js narrates it in blind mode,
+        //               app.js speaks it for sighted players.
+        // In blind mode the play-by-play (dungeon-blind.js) SKIPS `banter`+`urgent`
+        // lines (they're marked voiced in toDungeonState), so 11labs owns them alone.
         if (e.priority === 'banter') {
           BM.speakAs(e.text.replace(/^[^ ]+ /, ''), e.voiceId);
-        } else if (BM.isOn()) {
-          // BLIND MODE: dungeon-blind.js (poker's real narration) owns the spoken
-          // play-by-play. Don't also speak here or every line doubles. Keep the
-          // assertive announce region current for the urgent lines.
-          if (e.priority === 'urgent') { var a2 = el('announce'); if (a2) a2.textContent = e.text; }
-        } else if (e.priority === 'urgent') {          // sighted: GM narration -> Ultron voice
-          BM.speakGM(e.text);
+        } else if (e.priority === 'urgent') {
+          BM.speakGM(e.text);                          // GM narration in the Ultron voice, for everyone
           var a = el('announce'); if (a) a.textContent = e.text;
-        } else { BM.speak(e.text, e.priority); }
+        } else if (!BM.isOn()) {
+          BM.speak(e.text, e.priority);                // sighted combat lines (blind → dungeon-blind.js)
+        }
       }
     });
     renderGameChoices(run, myTurn);
