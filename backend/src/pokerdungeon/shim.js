@@ -145,6 +145,7 @@ Object.assign(
 //                     bonus-damage seam for Cockatrice/Shield when they land)
 const _mixinAbilitiesFor = DungeonShim.prototype._abilitiesFor;
 const _mixinSwingVsAC = DungeonShim.prototype._swingVsAC;
+const _mixinResetAbilities = DungeonShim.prototype._resetAbilities;   // to stamp per-room order passives (Shield DR)
 
 // ── PGM-native overrides (assigned after the mixins so they win) ──
 let _summonSeq = 0;
@@ -166,15 +167,25 @@ Object.assign(DungeonShim.prototype, {
   // toHit today; the dmg seam is ready for Cockatrice/Shield.
   _swingVsAC(attacker, ac, target, extraToHit = 0, offHand = false) {
     const mod = cavOrders.swingMods(this, attacker, target);
+    let r;
     if (mod.dmg && attacker && target) {
       const prevId = attacker.challengedId, prevN = attacker.challengeN;
       const base = (prevId != null && prevId === target.uid) ? (prevN || 0) : 0;
       attacker.challengedId = target.uid;
       attacker.challengeN = base + mod.dmg;
-      try { return _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand); }
+      try { r = _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand); }
       finally { attacker.challengedId = prevId; attacker.challengeN = prevN; }
+    } else {
+      r = _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand);
     }
-    return _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand);
+    // COCKATRICE Steal Glory: an ally's CRIT lets a cockatrice snatch a free strike.
+    if (r && r.crit) cavOrders.onHeroCrit(this, attacker, target);
+    return r;
+  },
+  // Poker's per-room ability reset + PGM order passives (Shield's Resolute DR, etc.).
+  _resetAbilities(m) {
+    _mixinResetAbilities.call(this, m);
+    cavOrders.applyRoomPassives(this, m);
   },
   /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
   // ── Methods the mixins call that the shim lacked (found 2026-07-12 by a
@@ -207,7 +218,10 @@ Object.assign(DungeonShim.prototype, {
     return false;
   },
   // Fire Shield: a foe landing a melee hit on the warded hero is scorched (D:1782).
+  // Also the PGM hook for "a foe just melee-hit a hero" — drives cavalier-Order
+  // reactions (Shield's Stem the Tide, Cockatrice's Rally) regardless of Fire Shield.
   _fireShieldRetaliate(target, e) {
+    cavOrders.onHeroHitByFoe(this, target, e);
     if (!target.fireShield || !(e && e.hp > 0)) return;
     const fs = target.fireShield;
     const dealt = this._dmgE(e, dRollN(1, fs.die || 6) + (fs.bonus || 1), 'fire');

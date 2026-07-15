@@ -40,15 +40,15 @@ test('choosing an Order clears the pending choice', () => {
 
 test('only BUILT orders are legal picks (no half-built order goes live)', () => {
   const cav = createCharacter({ name: 'C', race: 'human', cls: 'cavalier' });
-  assert.ok(isLegalChoice(cav, 'order', 'flame'), 'Flame is built');
-  assert.ok(isLegalChoice(cav, 'order', 'lion'), 'Lion is built');
-  assert.ok(isLegalChoice(cav, 'order', 'dragon'), 'Dragon is built');
-  assert.ok(isLegalChoice(cav, 'order', 'star'), 'Star is built');
-  assert.ok(!isLegalChoice(cav, 'order', 'cockatrice'), 'Cockatrice not built yet → not selectable');
+  // All six playable orders are now built (Sword remains deferred with mounts and
+  // isn't in the table). The `built` gate still rejects nonsense / wrong choice-keys.
+  for (const k of ['flame', 'cockatrice', 'dragon', 'lion', 'shield', 'star']) {
+    assert.ok(isLegalChoice(cav, 'order', k), k + ' is built');
+  }
+  assert.ok(!isLegalChoice(cav, 'order', 'sword'), 'Sword is deferred → not an option');
   assert.ok(!isLegalChoice(cav, 'order', 'nonsense'));
   assert.ok(!isLegalChoice(cav, 'domains', 'flame'), 'a cavalier has no domains choice');
-  // pendingChoices offers only built options (in table order).
-  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'dragon', 'lion', 'star']);
+  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'cockatrice', 'dragon', 'lion', 'shield', 'star']);
 });
 
 test('the Flame deeds are gated by the ORDER, not the name', () => {
@@ -172,6 +172,57 @@ test("Star's Challenge — a save bonus while challenging, folded into the hero 
   assert.strictEqual(run.shim._partySaveMod(cb, ['will']) - base, 2, '+1 per 4 levels → +2 at L5 while challenging');
   cb.challengedId = null;
   assert.strictEqual(run.shim._partySaveMod(cb, ['will']), base, 'no bonus without an active challenge');
+});
+
+// ── Order of the Cockatrice + Order of the Shield (built 2026-07-15) ──────────
+test('Cockatrice and Shield are built, selectable picks', () => {
+  const cav = createCharacter({ name: 'C', race: 'human', cls: 'cavalier' });
+  assert.ok(isLegalChoice(cav, 'order', 'cockatrice') && isLegalChoice(cav, 'order', 'shield'));
+  assert.strictEqual(chosenOption(createCharacter({ name: 'C', race: 'human', cls: 'cavalier', choices: { order: 'cockatrice' } }), 'order').name, 'Order of the Cockatrice');
+});
+
+test('Cockatrice Braggart (L2) is a deed; Steal Glory / Rally are passive (no button)', () => {
+  const kit2 = (() => { const { run, cb } = lionAt(2, 'cockatrice'); return (run.shim._abilitiesFor(cb) || []).filter(a => run.shim._charAllows(a, cb)).map(a => a.name); })();
+  assert.ok(kit2.includes('Braggart'), 'Braggart at L2');
+  const kit15 = (() => { const { run, cb } = lionAt(15, 'cockatrice'); return (run.shim._abilitiesFor(cb) || []).filter(a => run.shim._charAllows(a, cb)).map(a => a.name); })();
+  assert.ok(!kit15.includes('Steal Glory') && !kit15.includes('Rally'), 'Steal Glory/Rally are passive reactions, not deeds');
+});
+
+test("Cockatrice Challenge — +damage vs the challenged foe when you fight it ALONE", () => {
+  const orders = require('../src/pokerdungeon/pgmCavalierOrders');
+  const cock = { cls: 'cavalier', playerId: 'p1', level: 5, character: { choices: { order: 'cockatrice' } }, challengedId: 42 };
+  const shim = { _orderOf: (m) => (m.character && m.character.choices && m.character.choices.order) || null, livingParty: () => [cock] };
+  const foeAlone = { uid: 42, _meleeBy: new Set(['p1']) };           // only the cockatrice on it
+  const foeCrowded = { uid: 42, _meleeBy: new Set(['p1', 'p2']) };   // an ally is also on it
+  assert.strictEqual(orders.swingMods(shim, cock, foeAlone).dmg, 2, '+damage while lone (L5 → +2)');
+  assert.strictEqual(orders.swingMods(shim, cock, foeCrowded).dmg, 0, 'no lone bonus once an ally joins');
+  // Braggart synergy: +2 vs a shaken (prayed) foe.
+  assert.strictEqual(orders.swingMods(shim, cock, { uid: 99, prayed: 2 }).dmg, 2, '+2 vs a shaken foe');
+});
+
+test("Shield Challenge — +to-hit vs a challenged foe that has struck an ally", () => {
+  const orders = require('../src/pokerdungeon/pgmCavalierOrders');
+  const sh = { cls: 'cavalier', playerId: 'p1', level: 9, character: { choices: { order: 'shield' } }, challengedId: 42 };
+  const shim = { _orderOf: (m) => (m.character && m.character.choices && m.character.choices.order) || null, livingParty: () => [sh] };
+  assert.strictEqual(orders.swingMods(shim, sh, { uid: 42, _engagedAlly: true }).toHit, 3, '+to-hit once the foe has hit an ally (L9 → +3)');
+  assert.strictEqual(orders.swingMods(shim, sh, { uid: 42 }).toHit, 0, 'no bonus before the foe has struck anyone');
+});
+
+test('Shield Resolute stamps DR each room; Cockatrice Rally survives a killing blow once', () => {
+  const orders = require('../src/pokerdungeon/pgmCavalierOrders');
+  const shim = { _orderOf: (m) => (m.character && m.character.choices && m.character.choices.order) || null, livingParty: () => [], _note: () => {}, round: 1 };
+  // Resolute DR (L2+): 1 + level/5.
+  const shieldCav = { cls: 'cavalier', level: 10, character: { choices: { order: 'shield' } } };
+  orders.applyRoomPassives(shim, shieldCav);
+  assert.strictEqual(shieldCav.dr, 3, 'DR 1 + floor(10/5) = 3');
+  // Rally (L15): a blow that drops the cockatrice leaves them at 1 HP, once per room.
+  const cock = { cls: 'cavalier', level: 15, character: { choices: { order: 'cockatrice' } }, hp: -4, nickname: 'Vain' };
+  orders.applyRoomPassives(shim, cock);   // clears _rallied
+  orders.onHeroHitByFoe(shim, cock, { hp: 20 });
+  assert.strictEqual(cock.hp, 1, 'Rally leaves the cockatrice at 1 HP');
+  cock.hp = -3;
+  orders.onHeroHitByFoe(shim, cock, { hp: 20 });
+  assert.ok(cock.hp < 0, 'Rally does not fire twice in the same room');
 });
 
 test("Lion's Challenge dodge and L15 aura reach the hero AC", () => {

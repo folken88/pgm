@@ -15,6 +15,28 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.13.0 — 2026-07-15
+
+**The last two Cavalier orders — and all six are now playable.**
+
+**Order of the Cockatrice — the lone glory-hog.** Deadliest with no one in your way:
+- **Challenge** — bonus damage against your challenged foe **while you fight it alone**.
+- **Braggart** (L2) — a swaggering display that leaves **every foe in the room shaken**, and your blows
+  land **+2 against shaken foes**.
+- **Steal Glory** (L8) — whenever an **ally lands a critical hit**, you dart in for a **free strike**.
+- **Rally** (L15) — the blow that would drop you leaves you at **1 HP** instead, once per fight.
+
+**Order of the Shield — the protector of the weak.** Punish those who harm the helpless:
+- **Challenge** — **+to-hit** against a challenged foe **once it has struck an ally**.
+- **Resolute** (L2) — passive **damage reduction** that grows as you level.
+- **Stem the Tide** (L8) — when a foe strikes an ally, you **interrupt with a free strike** of your own.
+- **Protect the Meek** (L15) — throw a strong protective ward over a comrade.
+
+With Flame, Lion, Dragon, and Star, that's **all six cavalier orders live**. (Order of the Sword waits
+on mounted combat.)
+
+---
+
 ## v1.12.0 — 2026-07-15
 
 **Order of the Star — the faithful.**

@@ -21,9 +21,15 @@
  *
  * Orders are built ONE AT A TIME; only a fully-built order flips `built:true` in
  * choices.js and becomes selectable (Tobias's rule — no half-built order ships).
- * Built so far: Lion, Dragon, Star. Pending: Cockatrice, Shield. (Sword deferred
- * with mounted combat.)
+ * Built so far: Lion, Dragon, Star, Cockatrice, Shield. Pending: none (Sword
+ * deferred with mounted combat). Cockatrice/Shield add PASSIVE reactions wired
+ * through the shim: applyRoomPassives (_resetAbilities), onHeroHitByFoe
+ * (_fireShieldRetaliate), onHeroCrit (_swingVsAC).
  */
+
+// Reaction deeds (Shield's Stem the Tide, Cockatrice's Steal Glory) make a free
+// weapon swing, so they need the weapon resolver the mixins use.
+const { weaponOf } = require('./game/combat');
 
 // PF1 "+1 per 4 levels" challenge scaling: 1 at L1–4, 2 at L5–8, 3 at L9–12, … .
 function challengeScale(lvl) { return 1 + Math.floor(((lvl || 1) - 1) / 4); }
@@ -120,6 +126,35 @@ const DEEDS = {
     });
     return out;
   },
+  cockatrice(m) {
+    const lvl = m.level || 1;
+    const out = [];
+    // L2 Braggart — a Dazzling Display: shakens the whole room (enemyPenalty rides
+    // the party-buff path, exactly like Prayer's foe debuff) and, with the swing
+    // modifier, the cockatrice hits +2 vs shaken foes.
+    if (lvl >= 2) out.push({
+      key: 'braggart', name: 'Braggart', icon: '🐔', order: 'cockatrice',
+      cost: 'room', uses: 1, effect: 'buff', target: 'self', party: true, sticky: true,
+      enemyPenalty: 2, buff: {}, sound: '/audio/taunt_predator.mp3',
+      desc: 'ORDER OF THE COCKATRICE (L2): a swaggering Dazzling Display cows the room — every foe is shaken (−2 to hit, damage & saves) for the fight, and your blows land +2 against shaken foes. Once per room.',
+    });
+    // Steal Glory (L8) and Rally (L15) are PASSIVE reactions — see onHeroCrit /
+    // onHeroHitByFoe. No button; they just happen.
+    return out;
+  },
+  shield(m) {
+    const lvl = m.level || 1;
+    const out = [];
+    // Resolute (L2 DR) and Stem the Tide (L8 interrupt) are PASSIVES — see
+    // applyRoomPassives / onHeroHitByFoe.
+    if (lvl >= 15) out.push({
+      key: 'protect_meek', name: 'Protect the Meek', icon: '🛡️', order: 'shield',
+      cost: 'room', uses: 1, effect: 'buff', target: 'ally', sticky: true,
+      buff: { ac: 4, deflect: 2 }, sound: '/audio/spell_buff_invoke.mp3',
+      desc: 'ORDER OF THE SHIELD (L15): throw yourself between a comrade and harm — that ally gains +4 AC (+2 deflection) for the room as you take the danger on yourself. Once per room.',
+    });
+    return out;
+  },
 };
 
 /** Ability defs to append to cavalier `m`'s kit for their chosen order + level. */
@@ -176,7 +211,96 @@ function swingMods(shim, attacker, target) {
       }
     }
   }
+  // The attacker's OWN order (Cockatrice / Shield modify their own swings).
+  if (attacker.cls === 'cavalier') {
+    const order = shim._orderOf(attacker);
+    const onChallenged = attacker.challengedId != null && attacker.challengedId === target.uid;
+    if (order === 'cockatrice') {
+      // The lone glory-hog: +damage vs your challenged foe WHILE you're its only
+      // attacker (no other hero has closed on it — target._meleeBy tracks that).
+      const lone = !target._meleeBy || ![...target._meleeBy].some(id => id !== attacker.playerId);
+      if (onChallenged && lone) mod.dmg += challengeScale(attacker.level || 1);
+      // Braggart (L2): +2 damage vs a shaken (demoralized → `prayed`) foe.
+      if ((attacker.level || 1) >= 2 && target.prayed > 0) mod.dmg += 2;
+    } else if (order === 'shield') {
+      // The protector: +to-hit vs your challenged foe once it has struck an ally
+      // (a melee foe that hits a hero is flagged _engagedAlly).
+      if (onChallenged && target._engagedAlly) mod.toHit += challengeScale(attacker.level || 1);
+    }
+  }
   return mod;
 }
 
-module.exports = { challengeScale, orderDeeds, orderAcBonus, orderSaveBonus, swingMods };
+/** Per-room order PASSIVES stamped onto a cavalier (folded into the shim's
+ *  _resetAbilities). Shield's Resolute DR; also resets Cockatrice's once-per-room
+ *  Rally flag. */
+function applyRoomPassives(shim, m) {
+  if (!m || m.cls !== 'cavalier') return;
+  const order = shim._orderOf(m);
+  if (order === 'shield' && (m.level || 1) >= 2) {
+    // Resolute: DR 1/—, +1 per 5 levels, while you stand (PF1 converts lethal→
+    // nonlethal in armor; PGM has no split, so it's a flat physical soak).
+    m.dr = Math.max(m.dr || 0, 1 + Math.floor((m.level || 1) / 5));
+  }
+  if (order === 'cockatrice') m._rallied = false;   // Rally refreshes each room
+}
+
+/** REACTION: a foe `e` has just melee-struck hero `target` (called from the shim's
+ *  _fireShieldRetaliate, which fires on every enemy melee hit). Drives Cockatrice's
+ *  Rally (survive a killing blow) and Shield's Stem the Tide (interrupt-strike when
+ *  an ally is hit). */
+function onHeroHitByFoe(shim, target, e) {
+  if (!target || !e) return;
+  // COCKATRICE — Rally (L15): the blow that would DROP you leaves you at 1 HP
+  // instead, once per room. (Checked right after damage lands.)
+  if (target.cls === 'cavalier' && shim._orderOf(target) === 'cockatrice'
+      && (target.level || 1) >= 15 && !target._rallied && target.hp <= 0 && !target.dead) {
+    target._rallied = true; target.hp = 1; target.down = false; target.stable = false;
+    shim._note(`\u{1F413} ${target.nickname} REFUSES to fall — RALLY! Left standing at 1 HP.`, null);
+  }
+  if (e.hp <= 0) return;
+  // SHIELD — Stem the Tide (L8): when a foe strikes an ALLY, a Shield cavalier
+  // interrupts with a strike of their own — once per round per cavalier.
+  for (const cav of liveParty(shim)) {
+    if (cav === target || cav.cls !== 'cavalier' || cav.down || cav.hp <= 0) continue;
+    if (shim._orderOf(cav) !== 'shield' || (cav.level || 1) < 8) continue;
+    if (cav._stemRound === shim.round) continue;
+    if (e.hp <= 0) break;
+    cav._stemRound = shim.round;
+    cav.weapon = cav.weapon || weaponOf(cav.gear, cav.weaponKey);
+    const r = shim._swingVsAC(cav, shim._enemyAC(e), e);
+    if (r.hit) {
+      const dealt = shim._dmgE(e, r.damage, 'physical');
+      shim._note(`\u{1F6E1}️ ${cav.nickname} STEMS THE TIDE — cuts down on ${e.name} for ${dealt} in ${target.nickname}'s defense!`, r.sound, { side: 'enemy' });
+    } else {
+      shim._note(`\u{1F6E1}️ ${cav.nickname} lunges to stem the tide, but the blow misses ${e.name}.`, r.sound, { side: 'enemy' });
+    }
+  }
+}
+
+/** REACTION: hero `attacker` just landed a CRITICAL hit on foe `target` (called
+ *  from the shim's _swingVsAC wrapper). Drives Cockatrice's Steal Glory — a free
+ *  strike on that foe when an ALLY crits. Guarded against chaining off its own crit. */
+function onHeroCrit(shim, attacker, target) {
+  if (shim._stealGloryActive || !attacker || !target || !attacker.playerId || target.hp <= 0) return;
+  for (const cav of liveParty(shim)) {
+    if (cav === attacker || cav.cls !== 'cavalier' || cav.down || cav.hp <= 0) continue;
+    if (shim._orderOf(cav) !== 'cockatrice' || (cav.level || 1) < 8) continue;
+    if (cav._stealRound === shim.round) continue;
+    cav._stealRound = shim.round;
+    cav.weapon = cav.weapon || weaponOf(cav.gear, cav.weaponKey);
+    shim._stealGloryActive = true;
+    try {
+      const r = shim._swingVsAC(cav, shim._enemyAC(target), target);
+      if (r.hit) {
+        const dealt = shim._dmgE(target, r.damage, 'physical');
+        shim._note(`\u{1F413} ${cav.nickname} STEALS THE GLORY — a free strike on ${target.name} for ${dealt}!`, r.sound, { side: 'enemy' });
+      } else {
+        shim._note(`\u{1F413} ${cav.nickname} darts in to steal the glory, but misses ${target.name}.`, r.sound, { side: 'enemy' });
+      }
+    } finally { shim._stealGloryActive = false; }
+    break;   // one cockatrice steals per crit
+  }
+}
+
+module.exports = { challengeScale, orderDeeds, orderAcBonus, orderSaveBonus, swingMods, applyRoomPassives, onHeroHitByFoe, onHeroCrit };

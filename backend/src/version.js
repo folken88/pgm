@@ -7,6 +7,28 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.13.0 2026-07-15 THE LAST TWO CAVALIER ORDERS — Cockatrice + Shield. ALL SIX playable orders are
+//                    now live (Flame, Lion, Dragon, Star, Cockatrice, Shield; Sword still deferred
+//                    with mounts). These two needed real COMBAT-EVENT HOOKS for their passive deeds,
+//                    so this version also builds a small sync-safe reaction layer in the shim:
+//                      · _resetAbilities wrapper → cavOrders.applyRoomPassives (per-room passives)
+//                      · _fireShieldRetaliate → cavOrders.onHeroHitByFoe (fires whenever a foe melee-
+//                        hits a hero — it already ran there for Fire Shield)
+//                      · _swingVsAC wrapper → cavOrders.onHeroCrit (fires on a hero crit)
+//                    COCKATRICE (the lone glory-hog): Challenge = +damage vs your challenged foe while
+//                    you're its ONLY attacker (target._meleeBy). L2 Braggart — a Dazzling Display that
+//                    shakens the whole room (rides the party-buff enemyPenalty path like Prayer) and
+//                    +2 damage vs shaken foes. L8 Steal Glory (PASSIVE) — when an ALLY crits, you snatch
+//                    a free strike (guarded against chaining off your own crit). L15 Rally (PASSIVE) —
+//                    the blow that would drop you leaves you at 1 HP instead, once per room.
+//                    SHIELD (the protector): Challenge = +to-hit vs your challenged foe once it has
+//                    struck an ally (e._engagedAlly). L2 Resolute (PASSIVE) — DR 1/—, +1 per 5 levels.
+//                    L8 Stem the Tide (PASSIVE) — when a foe strikes an ALLY, you interrupt with a free
+//                    strike (once per round). L15 Protect the Meek — throw a +4 AC/+2 deflection ward
+//                    over a comrade. All PGM-only; deeds reuse buff/enemyPenalty; nothing touches a
+//                    synced file. Verified end to end in a live run: Steal Glory + Stem the Tide land
+//                    real free strikes, the once-per-round/room guards hold, Rally saves once. +5 tests;
+//                    172/172. Cavalier Orders project COMPLETE (six of seven; Sword awaits mounts).
 //  1.12.0 2026-07-15 ORDER OF THE STAR IS LIVE — the third new cavalier order (Flame + Lion + Dragon
 //                    before it), built the same sync-safe way. The faithful:
 //                    · CHALLENGE — a morale bonus to ALL your saves (+1, +1 per 4 levels) while you
@@ -320,6 +342,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.12.0';
-const HEADLINE = 'New Cavalier order: the Order of the Star, the faithful. Steadfast saves while you challenge, a prayer that steels you, a battle-cry that lends the party your Charisma, and holy retribution that sears any foe who strikes you or an ally. Four of six orders are now live. Hard refresh.';
+const VERSION = '1.13.0';
+const HEADLINE = 'The last two Cavalier orders arrive — Cockatrice (the lone glory-hog: bonus damage when you fight alone, a display that cows the room, steal a strike when an ally crits, and refuse to fall) and Shield (the protector: damage reduction, and you interrupt any foe that strikes an ally). All six orders are now playable. Hard refresh.';
 module.exports = { VERSION, HEADLINE };
