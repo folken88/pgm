@@ -7,6 +7,25 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.7.0  2026-07-15 ORDER OF THE LION IS LIVE — the first of the five new cavalier orders to get its
+//                    FULL mechanics (Challenge modifier + L2/L8/L15 deeds), so it flips `built` and
+//                    becomes selectable on the Leveling screen. The guardian order:
+//                    · CHALLENGE — a dodge bonus (+1, +1 per 4 levels) while you hold an active
+//                      challenge, folded into the hero AC the enemy rolls against (shim _acBonus).
+//                    · L2 LION'S CALL — a rallying roar: the whole party fights with +1 to hit and +2
+//                      to all saves for the room (twice per room).
+//                    · L8 FOR THE KING! — a battle-cry lending the party your Charisma: +Cha to hit AND
+//                      damage for the room (once per room).
+//                    · L15 SHIELD THE LIEGE — throw your guard over a comrade (+4 AC / +2 deflection),
+//                      AND a passive aura: every ally has +2 AC while you stand.
+//                    ALL of it is PGM-only — a new pokerdungeon/pgmCavalierOrders.js holds the order
+//                    mechanics, wired from the shim (_acBonus for the AC, an _abilitiesFor wrapper that
+//                    appends the cavalier's OWN order deeds, level-gated so only usable deeds appear).
+//                    The deeds reuse the engine's existing `buff` handler (party/ally buffs), so the
+//                    synced _useAbility runs them natively — uses, action, targeting, blind refusals —
+//                    with no new plumbing and nothing touching a poker-synced file. The remaining four
+//                    (Cockatrice, Dragon, Shield, Star) flip on as each one's mechanics land next.
+//                    5 new Lion tests; suite green.
 //  1.6.0  2026-07-15 THE LEVELING SCREEN + CAVALIER ORDERS (choice framework). A class can now make a
 //                    defining choice (the Cavalier's Order; domains/bloodline later), resolved on a
 //                    new blind-first Leveling screen modeled on the shop: opening it auto-skips your
@@ -213,6 +232,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.6.0';
-const HEADLINE = 'New: a Leveling screen. Make a Cavalier and you now choose your Order on it — Order of the Flame is live. Like the shop, your turns pass while you level and the battle goes quiet so you can hear the choices clearly. More orders are on the way. Hard refresh.';
+const VERSION = '1.7.0';
+const HEADLINE = 'New Cavalier order: the Order of the Lion, the guardian. Choose it on the Leveling screen — a dodge bonus while you press a challenge, and as you level, a rally that steels the party, a battle-cry that lends them your Charisma, and an aura that shields every ally. More orders coming. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

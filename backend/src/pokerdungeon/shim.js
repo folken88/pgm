@@ -15,6 +15,9 @@ const RACES = require('../pf1core/pf1data/races');
 // shim's own ported methods (_evadeIncoming/_fireShieldRetaliate/_isDualWielding)
 // need them in this scope too.
 const { weaponOf, dRoll, dRollN } = require('./game/combat');
+// PGM-only cavalier Order mechanics (never synced from poker) — the standard Paizo
+// orders' Challenge modifiers + L2/L8/L15 deeds. See pgmCavalierOrders.js.
+const cavOrders = require('./pgmCavalierOrders');
 
 // ── Constants poker's factories expect (values lifted from Dungeon.js) ──
 const ABILITY_MOD = 4, CAST_MOD = 4;
@@ -102,7 +105,7 @@ class DungeonShim {
       + (m._domWardRounds > 0 ? 2 : 0);
   }
   _acPenalty(m) { return ((m.buffs && m.buffs.acPen) || 0) + (m.grappled ? 2 : 0); }
-  _acBonus(m) { return pf1.buffs.buffAcMod(m); }
+  _acBonus(m) { return pf1.buffs.buffAcMod(m) + cavOrders.orderAcBonus(this, m); }
   _acOf(m) { const base = m.character ? m.character.ac : m.ac; return { ac: (m.flatFooted && m.flatAc != null) ? m.flatAc : base, physical: 4 }; }
   _heroCMD(m) { const d = m.character ? m.character.derived : { bab: 0, mods: {} }; return 10 + (d.bab || 0) + (d.mods.str || 0) + (d.mods.dex || 0); }
   _grantTempHp(m, n) { m.hp += n; m.tempHp = (m.tempHp || 0) + n; }
@@ -134,9 +137,23 @@ Object.assign(
   require('./game/dungeon/makeenemy'),    // _makeEnemy / _autoWards (verbatim: boss advancement + pre-cast wards)
 );
 
+// Capture the synced kit-builder BEFORE the override below shadows it, so the
+// PGM `_abilitiesFor` wrapper can append cavalier-Order deeds onto poker's list.
+const _mixinAbilitiesFor = DungeonShim.prototype._abilitiesFor;
+
 // ── PGM-native overrides (assigned after the mixins so they win) ──
 let _summonSeq = 0;
 Object.assign(DungeonShim.prototype, {
+  // Poker's kit-builder + PGM cavalier-Order deeds. The synced _abilitiesFor
+  // already appends the Flame deeds (char-gated) to every cavalier; here we add
+  // the cavalier's OWN order's deeds (Lion, …), tagged `order:` so _charAllows
+  // gates them and level-gated so only usable deeds ever appear. Order content
+  // stays out of the synced files — sync-from-poker can't clobber it.
+  _abilitiesFor(m) {
+    const list = _mixinAbilitiesFor.call(this, m);
+    const deeds = cavOrders.orderDeeds(this, m);
+    return deeds.length ? list.concat(deeds) : list;
+  },
   /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
   // ── Methods the mixins call that the shim lacked (found 2026-07-12 by a
   // call-diff after the silent enemyTurn catch hid a per-hit throw; verbatim

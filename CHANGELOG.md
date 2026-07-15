@@ -15,6 +15,27 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.7.0 — 2026-07-15
+
+**Order of the Lion — the first of the new Cavalier orders.**
+
+Pick a **Cavalier**, choose the **Order of the Lion** on the Leveling screen, and you become the
+party's guardian. Its full order is live:
+
+- **Challenge** — while you hold an active challenge, you gain a **dodge bonus** to your armor
+  class (+1, and another every four levels).
+- **Lion's Call** (level 2) — a rallying roar: the **whole party** shrugs off fear and fights
+  with **+1 to hit and +2 to all saves** for the rest of the fight (twice per room).
+- **For the King!** (level 8) — a battle-cry that lends the party your conviction: **+Charisma to
+  hit and damage** for everyone, for the room (once per room).
+- **Shield the Liege** (level 15) — throw your guard over a comrade for **+4 AC** (and +2
+  deflection); and while you stand, a steadfast **aura gives every ally +2 AC**.
+
+**Order of the Flame** remains fully playable. The other orders — Cockatrice, Dragon, Shield, and
+Star — are coming one at a time, each with its complete set of abilities.
+
+---
+
 ## v1.6.0 — 2026-07-15
 
 **A Leveling screen — and Cavaliers now choose their Order.**
