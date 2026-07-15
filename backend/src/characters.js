@@ -21,6 +21,12 @@ const CHA_CASTER = { str: 10, dex: 14, con: 13, int: 10, wis: 12, cha: 15 };
 const SCORES_BY_CLASS = {
   fighter: MELEE, barbarian: MELEE, paladin: MELEE, antipaladin: MELEE,
   ranger: MELEE, warpriest: MELEE, bloodrager: MELEE, slayer: FINESSE,
+  // CAVALIER + GUNSLINGER were fully built in the engine (SELECTABLE_CLASSES) but
+  // missing from the create dropdown (Tobias: "where is the cavalier class with the
+  // order of the flame?"). Cavalier rides the fighter kit + the Challenge oath;
+  // gunslinger is a DEX gunner. (Order of the Flame is Lord Gweyir's order — he's a
+  // recruitable companion; see _isFlameCavalier.)
+  cavalier: MELEE, gunslinger: FINESSE,
   rogue: FINESSE, ninja: FINESSE, swashbuckler: FINESSE, investigator: FINESSE,
   monk: FINESSE, brawler: FINESSE,
   wizard: ARCANE, arcanist: ARCANE, witch: ARCANE, magus: ARCANE,

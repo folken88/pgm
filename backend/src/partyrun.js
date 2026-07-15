@@ -1208,7 +1208,14 @@ function publicRun(run) {
       if (ab.cost === 'run') return { remaining: (cb.runAbilityUses && cb.runAbilityUses[ab.key]) || 0, max: mx };
       return { remaining: null, max: null };
     };
-    const kitAll = (((kdFull && kdFull.abilities) || [])
+    // Source the action bar from the RUNTIME ability list (`_abilitiesFor`), not the
+    // static kit — some classes add features at runtime (a cavalier's Challenge, a
+    // theurge's union kit). The static kit is the fallback. The engine validates
+    // casts against this same list, so the display now matches what actually works.
+    let kitSource = [];
+    try { kitSource = run.shim._abilitiesFor(cb) || []; } catch (e) {}
+    if (!kitSource.length) kitSource = (kdFull && kdFull.abilities) || [];
+    const kitAll = (kitSource
       .filter(ab => { try { return run.shim._charAllows(ab, cb); } catch (e) { return true; } })
       .map(ab => {
         const r = remainingOf(ab);

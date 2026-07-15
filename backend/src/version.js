@@ -7,6 +7,20 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.5.0  2026-07-14 CAVALIER + GUNSLINGER ARE PLAYABLE (Tobias: "where is the cavalier class with the
+//                    order of the flame?"). Both were fully built in the engine (SELECTABLE_CLASSES)
+//                    but missing from the create dropdown (characters.js was out of sync) — added.
+//                    ALSO FIXED a real bug the cavalier exposed: the action bar was built from the
+//                    STATIC kit (kitFor), but some classes add features at RUNTIME (_abilitiesFor) —
+//                    a cavalier's Challenge, a theurge's union kit. So a created cavalier showed only
+//                    fighter maneuvers, its Challenge invisible/unreachable. publicRun now sources the
+//                    action bar from _abilitiesFor (the same list the engine validates casts against),
+//                    so the display matches what actually works. Verified: cavalier now shows Challenge;
+//                    fighter/wizard/cleric unchanged; 148/148.
+//                    ORDER OF THE FLAME is Lord Gweyir's order (he is a recruitable companion) — a
+//                    generic player cavalier gets base Challenge; the Flame deeds (Glorious Challenge,
+//                    Blaze of Glory) stay char-gated to Gweyir, matching poker. Open question for Tobias:
+//                    make player cavaliers Order of the Flame too? (it's the only order built.)
 //  1.4.0  2026-07-14 FEEDBACK BATCH (Tobias): less chatter + several fixes.
 //                    · BOARD SHOWS THE CHARACTER NAME, not the account name. Toby's "Lien" now
 //                      appears on the board (heroCombatant reads the character name). The create
@@ -182,6 +196,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.4.0';
-const HEADLINE = 'Quieter and clearer: blind mode stops re-reading every enemy HP each turn, toggles like Power Attack just make a sound, and the main page points you at question-mark help instead of a wall of text. Your character now shows its own name on the board, and skeletal champions can be disarmed. Hard refresh.';
+const VERSION = '1.5.0';
+const HEADLINE = 'You can play a Cavalier now (and a Gunslinger) — both were built but hidden from character creation. Fixing that also fixed a bug where a class special like the Cavalier Challenge would not show up on the action bar. Lord Gweyir, the Order of the Flame cavalier, is still recruitable as a companion. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

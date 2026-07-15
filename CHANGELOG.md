@@ -15,6 +15,22 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.5.0 — 2026-07-14
+
+**The Cavalier (and the Gunslinger) are playable now.** Both classes were fully built but just
+weren't listed on the character-creation screen. Pick one and go.
+
+Fixing that turned up a real bug and fixed it too: a Cavalier's **Challenge** — and any class
+feature that gets added when you actually enter the fight — wasn't showing up on your action bar.
+It does now; what you see is what you can actually use.
+
+**Order of the Flame** belongs to **Lord Gweyir**, who's still recruitable as a companion — so you
+can adventure *with* a flame cavalier. A cavalier you make yourself gets the base Challenge oath.
+(Toby: if you want your own cavalier to *be* Order of the Flame, that's a quick change — say the
+word.)
+
+---
+
 ## v1.4.0 — 2026-07-14
 
 **Quieter, clearer, and a few fixes.**
