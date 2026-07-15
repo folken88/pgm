@@ -42,11 +42,12 @@ test('only BUILT orders are legal picks (no half-built order goes live)', () => 
   const cav = createCharacter({ name: 'C', race: 'human', cls: 'cavalier' });
   assert.ok(isLegalChoice(cav, 'order', 'flame'), 'Flame is built');
   assert.ok(isLegalChoice(cav, 'order', 'lion'), 'Lion is built');
+  assert.ok(isLegalChoice(cav, 'order', 'dragon'), 'Dragon is built');
   assert.ok(!isLegalChoice(cav, 'order', 'cockatrice'), 'Cockatrice not built yet → not selectable');
   assert.ok(!isLegalChoice(cav, 'order', 'nonsense'));
   assert.ok(!isLegalChoice(cav, 'domains', 'flame'), 'a cavalier has no domains choice');
   // pendingChoices offers only built options (in table order).
-  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'lion']);
+  assert.deepStrictEqual(pendingChoices(cav)[0].options.map(o => o.key), ['flame', 'dragon', 'lion']);
 });
 
 test('the Flame deeds are gated by the ORDER, not the name', () => {
@@ -105,6 +106,40 @@ test("Lion deeds appear at their level, and only for a Lion", () => {
   const cock = lionAt(15, 'cockatrice');
   const cockKit = (cock.run.shim._abilitiesFor(cock.cb) || []).filter(a => cock.run.shim._charAllows(a, cock.cb)).map(a => a.name);
   assert.ok(!cockKit.includes("Lion's Call"), 'Lion deeds are gated to the Lion order');
+});
+
+// ── Order of the Dragon (built 2026-07-15) ───────────────────────────────────
+test('Order of the Dragon is a built, selectable pick', () => {
+  const cav = createCharacter({ name: 'D', race: 'human', cls: 'cavalier' });
+  assert.ok(isLegalChoice(cav, 'order', 'dragon'), 'Dragon is built');
+  assert.strictEqual(chosenOption(createCharacter({ name: 'D', race: 'human', cls: 'cavalier', choices: { order: 'dragon' } }), 'order').name, 'Order of the Dragon');
+});
+
+test('Dragon deeds appear at their level, and only for a Dragon', () => {
+  const kit = (level) => {
+    const { run, cb } = lionAt(level, 'dragon');
+    return (run.shim._abilitiesFor(cb) || []).filter(a => run.shim._charAllows(a, cb)).map(a => a.name);
+  };
+  assert.ok(!kit(1).includes('Aid Allies'), 'no order deeds at L1');
+  assert.ok(kit(2).includes('Aid Allies'), 'Aid Allies at L2');
+  assert.ok(!kit(2).includes('Strategy'), 'Strategy not until L8');
+  const l15 = kit(15);
+  assert.ok(l15.includes('Aid Allies') && l15.includes('Strategy') && l15.includes('Act as One'), 'a L15 Dragon has all three deeds');
+  // A Lion never sees Dragon deeds.
+  const lion = lionAt(15, 'lion');
+  const lk = (lion.run.shim._abilitiesFor(lion.cb) || []).filter(a => lion.run.shim._charAllows(a, lion.cb)).map(a => a.name);
+  assert.ok(!lk.includes('Aid Allies'), 'Dragon deeds are gated to the Dragon order');
+});
+
+test("Dragon's Challenge — allies hit the challenged foe harder, but not the Dragon himself", () => {
+  const orders = require('../src/pokerdungeon/pgmCavalierOrders');
+  const dragon = { cls: 'cavalier', playerId: 'p1', level: 8, character: { choices: { order: 'dragon' } }, challengedId: 42 };
+  const ally = { cls: 'fighter', playerId: 'p2' };
+  const foe = { uid: 42 }, otherFoe = { uid: 99 };
+  const shim = { _orderOf: (m) => (m.character && m.character.choices && m.character.choices.order) || null, livingParty: () => [dragon, ally] };
+  assert.strictEqual(orders.swingMods(shim, ally, foe).toHit, 2, 'an ally gets +2 vs the challenged foe at L8 (+1 per 4)');
+  assert.strictEqual(orders.swingMods(shim, dragon, foe).toHit, 0, 'the Dragon himself gets no ally bonus (his own Challenge damage still applies)');
+  assert.strictEqual(orders.swingMods(shim, ally, otherFoe).toHit, 0, 'no bonus vs a foe the Dragon has not challenged');
 });
 
 test("Lion's Challenge dodge and L15 aura reach the hero AC", () => {

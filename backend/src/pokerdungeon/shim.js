@@ -137,9 +137,13 @@ Object.assign(
   require('./game/dungeon/makeenemy'),    // _makeEnemy / _autoWards (verbatim: boss advancement + pre-cast wards)
 );
 
-// Capture the synced kit-builder BEFORE the override below shadows it, so the
-// PGM `_abilitiesFor` wrapper can append cavalier-Order deeds onto poker's list.
+// Capture the synced kit-builder + attack resolver BEFORE the overrides below
+// shadow them, so the PGM wrappers can layer cavalier-Order effects on poker's:
+//   · _abilitiesFor → append the cavalier's own Order deeds
+//   · _swingVsAC    → fold in Order swing modifiers (Dragon ally-to-hit, and the
+//                     bonus-damage seam for Cockatrice/Shield when they land)
 const _mixinAbilitiesFor = DungeonShim.prototype._abilitiesFor;
+const _mixinSwingVsAC = DungeonShim.prototype._swingVsAC;
 
 // ── PGM-native overrides (assigned after the mixins so they win) ──
 let _summonSeq = 0;
@@ -153,6 +157,23 @@ Object.assign(DungeonShim.prototype, {
     const list = _mixinAbilitiesFor.call(this, m);
     const deeds = cavOrders.orderDeeds(this, m);
     return deeds.length ? list.concat(deeds) : list;
+  },
+  // Poker's verbatim attack resolver + cavalier-Order swing modifiers. `toHit`/`ac`
+  // add to the roll; `dmg` is injected through the challenge-damage path by briefly
+  // marking the target as this attacker's quarry (restored right after), so an order
+  // can add bonus damage generically even without a standing challenge. Dragon uses
+  // toHit today; the dmg seam is ready for Cockatrice/Shield.
+  _swingVsAC(attacker, ac, target, extraToHit = 0, offHand = false) {
+    const mod = cavOrders.swingMods(this, attacker, target);
+    if (mod.dmg && attacker && target) {
+      const prevId = attacker.challengedId, prevN = attacker.challengeN;
+      const base = (prevId != null && prevId === target.uid) ? (prevN || 0) : 0;
+      attacker.challengedId = target.uid;
+      attacker.challengeN = base + mod.dmg;
+      try { return _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand); }
+      finally { attacker.challengedId = prevId; attacker.challengeN = prevN; }
+    }
+    return _mixinSwingVsAC.call(this, attacker, ac + (mod.ac || 0), target, extraToHit + (mod.toHit || 0), offHand);
   },
   /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
   // ── Methods the mixins call that the shim lacked (found 2026-07-12 by a

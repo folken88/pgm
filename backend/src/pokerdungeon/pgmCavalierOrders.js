@@ -21,7 +21,7 @@
  *
  * Orders are built ONE AT A TIME; only a fully-built order flips `built:true` in
  * choices.js and becomes selectable (Tobias's rule — no half-built order ships).
- * Built so far: Lion. Pending: Cockatrice, Dragon, Shield, Star. (Sword deferred
+ * Built so far: Lion, Dragon. Pending: Cockatrice, Shield, Star. (Sword deferred
  * with mounted combat.)
  */
 
@@ -73,6 +73,29 @@ const DEEDS = {
     });
     return out;
   },
+  dragon(m) {
+    const lvl = m.level || 1;
+    const out = [];
+    const aid = 2 + challengeScale(lvl);   // +3 at L2, +4 at L5, +5 at L9 … (PF1 improved Aid Another)
+    if (lvl >= 2) out.push({
+      key: 'aid_allies', name: 'Aid Allies', icon: '🐲', order: 'dragon',
+      cost: 'room', uses: 3, effect: 'buff', target: 'ally', sticky: true,
+      buff: { toHit: aid, ac: aid }, sound: '/audio/spell_buff_invoke.mp3',
+      desc: `ORDER OF THE DRAGON (L2): call an opening to a comrade — that ally gains +${aid} to hit AND +${aid} AC for the room. Up to three allies per room.`,
+    });
+    if (lvl >= 8) out.push({
+      key: 'strategy', name: 'Strategy', icon: '📯', order: 'dragon',
+      cost: 'room', uses: 1, effect: 'buff', target: 'self', party: true, sticky: true,
+      buff: { toHit: 1, ac: 2 }, sound: '/audio/spell_buff_invoke.mp3',
+      desc: 'ORDER OF THE DRAGON (L8): call a battle plan — the WHOLE party fights as a unit, +1 to hit and +2 AC for the room. Once per room.',
+    });
+    if (lvl >= 15) out.push({
+      key: 'act_as_one', name: 'Act as One', icon: '🐉', order: 'dragon',
+      cost: 'room', uses: 1, effect: 'haste', target: 'self', party: true, sound: '/audio/spell_buff_invoke.mp3',
+      desc: 'ORDER OF THE DRAGON (L15): the party moves and strikes AS ONE — every ally gains an extra attack each turn (a haste surge) for the rest of the room. Once per room.',
+    });
+    return out;
+  },
 };
 
 /** Ability defs to append to cavalier `m`'s kit for their chosen order + level. */
@@ -101,8 +124,25 @@ function orderAcBonus(shim, m) {
   return bonus;
 }
 
-/** To-hit / bonus-damage adjustments for a HERO attacking a foe (Dragon/Cockatrice/
- *  Shield). Lion is purely defensive, so this is a no-op until those orders land. */
-function swingMods(/* shim, attacker, target */) { return { toHit: 0, dmg: 0 }; }
+/** To-hit / bonus-damage adjustments applied when `attacker` swings at `target`,
+ *  folded into the shim's _swingVsAC. `dmg` is injected via the challenge-damage
+ *  path (see the shim wrapper); `toHit`/`ac` add to the roll. */
+function swingMods(shim, attacker, target) {
+  const mod = { toHit: 0, dmg: 0, ac: 0 };
+  if (!attacker || !target) return mod;
+  // ORDER OF THE DRAGON — the tactician. An ALLY (any hero other than the Dragon)
+  // striking the foe the Dragon has CHALLENGED gains +to-hit (+1, +1 per 4 levels).
+  // The Dragon's own strikes already carry his base Challenge damage, so he's excluded.
+  if (attacker.playerId) {   // a hero is attacking (enemies have no playerId)
+    for (const cav of liveParty(shim)) {
+      if (cav === attacker || cav.cls !== 'cavalier') continue;
+      if (shim._orderOf(cav) === 'dragon' && cav.challengedId != null && cav.challengedId === target.uid) {
+        mod.toHit += challengeScale(cav.level || 1);
+        break;   // one Dragon's leadership is plenty; don't stack multiples
+      }
+    }
+  }
+  return mod;
+}
 
 module.exports = { challengeScale, orderDeeds, orderAcBonus, swingMods };

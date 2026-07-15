@@ -15,6 +15,25 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.11.0 — 2026-07-15
+
+**Order of the Dragon — the tactician.**
+
+The second of the new Cavalier orders is live. Where the Lion guards, the Dragon **leads** — a Dragon
+cavalier makes the whole party fight better:
+
+- **Challenge** — your **allies** gain a to-hit bonus (+1, and more as you level) against the foe
+  **you** have challenged. Point at the threat and the party piles on.
+- **Aid Allies** (level 2) — bark an opening to a comrade: **+3 to hit and AC** for the room (more at
+  higher levels), for up to three allies.
+- **Strategy** (level 8) — call a battle plan: the **whole party** gets +1 to hit and +2 AC.
+- **Act as One** (level 15) — the party moves and strikes **as one**: a party-wide haste surge (an
+  extra attack each turn) for the rest of the fight.
+
+Pick it on the Leveling screen. **Cockatrice, Shield, and Star** are still to come.
+
+---
+
 ## v1.10.0 — 2026-07-15
 
 **Rest and make camp.**

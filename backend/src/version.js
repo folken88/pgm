@@ -7,6 +7,24 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.11.0 2026-07-15 ORDER OF THE DRAGON IS LIVE — the second new cavalier order (after Lion) to get
+//                    full mechanics, so it flips `built` and is selectable on the Leveling screen.
+//                    The tactician — you make the whole party better:
+//                    · CHALLENGE — your ALLIES get +to-hit (+1, +1 per 4 levels) against the foe YOU
+//                      have challenged (you don't stack it on yourself — your Challenge already adds
+//                      your damage). This established the OFFENSE seam: shim now wraps _swingVsAC
+//                      (poker's attack resolver) and folds in cavOrders.swingMods — toHit/ac add to
+//                      the roll, and a generic bonus-DAMAGE path (briefly marking the target as the
+//                      attacker's quarry, restored right after) is ready for Cockatrice/Shield.
+//                    · L2 AID ALLIES — hand a comrade a big opening: +N to hit AND AC (N = 2 + the
+//                      challenge step, so +3 at L2), up to three allies per room.
+//                    · L8 STRATEGY — a battle plan: the WHOLE party +1 to hit and +2 AC for the room.
+//                    · L15 ACT AS ONE — the party moves and strikes as one: a party-wide HASTE surge
+//                      (an extra attack each turn) for the room. Reuses poker's _abHaste.
+//                    All PGM-only (pgmCavalierOrders.js + shim wrappers); deeds reuse the buff/haste
+//                    handlers so the synced _useAbility runs them natively. Verified end to end: the
+//                    ally +to-hit lands through the real _swingVsAC (0→+1 at L1). +3 Dragon tests;
+//                    164/164. Remaining: Cockatrice, Shield, Star.
 //  1.10.0 2026-07-15 REST / MAKE CAMP between rooms (Tobias: "the party can also rest, but resting
 //                    adds 1 cr to the next room… heals a certain amount, restores spell slots, and
 //                    causes healing classes to expend all their remaining healing on the party at
@@ -285,6 +303,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.10.0';
-const HEADLINE = 'You can now REST between rooms: make camp to heal the party — a healer along tends everyone to full — but the campfire draws notice and the next room comes one step deadlier. Rest, or press on. Hard refresh.';
+const VERSION = '1.11.0';
+const HEADLINE = 'New Cavalier order: the Order of the Dragon, the tactician. Your allies strike your challenged foe harder, and as you level you can hand a comrade a big opening, rally the whole party, and finally move everyone to strike as one. Choose it on the Leveling screen. Hard refresh.';
 module.exports = { VERSION, HEADLINE };
