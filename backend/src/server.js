@@ -55,6 +55,12 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  // Images (banner/card/tokens) + audio + fonts — so the OG card serves as a real
+  // image/jpeg for social scrapers, not application/octet-stream (Tobias 2026-07-15).
+  '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.avif': 'image/avif',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
 };
 
 function sendJSON(res, code, obj) {

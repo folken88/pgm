@@ -15,6 +15,13 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.8.1 — 2026-07-15
+
+Small fix on top of the new look: the banner and social card now serve with the correct image
+type, so link previews render reliably when you share a PGM link.
+
+---
+
 ## v1.8.0 — 2026-07-15
 
 **A new look — and PGM's banner art.**

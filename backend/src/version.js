@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.8.1  2026-07-15 MIME fix (on top of 1.8.0): the static server had no content-type for images/
+//                    audio/fonts, so the new banner + OG card (and every token/mp3) served as
+//                    application/octet-stream. Browsers sniff and render those fine, but strict
+//                    social-card scrapers want a real image/jpeg on the og:image. Added the map
+//                    (webp/png/jpg/jpeg/gif/avif, mp3/wav/ogg/m4a, woff/woff2/ttf). The card now
+//                    serves as image/jpeg.
 //  1.8.0  2026-07-15 EMBERWOOD — a new look, and the banner art. Tobias delivered a firelit
 //                    key-art banner (a party at a glowing crimson doorway, "PGM — your personal
 //                    D&D game master"). It's now (a) the landing HERO image and (b) the social
@@ -248,6 +254,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 const HEADLINE = 'A new look: PGM now opens on its banner — a party at a firelit doorway — and the whole theme has taken on that crimson-and-ember glow over the darkwood. Same game, warmer fire. Hard refresh to see it.';
 module.exports = { VERSION, HEADLINE };
