@@ -14,9 +14,11 @@ Two connected features:
    open, the player's turns auto-pass and the battle audio is muffled hard so the
    screen-reader voice reading the choices is crystal clear.
 
-**First content:** all **7 Cavalier Orders** — Flame (already built) plus the six
-standard Paizo orders (Cockatrice, Dragon, Lion, Shield, Star, Sword), each at **full
-PF1 depth**: the order's Challenge modifier + its L2 / L8 / L15 order abilities.
+**First content:** **6 Cavalier Orders** — Flame (already built) plus five standard Paizo
+orders (Cockatrice, Dragon, Lion, Shield, Star), each at **full PF1 depth**: the order's
+Challenge modifier + its L2 / L8 / L15 order abilities. **Order of the Sword is DEFERRED**
+(Tobias 2026-07-15): it is entirely mount-based, and mounted combat is skipped for now —
+we come back to Sword when mounts exist.
 
 **Scope guardrail (Tobias):** HP / BAB / slots / spells keep auto-applying instantly on
 level-up. Only the *choice* waits for the player. Leveling is available **out of combat**
@@ -146,20 +148,11 @@ daunts the room). Now gated by `choices.order === 'flame'` instead of the Gweyir
 - **L15 Retribution:** ⚑ passive — when a foe **hits you or an ally**, you deal a **smite-like
   retaliation** strike (holy damage scaling with level), a few times per room.
 
-### Order of the Sword — the duelist ⚑ (fully de-mounted)
-PF1 Sword is mount-only; PGM has no mounts, so it becomes the **on-foot duelist**:
-- **Challenge:** +1 morale **attack** vs the challenged foe, +1 per 4 *(the mounted bonus,
-  now always on).*
-- **L2 By My Honor:** passive — **+2 morale to all saves** *(pick-an-alignment flavor
-  dropped; the save bonus kept).*
-- **L8 Duelist's Precision:** ⚑ replaces Mounted Mastery — **+2 to confirm critical hits**
-  and your challenge damage bonus also applies to the **first hit each round on any foe.**
-- **L15 Supreme Strike:** ⚑ replaces Supreme Charge — once per room, a **devastating blow**:
-  your next hit deals **double weapon damage** (or auto-confirms a threat).
-
-*(Open question flagged to Tobias: keep Sword de-mounted as above, or swap it for a
-non-mount Paizo order such as **Blue Rose** (peace/diplomacy)? Default = keep Sword,
-de-mounted, since it's one of the six standard orders you asked for.)*
+### Order of the Sword — DEFERRED
+PF1 Sword is entirely mount-based (its Challenge bonus, Mounted Mastery, and Supreme Charge
+all require a mount). Mounted combat is skipped for now (Tobias 2026-07-15), so Sword is
+**not built this pass** — revisit it when mounts exist. This also defers any other
+mount-flavored order abilities.
 
 ## 5. The Leveling screen (backend + client)
 
@@ -209,7 +202,7 @@ No separate creation UI — one screen for both creation-time and level-up choic
   passes them; a Cockatrice cavalier gets Braggart, not Glorious Challenge; Lord Gweyir
   (authored `order:'flame'`) is unchanged.
 - **Each order:** the Challenge modifier applies the right bonus (Cockatrice damage when
-  lone, Dragon ally-attack, Lion AC, Shield conditional attack, Star saves, Sword to-hit);
+  lone, Dragon ally-attack, Lion AC, Shield conditional attack, Star saves);
   each order's L2/L8/L15 deed appears in the kit at its level and fires.
 - **Leveling screen:** `level_open` sets `leveling`, turns auto-skip while leveling (a fight
   started by another descender doesn't act for you), `level_choose` records + re-derives,
@@ -224,8 +217,9 @@ No separate creation UI — one screen for both creation-time and level-up choic
    `_charAllows` override, Gweyir default). Flame now choice-gated.
 2. Leveling screen backend (`level_*` actions + auto-skip + payloads) — reuse shop patterns.
 3. Leveling panel client (UI + muffle + Escape hub) — reuse shop patterns.
-4. The six orders: challenge modifiers (shim) + the 18 deeds/passives (PGM-only post-step),
-   one order at a time, each verified in play.
+4. The five orders (Cockatrice, Dragon, Lion, Shield, Star): challenge modifiers (shim) +
+   the 15 deeds/passives (PGM-only post-step), one order at a time, each verified in play.
+   (Order of the Sword deferred with mounted combat.)
 5. Creation-time flow (offer Level-up in the lobby for pending L1 choices).
 
 **Sync-safety rule throughout:** never edit the poker-synced files
