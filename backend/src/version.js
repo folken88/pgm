@@ -143,5 +143,5 @@
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
 const VERSION = '1.3.0';
-const HEADLINE = 'The dungeon controls are the real thing now. Josh — the keys and the spoken play-by-play in a delve are no longer an imitation of the poker dungeon; they ARE the poker dungeon's, transplanted whole. Same 1-to-attack, same spellbook, same Your-turn readout, same everything. Hard refresh.';
+const HEADLINE = 'The dungeon controls are the real thing now. Josh — the keys and the spoken play-by-play in a delve are no longer an imitation of the poker dungeon; they ARE its own controls, transplanted whole. Same 1-to-attack, same spellbook, same Your-turn readout, same everything. Hard refresh.';
 module.exports = { VERSION, HEADLINE };
