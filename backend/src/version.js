@@ -7,6 +7,13 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.13.2 2026-07-15 LANDING TITLE DE-DUP. Since v1.8.0 the header said "Personal Game Master"
+//                    directly above the banner that also says "PGM — your personal D&D game master" —
+//                    the name twice, back to back. On the LANDING only, the header's h1 + tagline are
+//                    now VISUALLY hidden (pure CSS :has(#landing:not([hidden])) — no JS) so the banner
+//                    carries the title alone; they stay in the accessibility tree (the h1 is still the
+//                    page heading for VoiceOver) and every other screen keeps them. Verified: hidden on
+//                    landing, visible off it, back-hidden on return; a11y tree intact.
 //  1.13.1 2026-07-15 HERO DEATH CRY (Tobias). PGM heroes died SILENTLY — the "💀 X is DEAD" beat
 //                    carried no sound (hero_death.mp3 sat unused in /audio). Added a `death` pool to
 //                    sounds.js — a random pick of hero_death.mp3 + the new ack.mp3 (Tobias dropped it
@@ -348,6 +355,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.13.1';
-const HEADLINE = 'A small one: heroes no longer die in silence — a slain hero now cries out, picked at random from a couple of death sounds. All six Cavalier orders remain live. Hard refresh.';
+const VERSION = '1.13.2';
+const HEADLINE = 'Polish: the landing page no longer says the game’s name twice — the banner art carries the title on its own now. (And from v1.13.1: slain heroes cry out instead of dying silently.) Hard refresh.';
 module.exports = { VERSION, HEADLINE };

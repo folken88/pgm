@@ -80,6 +80,16 @@ main { max-width: 760px; margin: 0 auto; padding: 1rem 1.25rem 6rem; }
 /* Header title: brass, now catching a little of the doorway's ember. */
 h1 { text-shadow: 0 0 18px var(--ember-soft); }
 
+/* On the LANDING the banner art carries the title ("PGM — your personal D&D game
+   master"), so the header's own name+tagline would read twice back-to-back. Hide
+   them VISUALLY there only — they stay in the accessibility tree (the h1 is still
+   the page heading for screen readers), and every other screen keeps them. */
+body:has(#landing:not([hidden])) header h1,
+body:has(#landing:not([hidden])) header .tagline {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
 h2 {
   font-size: 1.15rem; padding-bottom: .4rem;
   border-bottom: 1px solid transparent;

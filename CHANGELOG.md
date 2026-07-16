@@ -15,6 +15,14 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.13.2 — 2026-07-15
+
+Polish: the landing page no longer says the game's name twice — the **banner art carries the title**
+on its own, and the header's text title now appears only on the other screens. (Screen readers still
+get the page heading everywhere.)
+
+---
+
 ## v1.13.1 — 2026-07-15
 
 A small touch: a **slain hero now cries out** instead of dying in silence — the death sound is picked
