@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.15.2 2026-07-16 FLY ON ALLIES FOR REAL (ported from poker v3.37.63): SPELL.fly said
+//                    target:'ally' but the GENERATED kits bake their own copies of every entry and
+//                    all three kit-borne Fly entries still said 'self' — wizard/sorcerer/magus could
+//                    only self-cast, and the AI fly-an-ally branch (filters on target:'ally') never
+//                    fired. A post-override pass in pf1core/pf1data/abilities.js now normalizes every
+//                    kit Fly (ally + canHitFlyers + touch-spell desc). Same trap as See Invisibility.
 //  1.15.1 2026-07-15 POKER'S BUFF ART ON THE CHIPS (Tobias: "using the icons you currently are is ok,
 //                    but if you don't have a perfect one, poker dungeon has icons for many buffs").
 //                    Copied poker's 26 painted buff icons (/dungeon/buffs/*.webp, from the poker stack
@@ -416,6 +422,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.15.1';
-const HEADLINE = 'The buff chips now wear poker-dungeon\'s painted icons — Rage, Bless, Haste, Shield of Faith and two dozen more show their real art, with emoji filling in for the rest. Hard refresh.';
+const VERSION = '1.15.2';
+const HEADLINE = 'Fly is a touch spell for real now — wizards and sorcerers can send an ally up after flying enemies instead of hogging the wings. (A baked kit copy had been overriding the fix.)';
 module.exports = { VERSION, HEADLINE };

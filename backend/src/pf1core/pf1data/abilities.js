@@ -935,6 +935,24 @@ _injectKitSpell('bard',       spontaneousSpell(SPELL.seeinvisibility, 7));
 _injectKitSpell('cleric',     preparedSpell(SPELL.invisibilitypurge, 5));
 _injectKitSpell('inquisitor', spontaneousSpell(SPELL.invisibilitypurge, 7));
 
+// ── FLY IS A TOUCH SPELL — kit-copy normalization (2026-07-16, ported from poker v3.37.63) ──
+// SPELL.fly says target:'ally' (the poker v3.37.55 mirror), but kits.generated.js bakes its
+// own copies of every entry and those still said target:'self' — the same override trap as
+// See Invisibility. Josh (poker, playing Draymus): "It gave me no option to apply it to
+// anyone else but myself." Normalize every kit-borne Fly in place, keeping each kit's own
+// cost/uses/minLevel; this also un-blocks the AI fly-an-ally branch (filters on target:'ally').
+// Idempotent — a regen'd DB entry that already says 'ally' passes through unchanged.
+// TODO: fix the entries in kit_abilities on the next DB regen, then delete this block.
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a.key !== 'fly') continue;
+    _a.target = 'ally';
+    _a.canHitFlyers = true;
+    _a.desc = SPELL.fly.desc;
+  }
+}
+
 // Olbryn's STORM specialization — injected AFTER the generated-kit override so it
 // survives regeneration. Base sorcerers are fire/force themed; these char-tagged
 // lightning spells (only Olbryn sees them, gated by Dungeon._charAllows) make him the

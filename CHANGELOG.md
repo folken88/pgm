@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.15.2 — 2026-07-16
+
+**Fly can be cast on allies now — for real.** The earlier fix made Fly a touch spell, but a
+baked copy inside each caster kit still said "self only," so wizards, sorcerers and magi could
+never actually share their wings — and the AI never flew a teammate up after airborne enemies.
+The kit copies are now normalized at load, with a test so a data regen can't bring the bug back.
+(Found by Josh on the poker side, playing Draymus.)
+
 ## v1.15.1 — 2026-07-15
 
 The buff chips now wear **poker-dungeon's painted icons**: Rage, Power Attack, Deadly Aim, Bless,
