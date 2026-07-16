@@ -403,10 +403,12 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
 .buff-chip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 1.35rem; height: 1.35rem; font-size: .92rem; line-height: 1;
-  border-radius: 5px; background: rgba(0,0,0,.45);
+  border-radius: 5px; background: rgba(0,0,0,.45); overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(217,180,92,.75), 0 0 6px -1px var(--ember-soft);
   cursor: default;
 }
+/* Poker's buff art fills the chip; the gold ring stays on the chip box. */
+.buff-chip .bc-img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; display: block; }
 /* Log color-coding (Tobias): SUBTLE tints — damage/failed saves red, exact-meet
    saves yellow, made saves green, healing blue, deaths a strong red. */
 #log .lg-dmg   { color: #dc9384; }

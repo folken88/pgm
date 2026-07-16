@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.15.1 — 2026-07-15
+
+The buff chips now wear **poker-dungeon's painted icons**: Rage, Power Attack, Deadly Aim, Bless,
+Inspire Courage, Prayer, Divine Favor, Heroism, Mage Armor, Shield, Shield of Faith, Stoneskin,
+Haste, Smite, Invisibility, Fly, and the rest of poker's art set — on hero and enemy cards alike.
+Buffs without a matching painting keep their emoji.
+
+---
+
 ## v1.15.0 — 2026-07-15
 
 **A big feedback batch from live play.**

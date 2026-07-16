@@ -7,6 +7,18 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.15.1 2026-07-15 POKER'S BUFF ART ON THE CHIPS (Tobias: "using the icons you currently are is ok,
+//                    but if you don't have a perfect one, poker dungeon has icons for many buffs").
+//                    Copied poker's 26 painted buff icons (/dungeon/buffs/*.webp, from the poker stack
+//                    on the NAS) into PGM and wired `img` through the chip pipeline: BUFF_META /
+//                    PRECAST_META / the standalone-flag chips carry an art path where one exists
+//                    (rage, power attack, deadly aim, bless, inspire, prayer, divine favor, heroism,
+//                    good hope, mage armor, shield, shield of faith, stoneskin(+DR/barkskin),
+//                    cat's/bull's/bear's, prot-evil, prot-fire, haste, smite, invisible, fly — with
+//                    poker's own art reuses: displacement/mirror-image/blur ride the fly art, GMW
+//                    rides bull's strength). buffChips renders the image inside the gold-ringed chip;
+//                    EMOJI stays the fallback for everything else (order deeds, challenge, fire
+//                    shield…). Verified: hero + enemy chips serve art paths; render checked in Chrome.
 //  1.15.0 2026-07-15 FEEDBACK BATCH (Tobias, mid-delve screenshot):
 //                    · SPEECH: "BAB" now spoken as the word "bab", "HP" spelled "H P" (WORD_FIXES).
 //                    · TERSE PLAY-BY-PLAY: blind combat lines compress aggressively — "Farrus Richton
@@ -404,6 +416,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.15.0';
-const HEADLINE = 'Big feedback batch: blind speech is far terser ("Farrus: rage"), enemy forces now scale with your party size, wards show as buff icons on every card, the combat log is color-coded, and spells you cannot cast yet no longer clutter your buttons. Hard refresh.';
+const VERSION = '1.15.1';
+const HEADLINE = 'The buff chips now wear poker-dungeon\'s painted icons — Rage, Bless, Haste, Shield of Faith and two dozen more show their real art, with emoji filling in for the rest. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

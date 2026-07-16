@@ -953,7 +953,9 @@
     if (!list || !list.length) return '';
     return '<div class="buff-chips">' + list.map(function (b) {
       var t = b.desc ? b.label + ' — ' + b.desc : b.label;
-      return '<span class="buff-chip" role="img" aria-label="' + esc(b.label) + '" title="' + esc(t) + '">' + b.icon + '</span>';
+      // Poker's buff ART when we have it (/dungeon/buffs/*.webp); emoji otherwise.
+      var inner = b.img ? '<img class="bc-img" src="' + esc(b.img) + '" alt="" loading="lazy" />' : b.icon;
+      return '<span class="buff-chip" role="img" aria-label="' + esc(b.label) + '" title="' + esc(t) + '">' + inner + '</span>';
     }).join('') + '</div>';
   }
 
