@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.13.1 2026-07-15 HERO DEATH CRY (Tobias). PGM heroes died SILENTLY — the "💀 X is DEAD" beat
+//                    carried no sound (hero_death.mp3 sat unused in /audio). Added a `death` pool to
+//                    sounds.js — a random pick of hero_death.mp3 + the new ack.mp3 (Tobias dropped it
+//                    in; poker got the same clip) — and played it on both hero-death paths (paced +
+//                    sync drivers, where a hero drops past −CON and is slain). Verified: a real death
+//                    emits the beat with a picked death sound; 172/172.
 //  1.13.0 2026-07-15 THE LAST TWO CAVALIER ORDERS — Cockatrice + Shield. ALL SIX playable orders are
 //                    now live (Flame, Lion, Dragon, Star, Cockatrice, Shield; Sword still deferred
 //                    with mounts). These two needed real COMBAT-EVENT HOOKS for their passive deeds,
@@ -342,6 +348,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.13.0';
-const HEADLINE = 'The last two Cavalier orders arrive — Cockatrice, the lone glory-hog who hits harder alone and steals a strike when an ally crits, and Shield, the protector who interrupts any foe that strikes an ally. All six orders are now playable. Hard refresh.';
+const VERSION = '1.13.1';
+const HEADLINE = 'A small one: heroes no longer die in silence — a slain hero now cries out, picked at random from a couple of death sounds. All six Cavalier orders remain live. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

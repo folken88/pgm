@@ -392,7 +392,7 @@ function driveTurnsPaced(run, roll) {
       if (c.hp > 0) return;
       if (c.side === 'hero' && !c.dead && c.hp < -conScore(c)) {
         c.dead = true; c.down = true;
-        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent');
+        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent', SFX.pick(SFX.SND.death));
       }
       if (!c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; }
       if (c.side === 'hero') c.queuedAction = null;
@@ -453,7 +453,7 @@ function runTurnsSync(run, roll) {
       if (c.hp > 0) return;
       if (c.side === 'hero' && !c.dead && c.hp < -conScore(c)) {
         c.dead = true; c.down = true;
-        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent');
+        logEvent(run, `💀 ${c.name} is DEAD — beyond mortal aid until raised.`, 'urgent', SFX.pick(SFX.SND.death));
       }
       if (!c.down) { c.down = true; if (c.side === 'enemy') c.revealed = true; }
       if (c.side === 'hero') c.queuedAction = null;   // dying/dead wipes the pre-load

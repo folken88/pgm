@@ -9,6 +9,9 @@ const SND = {
   block: ['/audio/fight_block_1.mp3', '/audio/fight_block_2.mp3', '/audio/fight_block_3.mp3', '/audio/fight_block_4.mp3', '/audio/fight_block_5.mp3', '/audio/fight_block_6.mp3', '/audio/fight_block_7.mp3', '/audio/fight_block_8.mp3', '/audio/fight_block_9.mp3', '/audio/fight_block_10.mp3', '/audio/fight_block_11.mp3'],
   flesh: ['/audio/fight_flesh_1.mp3', '/audio/fight_flesh_2.mp3', '/audio/fight_flesh_3.mp3', '/audio/fight_flesh_4.mp3', '/audio/fight_flesh_5.mp3', '/audio/fight_flesh_6.mp3', '/audio/fight_flesh_7.mp3', '/audio/fight_flesh_8.mp3', '/audio/fight_flesh_9.mp3', '/audio/fight_flesh_10.mp3', '/audio/fight_flesh_11.mp3', '/audio/fight_flesh_12.mp3', '/audio/fight_flesh_13.mp3', '/audio/fight_flesh_17.mp3', '/audio/fight_flesh_18.mp3', '/audio/fight_flesh_19.mp3', '/audio/fight_flesh_21.mp3', '/audio/fight_flesh_23.mp3'],
   fumble: '/audio/fight_fumble.mp3',
+  // Character death cries — played when a hero drops past −CON and is SLAIN. Picked
+  // at random so it's not the same note every time (Tobias, ack.mp3 added 2026-07-15).
+  death: ['/audio/hero_death.mp3', '/audio/ack.mp3'],
   lightning: ['/audio/fight_lightning.mp3', '/audio/fight_lightning_2.mp3', '/audio/fight_lightning_3.mp3', '/audio/fight_lightning_4.mp3', '/audio/fight_lightning_7.mp3'],
   stink: ['/audio/fight_stink.mp3', '/audio/fight_stink_2.mp3', '/audio/fight_stink_3.mp3', '/audio/fight_stink_4.mp3', '/audio/fight_stink_5.mp3', '/audio/fight_stink_6.mp3', '/audio/fight_stink_7.mp3', '/audio/fight_stink_8.mp3'],
 };

@@ -15,6 +15,13 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ---
 
+## v1.13.1 — 2026-07-15
+
+A small touch: a **slain hero now cries out** instead of dying in silence — the death sound is picked
+at random from a small pool, so it's not the same note every time.
+
+---
+
 ## v1.13.0 — 2026-07-15
 
 **The last two Cavalier orders — and all six are now playable.**
