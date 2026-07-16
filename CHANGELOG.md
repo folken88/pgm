@@ -9,9 +9,13 @@ Newest release first. The developer-facing one-liners live in `backend/src/versi
 
 ## Credits
 
-- **Josh** — the blind-play overhaul. A screen-reader user whose reports drove the spoken
-  menus, the repeatable guide, the repeat key, and the whole key-driven navigation model.
-- **Tobias** — design, art, and the house rules the engine runs on.
+PGM is made by:
+
+- **Tobias Merriman** — designer. The vision, the art, and the house rules the engine runs on.
+- **Josh Morrison** — co-designer and quality assurance tester. A screen-reader user whose
+  playtests and reports shaped the spoken menus, the repeatable guide, the repeat key, and the
+  whole key-driven navigation model — PGM plays by ear because of him.
+- **Claude Code** — development.
 
 ---
 
