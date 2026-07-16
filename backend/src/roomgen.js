@@ -224,8 +224,15 @@ function generateMonRoom(partySize, apl, depth, MON, xpForCR, roll = Math.random
   // anchor ONE of their gangs at random. If the gang can't fill, fall back.
   let gang = null;
   const inGang = (k) => { if (!gang) return true; const g = MON_GANGS[k]; return !g || g.includes(gang); };
+  // FORCE SIZE SCALES WITH THE PARTY (Tobias 2026-07-15: "you need a certain
+  // amount of enemies per hero — 2 heroes means a small force, 8 means more").
+  // The XP budget already grows with partySize; these bounds make the COUNT
+  // follow it too: a duo sees at most ~3-4 foes, a full table sees up to 10,
+  // and a big party is never handed a lone pair of mooks.
+  const maxFoes = Math.max(3, Math.min(10, Math.round(partySize * 1.25)));
+  const minFoes = Math.max(1, Math.ceil(partySize / 2));
   let remaining = budget, guard = 0;
-  while (guard++ < 12 && monKeys.length < 6) {
+  while (guard++ < 24 && monKeys.length < maxFoes) {
     const affordAll = cands.filter(k => xpForCR(MON[k].crNum || 0.25) <= remaining * 1.25);
     const afford = affordAll.filter(inGang).length ? affordAll.filter(inGang) : affordAll;
     if (!afford.length) break;
@@ -234,6 +241,17 @@ function generateMonRoom(partySize, apl, depth, MON, xpForCR, roll = Math.random
     if (!gang) { const g = MON_GANGS[k]; if (g && g.length) gang = g[Math.floor(roll() * g.length)]; }
     remaining -= xpForCR(MON[k].crNum || 0.25);
     if (remaining < 40) break;
+  }
+  // Under the per-hero floor? Pad with cheap same-gang fodder (CR well under the
+  // party's weight) so the room FEELS like a fight without raising lethality.
+  if (monKeys.length && monKeys.length < minFoes) {
+    const fodderCap = Math.max(0.5, effApl - 1);
+    const fodder = cands.filter(k => (MON[k].crNum || 0.25) <= fodderCap);
+    const pool = fodder.filter(inGang).length ? fodder.filter(inGang) : fodder;
+    let g2 = 0;
+    while (pool.length && monKeys.length < minFoes && g2++ < 12) {
+      monKeys.push(pool[Math.floor(roll() * pool.length)]);
+    }
   }
   if (!monKeys.length) monKeys.push(cands.sort((a, b) => (MON[a].crNum || 9) - (MON[b].crNum || 9))[0] || 'goblin');
   const spent = monKeys.reduce((s2, k) => s2 + xpForCR(MON[k].crNum || 0.25), 0);

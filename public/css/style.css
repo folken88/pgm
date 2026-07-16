@@ -407,6 +407,13 @@ body.in-game #side-window { position: static; width: auto; max-width: none; marg
   box-shadow: inset 0 0 0 1px rgba(217,180,92,.75), 0 0 6px -1px var(--ember-soft);
   cursor: default;
 }
+/* Log color-coding (Tobias): SUBTLE tints — damage/failed saves red, exact-meet
+   saves yellow, made saves green, healing blue, deaths a strong red. */
+#log .lg-dmg   { color: #dc9384; }
+#log .lg-save  { color: #9cc492; }
+#log .lg-exact { color: #dfc57a; }
+#log .lg-heal  { color: #8fb8dc; }
+#log .lg-death { color: #f0705a; font-weight: 600; }
 /* HP bar on the initiative tile. Heroes read green→amber→red by fill; enemies
    are always the danger tint (quantized to 25% — no numbers shown). */
 .unit .u-hpbar { height: 6px; width: 80%; margin: .2rem auto; background: #2b2b2b; border-radius: 4px; overflow: hidden; }

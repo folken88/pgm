@@ -1528,9 +1528,24 @@
       }
     } catch (e) {}
   }
+  // Subtle color-coding (Tobias 2026-07-15): damage/failed saves red, saves made
+  // EXACTLY yellow, successful saves green, healing blue, deaths strong red.
+  function classifyLog(text) {
+    var t = String(text || '');
+    if (/is DEAD|is slain|falls!|destroyed!|bleeds out|dissolves!/i.test(t)) return 'lg-death';
+    if (/heal(s|ed)?\b|cure(s|d)?\b|mend(s|ed)?|knits|breath of life|back from the dead|restor(es|ed)|tends? the wounded|wakes whole/i.test(t)) return 'lg-heal';
+    // The rolled math: "= 17 vs AC 17" / "= 14 vs DC 14" — an EXACT meet is yellow.
+    var m = t.match(/=\s*(\d+)\s*vs\s*(?:AC|DC)?\s*(\d+)/i);
+    if (m && +m[1] === +m[2]) return 'lg-exact';
+    if (/\bsaved\b|\bsaves\b|shrug(s|ged)? it off|resist(s|ed)?|spell-resisted/i.test(t)) return 'lg-save';
+    if (/hits? .+ for \d|takes \d|fail(s|ed)?\b|seared|scorch(es|ed)|burns? for|bleeds for|crit/i.test(t)) return 'lg-dmg';
+    return null;
+  }
   function appendLog(text, prio) {
     var log = el('log'); var p = document.createElement('p'); p.textContent = text;
     if (prio === 'urgent') p.classList.add('urgent');
+    var cls = classifyLog(text);
+    if (cls) p.classList.add(cls);
     log.appendChild(p); log.scrollTop = log.scrollHeight;
   }
   function doGameAction(choice) {

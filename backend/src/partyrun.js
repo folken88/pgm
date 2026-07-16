@@ -1225,7 +1225,11 @@ function publicRun(run) {
         && run.heroes.some(h => (h.negLevels || 0) > 0 && !h.dead)) {
       kit = kit.concat([{ key: 'restoration', name: 'Restoration', icon: String.fromCodePoint(0x2728), cost: 'slot', slvl: 4 }]);
     }
-    const spells = kit.filter(ab => ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(ab, cb))).map(ab => ({
+    // Spells the hero can't cast YET (minLevel above their level) are OMITTED
+    // entirely — a L2 sorcerer must not see an Overland Flight button that only
+    // answers "needs level 10" when pressed (Tobias 2026-07-15).
+    const spells = kit.filter(ab => (!ab.minLevel || (cb.level || 1) >= ab.minLevel)
+      && (ab.key === 'restoration' || (kitUses(cb, ab) && run.shim._charAllows(ab, cb)))).map(ab => ({
       key: ab.key, name: ab.name, icon: ab.icon, cost: ab.cost || null, slvl: ab.slvl || null,
       isSpell: !!(ab.slvl || ab.cost === 'slot' || ab.cost === 'pool'),
       uses: ab.cost === 'pool' ? cb.spellPool
@@ -1317,12 +1321,13 @@ function publicRun(run) {
       init: c.init || 0,
       conditions: condList(c)
         .concat(c.dead ? ['DEAD'] : (c.down && c.side === 'hero') ? [c.stable ? 'stable (' + c.hp + ')' : 'dying (' + c.hp + ')'] : [])
-        .concat(c.negLevels ? [c.negLevels + ' negative level' + (c.negLevels === 1 ? '' : 's')] : [])
-        .concat(c.precast && c.precast.length ? ['warded: ' + c.precast.join('/')] : []),
+        .concat(c.negLevels ? [c.negLevels + ' negative level' + (c.negLevels === 1 ? '' : 's')] : []),
+      // (pre-cast wards used to append "warded: shieldoffaith" text here — they
+      // are buff CHIPS now, via buffList/buffIcons. Tobias 2026-07-15.)
       // Split views for the blind B (buffs) / D (debuffs) readouts (poker keymap).
       // buffs = named buff LABELS (blind B reads them); buffIcons = the same as
       // emoji chips for the card (poker parity — was a single "blessed").
-      buffs: buffList(c).map(b => b.label).concat(c.precast && c.precast.length ? c.precast : []),
+      buffs: buffList(c).map(b => b.label),   // precast wards ride buffList now (no double-listing)
       buffIcons: buffList(c),
       debuffs: condList(c).filter(x => x !== 'blessed'),
       slots: (c.side === 'hero' && c.slots && Object.keys(c.slots).length) ? c.slots : null,
@@ -1401,8 +1406,33 @@ function buffList(c) {
   else if (c.seeInvis)  push('seeinvis', { icon: '👀', label: 'See Invisibility', desc: 'sees the invisible' });
   if (c.challengedId != null) push('challenge', { icon: '⚔️', label: 'Challenge', desc: '+damage vs your quarry' });
   if (c.studiedId != null)    push('studied',   { icon: '🎯', label: 'Studied Target', desc: '+hit & damage vs your mark' });
+  // Pre-cast WARDS (a boss's shield-of-faith, mage armor, blur…) — chips, not the
+  // old "warded: shieldoffaith" text (Tobias 2026-07-15: buff icons like poker).
+  for (const key of (c.precast || [])) {
+    const meta = PRECAST_META[key] || BUFF_META[key] || { icon: '✨', label: prettyKey(key), desc: 'a pre-cast ward' };
+    push('pre_' + key, meta);
+  }
+  // ENEMIES with numeric combat buffs (a shaman's blessing…) show a generic chip
+  // (poker's _enemyBuffList "enchanted" — heroes get named chips via buffApplied).
+  if (!c.character && c.buffs && ((c.buffs.toHit || 0) + (c.buffs.dmg || 0) + (c.buffs.ac || 0) + (c.buffs.bonusDice || 0)) > 0) {
+    push('enchanted', { icon: '✨', label: 'Enchanted', desc: 'magically bolstered' });
+  }
   return out;
 }
+// Pre-cast ward keys → readable chip meta. Anything unlisted gets a prettified key.
+const PRECAST_META = {
+  shieldoffaith: { icon: '🛡️', label: 'Shield of Faith', desc: '+deflection AC' },
+  magearmor:     { icon: '🔷', label: 'Mage Armor', desc: '+4 armor AC' },
+  shield:        { icon: '🛡️', label: 'Shield', desc: '+4 AC' },
+  blur:          { icon: '🌫️', label: 'Blur', desc: 'attacks may miss' },
+  mirrorimage:   { icon: '🪞', label: 'Mirror Image', desc: 'decoy images' },
+  stoneskin:     { icon: '🪨', label: 'Stoneskin', desc: 'DR vs physical' },
+  displacement:  { icon: '🌀', label: 'Displacement', desc: 'attacks may pass through' },
+  fly:           { icon: '🕊️', label: 'Fly', desc: 'airborne' },
+  barkskin:      { icon: '🌳', label: 'Barkskin', desc: '+natural AC' },
+  falselife:     { icon: '🖤', label: 'False Life', desc: 'temporary HP' },
+};
+function prettyKey(k) { return String(k || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()); }
 
 /** Human-readable active conditions on a combatant (for the status panels). */
 function condList(c) {

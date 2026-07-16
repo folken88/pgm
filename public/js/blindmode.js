@@ -107,6 +107,8 @@
   // text keeps its notation. "vs" reads as "versus", not "v s".
   var WORD_FIXES = [
     [/\bvs\.?\b/gi, 'versus'],
+    [/\bBAB\b/g, 'bab'],    // say it as a word ("babb"), don't spell B-A-B (Tobias)
+    [/\bHP\b/g, 'H P'],     // spell it out ("H P"), don't say "hp" (Tobias)
   ];
   // TTS short names (Tobias 2026-07-15): speech says "Duristan", the screen keeps
   // "Duristan Silvio". Pairs come from /api/meta (setNicknames), compiled to

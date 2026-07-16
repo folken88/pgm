@@ -123,6 +123,27 @@
       var fresh = st.log.filter(function (e) { return e.t > _dun.logT; });
       if (fresh.length) {
         _dun.logT = Math.max.apply(null, [_dun.logT].concat(st.log.map(function (e) { return e.t; })));
+        // Terse play-by-play (Tobias 2026-07-15: "Farrus Richton flies into a rage"
+        // should speak as "Farrus: rage" — a general convention; the blind player
+        // receives LESS flavor to save time). The screen keeps the full line; only
+        // speech compresses. Names shorten further via the TTS nickname pass.
+        var TERSE = [
+          [/^(.+?) flies into an? (?:MIGHTY |GREATER )?RAGE!?.*$/i, '$1: rage.'],
+          [/^(.+?) strikes up (.+?) — .*$/i, '$1: $2.'],
+          [/^(.+?) intones (.+?) — .*$/i, '$1: $2.'],
+          [/^(.+?) blesses the party'?s weapons with (.+?)[.!]?\s*$/i, '$1: $2.'],
+          [/^(.+?) casts (.+?) on (.+?)\.\s*$/i, '$1: $2 on $3.'],
+          [/^(.+?) casts (.+?)(?: —.*|!.*)$/i, '$1: $2.'],
+          [/^(.+?) uses (.+?)!\s*$/i, '$1: $2.'],
+          [/^(.+?) calls a Smite —.*$/i, '$1: smite.'],
+          [/^(.+?) channels? positive energy —\s*/i, '$1: channel — '],
+          [/^(.+?) bellows a furious challenge \[[^\]]*\] —\s*/i, '$1 taunts: '],
+          [/^(.+?) pours? out the last of the day'?s healing.*$/i, '$1 tends the wounded.'],
+        ];
+        var _terse = function (t) {
+          for (var i = 0; i < TERSE.length; i++) { if (TERSE[i][0].test(t)) return t.replace(TERSE[i][0], TERSE[i][1]); }
+          return t;
+        };
         var said = function (t, ph) { if (t) speak(t, 'event', ph || null); };
         var enemyCount = (st.enemies || []).filter(function (e) { return e.alive; }).length;
         var meM = (st.party || []).find(function (m) { return m.playerId === meId; }) || {};
@@ -134,7 +155,7 @@
           var enemyTally = live.length - mine.length;
           var show = mine.length > 8 ? mine.slice(-8) : mine;
           if (show.length < mine.length) said('Skipping ' + (mine.length - show.length) + ' earlier ally lines.', 'combat');
-          show.forEach(function (e) { said(_stripGlyphs(e.text), e.phase || 'combat'); });
+          show.forEach(function (e) { said(_terse(_stripGlyphs(e.text)), e.phase || 'combat'); });
           if (enemyTally) said('Plus ' + enemyTally + ' more enemy action' + (enemyTally > 1 ? 's' : '') + ' — press E to inspect the foes.', 'combat');
         } else {
           var isIdleNoop = function (e) { return e.side === 'enemy' && /does nothing|loses its turn|struggles in vain/i.test(String(e.text || '')); };
@@ -142,7 +163,7 @@
           var idleN = live.length - active.length;
           var toSay = active.length > 8 ? active.slice(-8) : active;
           if (toSay.length < active.length) said('Skipping ' + (active.length - toSay.length) + ' earlier lines.', toSay[0] && toSay[0].phase);
-          toSay.forEach(function (e) { said(_stripGlyphs(e.text), e.phase || (st.status === 'combat' ? 'combat' : null)); });
+          toSay.forEach(function (e) { said(_terse(_stripGlyphs(e.text)), e.phase || (st.status === 'combat' ? 'combat' : null)); });
           if (idleN) said(idleN + ' foe' + (idleN === 1 ? '' : 's') + ' stand idle — entranced or held — and do nothing.', 'combat');
         }
       }

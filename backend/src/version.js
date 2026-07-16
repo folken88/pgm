@@ -7,6 +7,30 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.15.0 2026-07-15 FEEDBACK BATCH (Tobias, mid-delve screenshot):
+//                    · SPEECH: "BAB" now spoken as the word "bab", "HP" spelled "H P" (WORD_FIXES).
+//                    · TERSE PLAY-BY-PLAY: blind combat lines compress aggressively — "Farrus Richton
+//                      flies into a RAGE!" speaks as "Farrus: rage." General convention (casts/buffs/
+//                      smite/taunt/channel lines all compress); the SCREEN keeps the full flavor.
+//                      dungeon-blind's said() now runs _terse() after glyph-strip.
+//                    · FORCE SIZE SCALES WITH PARTY (roomgen): foe cap = ~1.25/hero (max 10, was a flat
+//                      6) and a per-hero FLOOR (ceil(party/2)) padded with cheap same-gang fodder — a
+//                      7-hero party no longer strolls over two drones. Verified: 2 heroes → 1-3 foes,
+//                      8 heroes → 4-7.
+//                    · ENEMY (and hero) WARDS ARE CHIPS: "warded: shieldoffaith" text is gone —
+//                      pre-cast wards render as buff icons (🛡️ Shield of Faith, 🔷 Mage Armor…) via
+//                      buffList/PRECAST_META; enemies with numeric shaman-blessings get a generic
+//                      ✨ Enchanted chip (poker's _enemyBuffList).
+//                    · COLOR-CODED LOG (subtle): damage/failed saves red, EXACT-meet rolls yellow
+//                      (= N vs N), made saves green, healing blue, deaths strong red (classifyLog).
+//                    · FARRUS'S TAUNT is the standard barbarian PREDATOR YELL again — the shim now
+//                      owns _abTaunt minus poker's per-character grandpa-ghost clip (sync-safe copy).
+//                    · SPELLS YOU CAN'T CAST YET ARE GONE: the turn spell list filters minLevel, so a
+//                      L2 sorcerer no longer sees an Overland Flight button that answers "needs level
+//                      10" (the bar's Spellbook keeps poker's availability locks).
+//                    · "no action 8": that's poker's kit-slot keymap talking (blind numbers are
+//                      1=attack, 2..N=abilities — NOT the sighted numbered buttons); with unavailable
+//                      spells filtered the two lists align much closer. Input fields already guard keys.
 //  1.14.0 2026-07-15 TTS SHORT NAMES for every entity (Tobias: "'Duristan Silvio' should just be
 //                    'duristan' to tts… Make a nickname for every entity"). New PGM-only
 //                    backend/src/ttsShort.js: a curated 119-entry map (validated — every key matches a
@@ -380,6 +404,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.14.0';
-const HEADLINE = 'Speech got faster: the narrator now uses short names — "Duristan" instead of "Duristan Silvio", "Champion" instead of "Skeletal Champion" — for every companion and monster. The screen still shows full names. Hard refresh.';
+const VERSION = '1.15.0';
+const HEADLINE = 'Big feedback batch: blind speech is far terser ("Farrus: rage"), enemy forces now scale with your party size, wards show as buff icons on every card, the combat log is color-coded, and spells you cannot cast yet no longer clutter your buttons. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

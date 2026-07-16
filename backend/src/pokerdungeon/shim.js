@@ -18,6 +18,7 @@ const { weaponOf, dRoll, dRollN } = require('./game/combat');
 // PGM-only cavalier Order mechanics (never synced from poker) — the standard Paizo
 // orders' Challenge modifiers + L2/L8/L15 deeds. See pgmCavalierOrders.js.
 const cavOrders = require('./pgmCavalierOrders');
+const { pick: sndPick } = require('../sounds');
 
 // ── Constants poker's factories expect (values lifted from Dungeon.js) ──
 const ABILITY_MOD = 4, CAST_MOD = 4;
@@ -186,6 +187,21 @@ Object.assign(DungeonShim.prototype, {
   _resetAbilities(m) {
     _mixinResetAbilities.call(this, m);
     cavOrders.applyRoomPassives(this, m);
+  },
+  // Poker's _abTaunt MINUS its per-character voice map: in PGM Farrus taunts with
+  // the standard barbarian PREDATOR YELL like every other barbarian (Tobias
+  // 2026-07-15 — poker keys 'farrus richton' to the grandpa-ghost clip; that
+  // flavor stays poker-only). Otherwise verbatim.
+  _abTaunt(m, ab) {
+    const dc = 10 + Math.floor((m.level || 1) / 2) + ABILITY_MOD;
+    const sound = ab.sounds ? sndPick(ab.sounds) : ab.sound;
+    let pulled = 0, shrugged = 0;
+    for (const e of this.livingEnemies()) {
+      const sv = this._saveVs(this._enemySave(e, ab.save || 'will'), dc);
+      if (!sv.saved) { e.taunted = m.playerId; pulled++; } else shrugged++;
+    }
+    this._note(`${ab.icon} ${m.nickname} bellows a furious challenge [Will DC ${dc}] — \u{1F4E2} ${pulled} enraged and coming for ${m.nickname}${shrugged ? `, ${shrugged} shrug${shrugged === 1 ? 's' : ''} it off` : ''}.`, sound);
+    this._echoToTable(sound);
   },
   /** Poker's verbatim _makeEnemy + PGM combatant decoration. */
   // ── Methods the mixins call that the shim lacked (found 2026-07-12 by a

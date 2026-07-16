@@ -19,6 +19,28 @@ PGM is made by:
 
 ---
 
+## v1.15.0 — 2026-07-15
+
+**A big feedback batch from live play.**
+
+- **Blind speech is far terser.** Combat flavor compresses hard: *"Farrus Richton flies into a
+  RAGE!"* is spoken as **"Farrus: rage."** — same for casts, blessings, smites, taunts and channels.
+  The screen keeps the full flavor; the voice stops wasting your time. Also: **BAB** is now spoken as
+  the word "bab" and **HP** as "H-P".
+- **Enemy forces scale with your party.** Two heroes meet a small force; a table of eight meets a
+  proper one — the encounter builder now sizes the *number* of foes to the party, never just their
+  strength, and pads small showings with same-gang fodder.
+- **Wards are icons now.** No more "warded: shieldoffaith" text — enemy pre-cast wards show as buff
+  chips (🛡️ Shield of Faith, 🔷 Mage Armor…), and blessed enemies get an ✨ Enchanted chip. Heroes
+  and monsters alike.
+- **The combat log is color-coded, subtly.** Damage and failed saves in red, saves made *exactly* in
+  yellow, successful saves in green, healing in blue, deaths in strong red.
+- **Farrus roars properly again** — his taunt uses the barbarian predator yell like everyone else.
+- **No more phantom spells.** Spells above your level no longer appear as buttons — a level-2
+  sorcerer won't see Overland Flight just to be told "needs level 10." The Spellbook keeps its locks.
+
+---
+
 ## v1.14.0 — 2026-07-15
 
 **The narrator talks faster — short names for everyone.**
