@@ -7,6 +7,22 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.14.0 2026-07-15 TTS SHORT NAMES for every entity (Tobias: "'Duristan Silvio' should just be
+//                    'duristan' to tts… Make a nickname for every entity"). New PGM-only
+//                    backend/src/ttsShort.js: a curated 119-entry map (validated — every key matches a
+//                    real roster/bestiary name). Characters → first name (Duristan, Farrus, Kate,
+//                    Storgrim, Femmik, Freya, Kai, Rodney, Lou, Bujon…); honorifics drop (Lord Gweyir →
+//                    Gweyir, Mr. Brow → Brow) EXCEPT Ser Toche (Tobias: "ser is her first name" — kept
+//                    whole); Auren Vrood → Vrood. Monsters shorten to the word that stays DISTINCT
+//                    within the gang they fight beside (Vampire Knight → Knight, WW Necromancer →
+//                    Necromancer, Gearsman 6.0 Thought Harvester → Harvester, Skeletal Champion →
+//                    Champion); collision-prone names keep whole (Hill/Stone Giant, Black/Void Dragon,
+//                    the X-Devils, Skeletal Ogre vs Ogre…). Player-typed names spoken as typed.
+//                    PLUMBING: /api/meta serves `ttsShort` pairs → BM.setNicknames compiles word-
+//                    boundary regexes (longest first) → applied in earFix (ALL browser TTS) and on the
+//                    text sent to /api/tts (11labs GM + companion voices). DISPLAY keeps full names.
+//                    Verified live: "Duristan Silvio hits the Skeletal Champion A…" speaks as
+//                    "Duristan hits the Champion A…"; suffix letters survive. Suite green.
 //  1.13.3 2026-07-15 BLIND-MODE TOGGLE SAID "?" TWICE (Tobias: "it told me about '? to learn the
 //                    keys' twice, once immediately and then another after recognizing me by name").
 //                    The toggle acknowledgment ("Blind mode on. Press question mark any time to learn
@@ -364,6 +380,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.13.3';
-const HEADLINE = 'Blind-mode polish: turning blind mode on no longer tells you about the question-mark key twice — you hear "Blind mode on," then one welcome with the help hint. Hard refresh.';
+const VERSION = '1.14.0';
+const HEADLINE = 'Speech got faster: the narrator now uses short names — "Duristan" instead of "Duristan Silvio", "Champion" instead of "Skeletal Champion" — for every companion and monster. The screen still shows full names. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

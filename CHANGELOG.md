@@ -19,6 +19,20 @@ PGM is made by:
 
 ---
 
+## v1.14.0 — 2026-07-15
+
+**The narrator talks faster — short names for everyone.**
+
+Every companion and monster now has a **spoken nickname**, so the voice stops spending your time on
+full titles: it says **"Duristan"** instead of "Duristan Silvio", **"Farrus"** instead of "Farrus
+Richton", **"Gweyir"** instead of "Lord Gweyir", **"Champion A"** instead of "Skeletal Champion A",
+**"Harvester"** instead of "Gearsman 6.0 Thought Harvester". Both the screen-reader voice and the
+GM's ElevenLabs voice use them; the **screen still shows full names**. Names that are already snappy
+— or that would blur together when shortened (Hill Giant vs Stone Giant) — stay as they are. Your
+own character's name is spoken exactly as you typed it.
+
+---
+
 ## v1.13.3 — 2026-07-15
 
 Blind-mode polish: turning blind mode on used to mention the **question-mark help key twice** — once

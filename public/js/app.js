@@ -121,6 +121,7 @@
       fill('race', meta.races); fill('cls', meta.classes);
       buildIconPicker(meta.icons);
       if (meta.voice) BM.setGMVoice(meta.voice.enabled);   // ElevenLabs GM voice ("Ultron") when configured
+      if (meta.ttsShort && BM.setNicknames) BM.setNicknames(meta.ttsShort);   // speech says "Duristan", screen keeps "Duristan Silvio"
       showVersion(meta.version);
     });
     loadTokens();   // character-art token gallery (manifest.json)

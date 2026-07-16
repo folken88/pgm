@@ -108,7 +108,22 @@
   var WORD_FIXES = [
     [/\bvs\.?\b/gi, 'versus'],
   ];
+  // TTS short names (Tobias 2026-07-15): speech says "Duristan", the screen keeps
+  // "Duristan Silvio". Pairs come from /api/meta (setNicknames), compiled to
+  // word-boundary regexes, longest name first so nested matches can't mis-fire.
+  var NICKS = [];
+  function setNicknames(pairs) {
+    NICKS = (pairs || []).map(function (p) {
+      var esc = String(p[0]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return { re: new RegExp('\\b' + esc + '\\b', 'g'), short: p[1] };
+    });
+  }
+  function shortNames(text) {
+    for (var i = 0; i < NICKS.length; i++) text = text.replace(NICKS[i].re, NICKS[i].short);
+    return text;
+  }
   function earFix(text) {
+    text = shortNames(text);
     WORD_FIXES.forEach(function (f) { text = text.replace(f[0], f[1]); });
     // Strip emoji / pictographs / symbols so the screen reader doesn't announce
     // "sparkles", "skull", "drop of blood" mid-narration (Josh 2026-07-14: "every
@@ -259,7 +274,7 @@
     if (!gmVoiceOn) { if (on) rawSpeak(text, 'urgent'); return; }
     // Prefetch the audio NOW, but play it only when the queue reaches it —
     // GM lines wait their turn behind in-flight blind-TTS and vice versa.
-    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) })
+    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: shortNames(text) }) })
       .then(function (r) { return r.json(); })
       .then(function (d) { return (d && d.ok && d.audio) ? d.audio : null; })
       .catch(function () { return null; });
@@ -272,7 +287,7 @@
     lastText = text; setStatus(text);
     if (muted) return;
     if (!gmVoiceOn || !voiceId) { if (on) rawSpeak(text, 'urgent'); return; }
-    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, voiceId: voiceId }) })
+    var audioPromise = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: shortNames(text), voiceId: voiceId }) })
       .then(function (r) { return r.json(); })
       .then(function (d) { return (d && d.ok && d.audio) ? d.audio : null; })
       .catch(function () { return null; });
@@ -503,6 +518,7 @@
     registerInfo: function (providers) { info = Object.assign(info, providers || {}); },
     toast: toast, getLogs: function () { return logs.slice(); },
     setCommandHandler: function (fn) { commandHandler = fn; },
+    setNicknames: setNicknames,   // TTS short names (full → spoken) from /api/meta
     caps: { tts: supportsTTS, sr: supportsSR },
   };
 })();

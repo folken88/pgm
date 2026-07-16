@@ -110,6 +110,9 @@ const server = http.createServer(async (req, res) => {
       races: RACES, classes: CLASSES, icons: session.ICONS,
       companions: require('./cast').ROSTER.map(r => ({ name: r.name, race: r.race, cls: r.cls, icon: r.icon })),
       voice: { enabled: eleven.enabled(), name: eleven.voiceName() },
+      // TTS short names (Tobias): full entity name → what SPEECH calls them
+      // ("Duristan Silvio" → "Duristan"). Display text keeps full names.
+      ttsShort: require('./ttsShort').pairs(),
     });
   }
 
