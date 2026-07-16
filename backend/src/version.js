@@ -7,6 +7,15 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.13.3 2026-07-15 BLIND-MODE TOGGLE SAID "?" TWICE (Tobias: "it told me about '? to learn the
+//                    keys' twice, once immediately and then another after recognizing me by name").
+//                    The toggle acknowledgment ("Blind mode on. Press question mark any time to learn
+//                    the keys") AND the screen guide that always follows it ("Welcome back, Toby.
+//                    Press question mark for help") both taught the ? key. The toggle line is now just
+//                    "Blind mode on." — the guide (onBlindOn hook, and the boot-time guide on reload)
+//                    delivers the single ? instruction. Verified with a speechSynthesis spy: toggling
+//                    now speaks exactly "Blind mode on." then "<welcome>. Press question mark for
+//                    help." — one ? mention.
 //  1.13.2 2026-07-15 LANDING TITLE DE-DUP. Since v1.8.0 the header said "Personal Game Master"
 //                    directly above the banner that also says "PGM — your personal D&D game master" —
 //                    the name twice, back to back. On the LANDING only, the header's h1 + tagline are
@@ -355,6 +364,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.13.2';
-const HEADLINE = 'Polish: the landing page no longer says the game’s name twice — the banner art carries the title on its own now. (And from v1.13.1: slain heroes cry out instead of dying silently.) Hard refresh.';
+const VERSION = '1.13.3';
+const HEADLINE = 'Blind-mode polish: turning blind mode on no longer tells you about the question-mark key twice — you hear "Blind mode on," then one welcome with the help hint. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

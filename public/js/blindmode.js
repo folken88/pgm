@@ -240,10 +240,11 @@
     if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '👁 Blind mode: ON' : '👁 Blind mode: off'; }
     document.body.classList.toggle('blind-on', on);
     // A SHORT announcement — never a wall of keys (Tobias 2026-07-13: "don't spam
-    // keys they won't remember"). The app's onBlindOn hook then guides them
-    // through the next step for wherever they are; question mark teaches keys on
-    // demand.
-    rawSpeak(on ? 'Blind mode on. Press question mark any time to learn the keys.' : 'Blind mode off.', 'urgent');
+    // keys they won't remember"). Just the state: the onBlindOn hook below (and the
+    // boot-time guide) ALWAYS follows with the screen guide, which ends in "press
+    // question mark for help" — saying it here too doubled the ? instruction
+    // (Tobias 2026-07-15: "it told me about '? to learn the keys' twice").
+    rawSpeak(on ? 'Blind mode on.' : 'Blind mode off.', 'urgent');
     if (on && typeof blindOnHook === 'function') { try { blindOnHook(); } catch (e) {} }
     blog('blind mode', on ? 'ON' : 'off');
   }

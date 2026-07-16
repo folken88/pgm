@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.13.3 — 2026-07-15
+
+Blind-mode polish: turning blind mode on used to mention the **question-mark help key twice** — once
+right away, and again in the welcome that follows. Now it's just *"Blind mode on,"* then a single
+welcome ending in the help hint.
+
+---
+
 ## v1.13.2 — 2026-07-15
 
 Polish: the landing page no longer says the game's name twice — the **banner art carries the title**
