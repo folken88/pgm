@@ -7,6 +7,28 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.16.0 2026-07-16 POKER'S BATTLE BOARD, TRANSPLANTED (Tobias, with poker screenshot: "our battle
+//                    ui does not look like this — you can literally steal the code & css & layout").
+//                    Stolen as instructed: the board is now poker's dungeon stage —
+//                    · the STAGE: dark scrim over poker's harrowstone floorplan map (copied), rounded
+//                      board frame; enemy cards across the top, the turn line centered ("… X's turn …"
+//                      phrasing), hero cards beneath.
+//                    · ENEMY CARDS (.dmon): round portrait (or glyph), name, red HP bar, red-trim
+//                      frame; the acting foe glows ember (is-turn); DEAD foes collapse to tiny
+//                      grayscale corpse chips; crowded rooms auto-shrink (is-compact/is-packed).
+//                      Click-to-target kept; enemy HP stays a coarse bar with NO numbers (PGM rule).
+//                    · HERO CARDS (.dpc): FULL-ART portrait backdrop under poker's legibility scrim,
+//                      name top-left + (you)/🤖/☠️/🩸 tags, buff strip top-left (green ring) +
+//                      debuff strip top-right (red ring, poker's condition art — copied
+//                      /dungeon/conditions/*.webp), green HP bar + blue XP bar, "HP · Lv" line
+//                      bottom-left, 🛡 AC badge bottom-right, gold is-me/is-turn glow, is-low red
+//                      trim, pulsing is-down for the dying, dead shrink to slim chips; ⏳ queued /
+//                      🛒 shopping / ⭐ leveling shoulder badges.
+//                    · poker's FLIP animations: cards SLIDE on reorder instead of snapping.
+//                    All CSS is poker's table.css block with its palette vars mapped onto emberwood.
+//                    Blind mode untouched (narration reads state, not DOM); aria labels preserved.
+//                    Verified live: fought a room on the new board — stage map, chips, glow, corpse
+//                    behavior, color-coded log all render.
 //  1.15.2 2026-07-16 FLY ON ALLIES FOR REAL (ported from poker v3.37.63): SPELL.fly said
 //                    target:'ally' but the GENERATED kits bake their own copies of every entry and
 //                    all three kit-borne Fly entries still said 'self' — wizard/sorcerer/magus could
@@ -422,6 +444,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.15.2';
-const HEADLINE = 'Fly is a touch spell for real now — wizards and sorcerers can send an ally up after flying enemies instead of hogging the wings. (A baked kit copy had been overriding the fix.)';
+const VERSION = '1.16.0';
+const HEADLINE = 'The battle screen is now poker-dungeon\'s board: a dungeon-map stage, enemy cards up top that collapse to corpse chips, full-art hero cards with HP and XP bars, buff and debuff icon strips, the AC shield badge, and cards that slide as initiative reorders. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

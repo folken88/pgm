@@ -873,7 +873,7 @@
     if (run.phase === 'initiative') {
       banner.textContent = '🎲 Roll for initiative!'; banner.classList.add('mine');
     } else if (run.phase === 'combat') {
-      if (run.turn) { if (myTurn) { banner.textContent = '▶ Your turn — act now!'; banner.classList.add('mine'); } else banner.textContent = 'Waiting for ' + run.turn.name + '…'; }
+      if (run.turn) { if (myTurn) { banner.textContent = '⚔️ Your turn — select a target, then act.'; banner.classList.add('mine'); } else banner.textContent = '… ' + run.turn.name + "'s turn …"; }
       else banner.textContent = 'Resolving…';
     } else if (run.phase === 'cleared') { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
     else if (run.phase === 'defeated') { banner.textContent = '☠ The party has fallen.'; banner.classList.add('defeated'); }
@@ -959,31 +959,137 @@
     }).join('') + '</div>';
   }
 
-  // Battlefield: enemies across the top, allies just under — INITIATIVE order
-  // left→right (run.combatants is already initiative-sorted server-side).
-  function renderBattlefield(run) {
-    var rows = { enemy: el('enemy-row'), hero: el('ally-row') };
-    rows.enemy.innerHTML = ''; rows.hero.innerHTML = '';
-    run.combatants.forEach(function (c) {
-      var d = document.createElement('div');
-      var pct = (c.hpPct != null) ? c.hpPct : (c.maxHp ? Math.round(100 * c.hp / c.maxHp) : 0);
-      // Enemies: bar only, quantized to 25% (no numbers). Heroes: bar + exact HP.
-      var hpText = (c.side === 'enemy') ? '' : (c.down ? 'down' : c.hp + '/' + c.maxHp + ' HP');
-      d.className = 'unit unit-' + c.side + (c.current ? ' current' : '') + (c.down ? ' down' : '') + (!c.down && pct <= 33 ? ' hurt' : '');
-      d.innerHTML = (c.art ? '<img class="u-art" src="' + c.art + '" alt="" loading="lazy" />'
-                          : '<div class="u-icon">' + (c.icon || (c.side === 'enemy' ? '👹' : '🛡️')) + '</div>')
-        + '<div class="u-name">' + esc(c.name) + (c.ownerClientId === state.myId ? ' ✦' : '') + '</div>'
-        + '<div class="u-hpbar" role="img" aria-label="' + (c.down ? 'down' : 'health ' + pct + ' percent') + '"><div style="width:' + pct + '%"></div></div>'
-        + (hpText ? '<div class="u-hp">' + hpText + '</div>' : '')
-        + buffChips(c.buffIcons)
-        + '<div class="u-conds">' + esc((c.conditions || []).join(', ')) + '</div>';
-      if (c.side === 'enemy' && !c.down) { d.style.cursor = 'pointer'; d.title = 'Click to attack / target'; d.addEventListener('click', function () {
-        var atk = state.choices.find(function (x) { return x.id === 'attack' && x.target === c.id; });
-        if (atk) doGameAction(atk);
-        else { state.queuedTarget = c.id; BM.speak('Targeting ' + c.name + '.', 'urgent'); }
-      }); }
-      rows[c.summoned ? 'hero' : c.side].appendChild(d);   // summons fight for the party — show them with the allies
+  // ═══ THE BATTLE BOARD — poker-dungeon's renderer, transplanted (Tobias
+  // 2026-07-15: "you can literally steal the code & css & layout"). Enemy cards
+  // (.dmon) across the top with FLIP slides + corpse chips; hero cards (.dpc)
+  // beneath with full-art backdrops, buff/debuff strips overlaying the portrait,
+  // green HP + blue XP bars, the 🛡 AC badge, gold turn-glow. PGM divergences
+  // kept: enemy HP stays a coarse bar (no numbers), click-to-target preserved.
+  // ── poker's FLIP helpers (client.js:1291): reorders SLIDE, never snap ──
+  function _flipCapture(container, attr) {
+    var m = {};
+    if (container) container.querySelectorAll('[' + attr + ']').forEach(function (n) { m[n.getAttribute(attr)] = n.getBoundingClientRect(); });
+    return m;
+  }
+  function _flipPlay(container, attr, old) {
+    if (!container) return;
+    container.querySelectorAll('[' + attr + ']').forEach(function (n) {
+      var o = old[n.getAttribute(attr)]; if (!o) return;
+      var r = n.getBoundingClientRect(), dx = o.left - r.left, dy = o.top - r.top;
+      if ((dx || dy) && n.animate) n.animate(
+        [{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0,0)' }],
+        { duration: 340, easing: 'cubic-bezier(.2,.75,.3,1)' });
     });
+  }
+  // Condition chips (poker's condIcons): red-ringed, poker's art where it exists.
+  var COND_ART = { paralyzed: 'paralyzed', held: 'paralyzed', prone: 'prone', grappled: 'grappled', asleep: 'sleep', fascinated: 'fascinated', sickened: 'sickened', slowed: 'slowed', stunned: 'stunned', shaken: 'shaken' };
+  var COND_EMOJI = { nauseated: '🤢', blinded: '🙈', charmed: '💘', 'burning (acid)': '🟢', bleeding: '🩸' };
+  function condStrip(list) {
+    if (!list || !list.length) return '';
+    var out = [];
+    list.forEach(function (c) {
+      var t = String(c), key = t.toLowerCase();
+      if (/^dead$|^dying|^stable/.test(key)) return;   // carried by the card state (☠️/🩸 + is-down)
+      var art = COND_ART[key];
+      var inner = art ? '<img src="/dungeon/conditions/' + art + '.webp" alt="" loading="lazy" />'
+        : (COND_EMOJI[key] || (/negative level/.test(key) ? '💀' : '⚠️'));
+      out.push('<span class="dcond__i" role="img" aria-label="' + esc(t) + '" title="' + esc(t) + '">' + inner + '</span>');
+    });
+    return out.length ? '<div class="dcond">' + out.join('') + '</div>' : '';
+  }
+  // Buff strip (poker's buffIcons): green-ringed, art or emoji (same data as buffChips).
+  function buffStrip(list) {
+    if (!list || !list.length) return '';
+    return '<div class="dbuff">' + list.map(function (b) {
+      var t = b.desc ? b.label + ' — ' + b.desc : b.label;
+      var inner = b.img ? '<img src="' + esc(b.img) + '" alt="" loading="lazy" />' : b.icon;
+      return '<span class="dbuff__i" role="img" aria-label="' + esc(b.label) + '" title="' + esc(t) + '">' + inner + '</span>';
+    }).join('') + '</div>';
+  }
+  // Full-art card backdrop with poker's legibility scrim (client.js portraitBg).
+  function portraitScrim(url) {
+    if (!url) return '';
+    return "background-image:linear-gradient(rgba(8,10,8,.20),rgba(8,10,8,.40) 55%,rgba(8,10,8,.78)),url('" + esc(url) + "');background-size:cover;background-position:center top;";
+  }
+  function renderBattlefield(run) {
+    var ene = el('enemy-row'), party = el('ally-row');
+    var enemies = run.combatants.filter(function (c) { return c.side === 'enemy' && !c.summoned; });
+    var heroes = run.combatants.filter(function (c) { return c.side === 'hero' || c.summoned; });
+    // ── villain row ──
+    var eneOld = _flipCapture(ene, 'data-enemy');
+    ene.innerHTML = enemies.length ? enemies.map(function (e) {
+      var dead = !!e.down;
+      var pct = (e.hpPct != null) ? e.hpPct : 0;
+      var cls = 'dmon' + (dead ? ' is-dead' : '') + (e.current ? ' is-turn' : '')
+        + (!dead && state.queuedTarget === e.id ? ' is-sel' : '');
+      var portrait = e.art
+        ? '<div class="dmon__art" style="background-image:url(\'' + esc(e.art) + '\')"></div>'
+        : '<div class="dmon__glyph">' + (e.icon || '👹') + '</div>';
+      return '<button type="button" class="' + cls + '" data-enemy="' + esc(e.id) + '"' + (dead ? ' disabled' : '')
+        + ' title="' + (dead ? 'Slain' : 'Click to attack / target') + '" aria-label="' + esc(e.name) + (dead ? ', slain' : '') + '">'
+        + portrait
+        + '<div class="dmon__name">' + esc(e.name) + '</div>'
+        + condStrip(e.conditions) + buffStrip(e.buffIcons)
+        + '<div class="dmon__hpbar" role="img" aria-label="' + (dead ? 'slain' : 'health ' + pct + ' percent') + '"><span style="width:' + pct + '%"></span></div>'
+        + (dead ? '<div class="dmon__hp">☠️</div>' : '')
+        + '</button>';
+    }).join('') : '<div class="dmon__none">— the room is quiet —</div>';
+    var liveN = enemies.filter(function (e) { return !e.down; }).length;
+    ene.classList.toggle('is-compact', liveN > 6 && liveN <= 12);
+    ene.classList.toggle('is-packed', liveN > 12);
+    _flipPlay(ene, 'data-enemy', eneOld);
+    ene.querySelectorAll('[data-enemy]:not([disabled])').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-enemy');
+        var e = enemies.find(function (x) { return String(x.id) === id; });
+        var atk = state.choices.find(function (x) { return x.id === 'attack' && String(x.target) === id; });
+        if (atk) doGameAction(atk);
+        else { state.queuedTarget = e ? e.id : id; BM.speak('Targeting ' + (e ? e.name : 'that foe') + '.', 'urgent'); }
+      });
+    });
+    // ── hero row (summons fight for the party — their cards join it, poker) ──
+    var pOld = _flipCapture(party, 'data-pid');
+    party.innerHTML = heroes.map(function (m) {
+      if (m.side === 'enemy') {   // a summoned undead among the heroes: a green-trim dmon card
+        var spct = (m.hpPct != null) ? m.hpPct : 0;
+        return '<button type="button" class="dmon" data-pid="e' + esc(m.id) + '" disabled style="outline:2px solid #6ee7a8" title="A summoned ally fighting for the party">'
+          + (m.art ? '<div class="dmon__art" style="background-image:url(\'' + esc(m.art) + '\')"></div>' : '<div class="dmon__glyph">' + (m.icon || '☠️') + '</div>')
+          + '<div class="dmon__name">☠️ ' + esc(m.name) + '</div>'
+          + '<div class="dmon__hpbar"><span style="width:' + spct + '%"></span></div></button>';
+      }
+      var pct = m.maxHp ? Math.max(0, Math.min(100, Math.round(100 * m.hp / m.maxHp))) : 0;
+      var isMe = m.ownerClientId === state.myId;
+      var cls = ['dpc'];
+      if (pct <= 30 && !m.down && !m.dead) cls.push('is-low');
+      if (m.dead) cls.push('is-out');
+      if (m.down && !m.dead) cls.push('is-down');
+      if (isMe) cls.push('is-me');
+      if (m.current) cls.push('is-turn');
+      if (m.art) cls.push('has-portrait');
+      var tag = m.dead ? ' ☠️' : (m.down ? ' 🩸' : '');
+      var hpText = (m.down && !m.dead)
+        ? m.hp + '/' + m.maxHp + ' HP · 🩸 DYING'
+        : Math.max(0, m.hp) + '/' + m.maxHp + ' HP' + (m.level ? ' · Lv ' + m.level : '');
+      var xpPct = m.xpSpan ? Math.max(0, Math.min(100, Math.round(100 * (m.xpInto || 0) / m.xpSpan))) : 0;
+      var xpTitle = (m.xpSpan && m.xpInto != null) ? (m.xpInto + ' / ' + m.xpSpan + ' XP to next level') : 'Experience';
+      var badge = m.queued ? '<span class="dpc__queued" title="Pre-loaded — fires the moment their turn begins">⏳ ' + esc(m.queued) + '</span>'
+        : m.shopping ? '<span class="dpc__queued" title="Shopping — turns pass automatically">🛒 shopping</span>'
+        : m.leveling ? '<span class="dpc__queued" title="On the leveling screen — turns pass automatically">⭐ leveling</span>' : '';
+      return '<div class="' + cls.join(' ') + '" data-pid="' + esc(m.id) + '" style="position:relative;' + portraitScrim(m.art) + '">'
+        + '<div class="dpc__ac" title="Armor Class — current total">🛡 ' + (m.ac != null ? m.ac : '?') + '</div>'
+        + (m.art ? '' : '<div class="dpc__glyph">' + (m.icon || '🛡️') + '</div>')
+        + badge
+        + '<div class="dpc__name">' + esc(m.name) + (isMe ? ' (you)' : '') + (m.ai ? ' 🤖' : '') + tag + '</div>'
+        + condStrip(m.conditions) + buffStrip(m.buffIcons)
+        + '<div class="dpc__hpbar" role="img" aria-label="health ' + pct + ' percent"><span style="width:' + pct + '%"></span></div>'
+        + '<div class="dpc__xpbar" title="' + esc(xpTitle) + '"><span style="width:' + xpPct + '%"></span></div>'
+        + '<div class="dpc__hp">' + hpText + '</div>'
+        + '</div>';
+    }).join('');
+    var np = heroes.filter(function (h) { return !h.dead; }).length;
+    party.classList.toggle('is-compact', np > 4 && np <= 6);
+    party.classList.toggle('is-packed', np > 6);
+    _flipPlay(party, 'data-pid', pOld);
   }
 
   // LEFT: party status panel (blind players browse it with P).

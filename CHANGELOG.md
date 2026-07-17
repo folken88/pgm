@@ -19,6 +19,26 @@ PGM is made by:
 
 ---
 
+## v1.16.0 — 2026-07-16
+
+**The battle screen is now poker-dungeon's board.**
+
+The combat UI is a straight transplant of poker's dungeon stage:
+
+- A **dungeon-map backdrop** under a dark scrim frames the whole fight.
+- **Enemy cards** across the top — round portraits, red HP bars, an ember glow on whoever's acting.
+  Slain foes **collapse into little grayscale corpse chips**, and a crowded room automatically
+  shrinks the cards so everything fits.
+- **Hero cards** beneath — your character art fills the whole card, with the buff icons top-left
+  (green rings), debuff icons top-right (red rings, poker's condition art), a green HP bar and blue
+  XP bar, the "HP · Lv" line, and the 🛡 armor-class badge. Your card glows gold on your turn; the
+  dying pulse red; the dead shrink to slim chips.
+- Cards **slide** into their new initiative order instead of snapping, exactly like poker.
+
+Same play underneath — clicking a foe still targets it, and blind play is completely unchanged.
+
+---
+
 ## v1.15.2 — 2026-07-16
 
 **Fly can be cast on allies now — for real.** The earlier fix made Fly a touch spell, but a
@@ -26,6 +46,8 @@ baked copy inside each caster kit still said "self only," so wizards, sorcerers 
 never actually share their wings — and the AI never flew a teammate up after airborne enemies.
 The kit copies are now normalized at load, with a test so a data regen can't bring the bug back.
 (Found by Josh on the poker side, playing Draymus.)
+
+---
 
 ## v1.15.1 — 2026-07-15
 

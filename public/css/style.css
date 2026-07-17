@@ -676,3 +676,91 @@ body:not(.blind-on) #choices {
   background-image: var(--tex-grain), linear-gradient(180deg, #7a2412, #4d1207); color: #f2dfb8; font-weight: 700; }
 .account-forget { flex: 0 0 auto; width: 2.4rem; color: var(--muted); }
 .account-forget:hover { color: var(--danger); }
+
+/* ═══ POKER-DUNGEON BATTLE BOARD, transplanted (Tobias 2026-07-15: "you can
+   literally steal the code & css & layout from poker-dungeon"). Card classes
+   (.dmon/.dpc/.dbuff/.dcond) and layout are poker's table.css, with poker's
+   palette vars mapped onto emberwood (--brass-bright→--accent, --ivory→--ink).
+   The stage backdrop is poker's harrowstone floorplan under a dark scrim. ═══ */
+.dungeon-stage {
+  background:
+    linear-gradient(180deg, rgba(14,8,6,0.86), rgba(8,5,4,0.92)),
+    url('/dungeon/maps/harrowstone.webp') center / cover no-repeat;
+  border: 1px solid rgba(217,180,92,0.25); border-radius: 12px; padding: 1rem;
+  display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: .8rem;
+}
+.dungeon-turn { text-align: center; font-weight: 600; color: var(--accent); min-height: 1.2em; margin: 0; }
+.dungeon-enemies { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; align-content: flex-start; min-height: 64px; }
+.dungeon-party { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; align-content: flex-start; }
+
+/* ── Enemy cards ── */
+.dmon { position: relative; width: 112px; background: rgba(0,0,0,0.4); border: 1px solid rgba(200,80,80,0.4); border-radius: 10px; padding: 0.5rem 0.4rem; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; cursor: pointer; color: inherit; font: inherit; transition: transform .1s, border-color .1s, box-shadow .1s; }
+.dmon:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(255,120,120,0.85); }
+.dmon.is-sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(217,180,92,0.4); }
+.dmon.is-turn { border-color: rgba(255,140,90,0.95); box-shadow: 0 0 12px 3px rgba(255,110,70,0.65); }
+.dmon.is-dead { opacity: 0.32; filter: grayscale(1); cursor: default; }
+.dmon__art { position: relative; width: 64px; height: 64px; border-radius: 50%; background-size: cover; background-position: center top; border: 1px solid rgba(0,0,0,0.4); }
+.dmon__glyph { font-size: 2rem; line-height: 1; }
+.dmon__name { font-size: 0.72rem; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dmon__hpbar { width: 100%; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+.dmon__hpbar span { display: block; height: 100%; background: linear-gradient(90deg,#c84a4a,#e87b5b); }
+.dmon__hp { font-size: 0.7rem; color: var(--muted); }
+.dmon__none { color: var(--muted); opacity: 0.6; font-style: italic; align-self: center; }
+.dungeon-enemies.is-compact .dmon { width: 88px; padding: 0.3rem 0.25rem; gap: 0.15rem; }
+.dungeon-enemies.is-compact .dmon__art { width: 48px; height: 48px; }
+.dungeon-enemies.is-compact .dmon__glyph { font-size: 1.5rem; }
+.dungeon-enemies.is-packed .dmon { width: 66px; padding: 0.2rem; gap: 0.1rem; }
+.dungeon-enemies.is-packed .dmon__art { width: 38px; height: 38px; }
+.dungeon-enemies.is-packed .dmon__name { font-size: 0.62rem; }
+/* Dead enemies collapse to tiny corpse chips (poker). */
+.dungeon-enemies .dmon.is-dead { width: 46px; padding: 0.15rem 0.1rem; gap: 0.05rem; }
+.dungeon-enemies .dmon.is-dead .dmon__art { width: 26px; height: 26px; }
+.dungeon-enemies .dmon.is-dead .dmon__glyph { font-size: 1rem; }
+.dungeon-enemies .dmon.is-dead .dmon__name { font-size: 0.55rem; max-width: 44px; white-space: nowrap; }
+.dungeon-enemies .dmon.is-dead .dmon__hpbar,
+.dungeon-enemies .dmon.is-dead .dcond,
+.dungeon-enemies .dmon.is-dead .dbuff { display: none; }
+.dungeon-enemies .dmon.is-dead .dmon__hp { font-size: 0.7rem; line-height: 1; }
+
+/* ── Hero cards ── */
+.dpc { position: relative; width: 190px; background: rgba(0,0,0,0.4); border: 1px solid rgba(217,180,92,0.3); border-radius: 10px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; align-items: center; text-align: center; }
+.dpc.is-low { border-color: rgba(220,80,80,0.7); }
+.dpc.is-me { border-color: rgba(217,180,92,0.7); }
+.dpc.is-turn { box-shadow: 0 0 0 2px rgba(217,180,92,0.55), 0 0 14px 4px rgba(217,180,92,0.5); border-color: var(--accent); }
+.dpc.is-out { opacity: 0.4; filter: grayscale(0.8); }
+.dpc.is-down { border-color: rgba(200,40,40,0.95); animation: dpc-dying 1s ease-in-out infinite; }
+.dpc.is-down .dpc__hp { color: #e06a6a; font-weight: 700; }
+@keyframes dpc-dying { 0%,100% { box-shadow: 0 0 0 1px rgba(200,40,40,0.5); } 50% { box-shadow: 0 0 8px 2px rgba(200,40,40,0.85); } }
+.dpc.has-portrait { background-color: #4a4a4a; min-height: 96px; }
+.dpc.has-portrait .dpc__name, .dpc.has-portrait .dpc__hp,
+.dmon.has-portrait .dmon__name, .dmon.has-portrait .dmon__hp { text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8); }
+.dpc__glyph { font-size: 1.8rem; line-height: 1; }
+.dpc__name { font-size: 0.82rem; font-weight: 600; align-self: flex-start; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: auto; }
+.dpc__hpbar { width: 100%; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+.dpc__hpbar span { display: block; height: 100%; background: linear-gradient(90deg,#3fa34d,#7bd06a); }
+.dpc.is-low .dpc__hpbar span { background: linear-gradient(90deg,#c84a4a,#e8a15b); }
+.dpc__xpbar { width: 100%; height: 4px; margin-top: 2px; background: rgba(255,255,255,0.10); border-radius: 2px; overflow: hidden; }
+.dpc__xpbar span { display: block; height: 100%; background: linear-gradient(90deg,#3a7bd5,#5fa8ee); }
+.dpc__hp { font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; align-self: flex-start; text-align: left; max-width: calc(100% - 46px); }
+.dpc.has-portrait .dpc__hp { color: #e8e0d0; }
+.dpc__ac { position: absolute; bottom: 3px; right: 5px; font-size: 0.7rem; font-weight: 700; color: var(--accent); background: rgba(0,0,0,0.55); border-radius: 6px; padding: 0 5px; line-height: 1.45; cursor: help; z-index: 6; }
+.dpc__queued { position: absolute; top: 8px; right: 4px; font-size: 0.6rem; font-weight: 700; line-height: 1; color: var(--accent); background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 8px; white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis; border: 1px solid rgba(217,180,92,0.5); pointer-events: none; z-index: 3; }
+.dungeon-party.is-compact .dpc { width: 150px; padding: 0.35rem; gap: 0.2rem; }
+.dungeon-party.is-packed  .dpc { width: 120px; padding: 0.3rem; gap: 0.15rem; }
+.dungeon-party.is-packed  .dpc__name { font-size: 0.72rem; }
+.dungeon-party .dpc.is-out { width: 96px; padding: 0.25rem; gap: 0.1rem; }
+.dungeon-party .dpc.is-out .dpc__xpbar,
+.dungeon-party .dpc.is-out .dcond,
+.dungeon-party .dpc.is-out .dbuff,
+.dungeon-party .dpc.is-out .dpc__ac { display: none; }
+.dungeon-party .dpc.is-out .dpc__name { font-size: 0.68rem; }
+.dungeon-party .dpc.is-out .dpc__hp { font-size: 0.62rem; }
+
+/* ── Status strips overlaying the card (poker): buffs top-LEFT with a green
+   ring, debuffs top-RIGHT with a red ring. Spans hold poker art OR an emoji. ── */
+.dbuff { position: absolute; top: 3px; left: 3px; right: 50%; display: flex; flex-flow: row wrap; gap: 3px; justify-content: flex-start; align-content: flex-start; pointer-events: none; z-index: 2; }
+.dcond { position: absolute; top: 3px; left: 50%; right: 3px; display: flex; flex-flow: row wrap; gap: 3px; justify-content: flex-end; align-content: flex-start; pointer-events: none; z-index: 2; }
+.dbuff__i, .dcond__i { width: 18px; height: 18px; border-radius: 4px; background: rgba(0,0,0,0.55); padding: 1px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; overflow: hidden; pointer-events: auto; cursor: help; }
+.dbuff__i { box-shadow: 0 0 0 1px rgba(96,196,108,0.9); }
+.dcond__i { box-shadow: 0 0 0 1px rgba(217,72,72,0.85); }
+.dbuff__i img, .dcond__i img { width: 100%; height: 100%; border-radius: 3px; display: block; object-fit: cover; }
