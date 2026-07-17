@@ -81,6 +81,10 @@ module.exports = {
       flatFooted: true, prone: false, fascinated: false, asleep: false, loseTurn: false,
       paralyze: !!base.paralyze, paralyzeDC: (base.paralyzeDC || PARALYZE_DC) + half, sickened: 0,
       attacks: base.attacks || 1,
+      // ARCHER/GUNNER flag (poker v3.37.65 hand-port): enemyAI reads e.ranged ("shoots"
+      // narration, bow/gun SFX on a MISS too, archers don't wrestle, reach flyers) but
+      // the flag was never copied off the base entry — the feature was dead here too.
+      ranged: !!base.ranged,
       atkSound: base.atkSound || null,
       atkSounds: base.atkSounds || null,
       caster: base.caster || null,

@@ -7,6 +7,11 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.16.1 2026-07-16 THE GUNNERS FIRE (ported from poker v3.37.65): enemyAI reads e.ranged
+//                    ("shoots" narration, bow/gun SFX on a MISS too, archers don't wrestle) but
+//                    makeenemy never copied the flag off the base entry — dead feature. Added
+//                    `ranged: !!base.ranged`; synced enemyAI so grounded archers/gunners also
+//                    REACH flying heroes (e.flying || e.ranged) instead of clawing at the air.
 //  1.16.0 2026-07-16 POKER'S BATTLE BOARD, TRANSPLANTED (Tobias, with poker screenshot: "our battle
 //                    ui does not look like this — you can literally steal the code & css & layout").
 //                    Stolen as instructed: the board is now poker's dungeon stage —
@@ -444,6 +449,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.16.0';
-const HEADLINE = 'The battle screen is now poker-dungeon\'s board: a dungeon-map stage, enemy cards up top that collapse to corpse chips, full-art hero cards with HP and XP bars, buff and debuff icon strips, the AC shield badge, and cards that slide as initiative reorders. Hard refresh.';
+const VERSION = '1.16.1';
+const HEADLINE = 'Enemy archers and gunners found their trigger fingers — they sound off on every shot, shoot at flyers, and stop trying to wrestle you.';
 module.exports = { VERSION, HEADLINE };

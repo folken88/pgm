@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.16.1 — 2026-07-16
+
+**Enemy archers and gunners actually behave like archers now.** A missing one-line copy meant
+no foe ever counted as "ranged" in live play: their shots were silent on a miss, the narrator
+said "hits" instead of "shoots," archers happily grappled people, and a grounded gunner
+couldn't even aim at a flying hero. All fixed — they sound off on every shot, shoot at flyers,
+and keep their distance. (Found by Josh on the poker side: "never heard a gunshot the entire
+battle.")
+
 ## v1.16.0 — 2026-07-16
 
 **The battle screen is now poker-dungeon's board.**
