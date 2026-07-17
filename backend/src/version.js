@@ -7,6 +7,23 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.17.0 2026-07-16 THE QUIET ROOM (Tobias: "if there are all stealthed enemies that we fail to
+//                    perceive, the gm should tell us the room is empty. then we can search for
+//                    treasure or open the next door. if we open the next door we may pick a fight w
+//                    that room AND still have a stealthed enemy with us."). All-hidden + unperceived
+//                    room now enters phase 'cleared' with the foes pocketed in run._lurkers: GM says
+//                    "The room seems empty. Search it, make camp, or press on." — NO "something lurks"
+//                    tell. New SEARCH action (once per quiet room, +2 sweep): spot them → they spring
+//                    as a real fight; miss them → you pocket the treasure their XP budget owed. Press
+//                    on unfought → the stalkers join the NEXT room's spawn (uid-safe), and only THEN
+//                    does the passed room count toward depth. Mixed rooms (some seen) keep the old
+//                    ambush tell. Session checkGraves gate widened so a quiet-room TPK-by-stalkers
+//                    still buries the party. ALSO: PGM copy of poker v3.37.64 — toDungeonState now
+//                    filters c.summoned, so YOUR summons stop appearing in the enemy target list
+//                    (Josh's bug). 5 new quiet-room tests; save/restore + HELD + wizard-AI tests
+//                    hardened (quiet-aware asserts, unique foe name vs same-name packmates, HP floor
+//                    so the subject survives to act); suite 177 green ×12 via npm test (bare
+//                    `node --test` skips _isolate.js and races the shared data dir — don't).
 //  1.16.2 2026-07-16 BOARD LAYOUT HOTFIX (Tobias: "it does not work at all. can't see the enemies,
 //                    can't take actions. broken."). v1.16.0 split the middle column into TWO grid
 //                    children (.battlefield.dungeon-stage + .battle-below) — but the game layout's
@@ -461,6 +478,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.16.2';
-const HEADLINE = 'Hotfix for the new battle board: v1.16.0 broke the combat layout — the action bar, log and loot panel landed in the wrong columns. Everything is back in place and the board is verified playable. Hard refresh.';
+const VERSION = '1.17.0';
+const HEADLINE = 'The QUIET ROOM: when every foe hides and nobody spots a thing, the GM says the room seems empty — search it (find the hoard, or flush the ambush), rest, or press on. Unfound stalkers FOLLOW you into the next fight. Plus: summons no longer clutter your target list.';
 module.exports = { VERSION, HEADLINE };

@@ -586,7 +586,10 @@ function action(clientId, act) {
   const r = partyrun.applyAction(s.run, memberIdOf(clientId), act);
   flushRunLog(s);
   persistProgress(s);
-  if (r.ok && act && act.type === 'descend' && (s.run.phase === 'initiative' || s.run.phase === 'combat')) checkGraves(s);
+  // Grave discovery fires on ANY descend into a new room — including a QUIET one
+  // (all foes stealthed, phase lands on 'cleared'): the lost party's remains are
+  // lying right there whether or not anything jumps you (v1.17.0).
+  if (r.ok && act && act.type === 'descend' && (s.run.phase === 'initiative' || s.run.phase === 'combat' || s.run._seemsEmpty)) checkGraves(s);
   maybeBanter(s);
   if (s.run && s.run.phase === 'defeated') { tpk(s); return r; }
   if (s.run && s.run.phase === 'retreated') enterPub(s);

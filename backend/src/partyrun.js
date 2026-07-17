@@ -191,6 +191,17 @@ function spawnRoom(run, roll) {
   const restCR = run._restCR || 0;
   const genApl = apl + restCR;
   run._restCR = 0; run._rested = false;
+  // STALKERS (Tobias 2026-07-16): unfound lurkers from a "quiet" room FOLLOW the
+  // party through the door — they join the new room's fight, still hidden (fresh
+  // Perception rolls below give one more chance to catch them trailing you).
+  // Their XP pays out automatically when they die here (awardRoomXp counts the
+  // slain combatants), and uids never collide (module-level counter).
+  const stalkers = run._lurkers || [];
+  // Leaving a quiet room UNFOUGHT counts it as passed here (not at entry — depth
+  // bookkeeping, grave discovery and the HUD all read roomsCleared+1 as "the room
+  // you are IN", and a flushed ambush must re-count through the normal clear).
+  if (run._seemsEmpty) run.roomsCleared += 1;
+  run._lurkers = null; run._seemsEmpty = false; run._searched = false;
   // POKER BESTIARY (155 MON stat blocks, vetted-by-provenance) behind PGM's
   // CR/XP budget; special flags (healer/shout/sr/shaman casts...) drive
   // _enemyAct. Stealth: default DC 10, sneaky lurkers overridden.
@@ -239,6 +250,10 @@ function spawnRoom(run, roll) {
     if (totals[e.key] > 1) { seen0[e.key] = (seen0[e.key] || 0) + 1; e.name = e.creature.baseName + ' ' + String.fromCharCode(64 + seen0[e.key]); }
   });
 
+  // Unfound lurkers from the last room slip in behind the party (still hidden;
+  // the fresh rolls below are the chance to catch them following).
+  if (stalkers.length) enemies.push(...stalkers.filter(s => !s.down));
+
   // Perception vs Stealth: each living hero rolls against each enemy. A hero
   // who failed to notice ANY present foe starts FLAT-FOOTED (denied Dex) until
   // they first act — poker semantics + PGM's perception twist.
@@ -274,6 +289,26 @@ function spawnRoom(run, roll) {
   // Tentacles cast used to follow the party downstairs for the rest of the delve.
   try { run.shim.invisPurged = false; run.shim.blackTentacles = null; } catch (_) {}
 
+  const seen = enemies.filter(e => e.revealed);
+  const hidden = enemies.filter(e => !e.revealed);
+
+  // THE QUIET ROOM (Tobias 2026-07-16): if EVERY foe is stealthed and nobody
+  // perceived a thing, the GM must NOT tip the ambush — the room simply reads
+  // as EMPTY. The party may SEARCH it for treasure (one deliberate sweep, which
+  // can flush the ambush), make camp, or press on — and unfound lurkers FOLLOW
+  // them through the next door (see the stalker intake above).
+  if (!seen.length && hidden.length) {
+    run._lurkers = enemies;
+    run._seemsEmpty = true;
+    run._searched = false;
+    run.combatants = run.heroes.slice();
+    run.heroes.forEach(h => { h.flatFooted = false; });
+    run.phase = 'cleared';
+    run.turnStartedAt = Date.now();
+    logEvent(run, `You enter ${room.flavor}. The room seems empty. Search it, make camp, or press on.`, 'urgent');
+    return;
+  }
+
   run.combatants = run.heroes.concat(enemies);
   run.turnIndex = 0;
   run.round = 1;
@@ -282,8 +317,6 @@ function spawnRoom(run, roll) {
   run.phase = 'initiative';
   run.turnStartedAt = Date.now();   // AFK sweep rolls for a party that stalls
 
-  const seen = enemies.filter(e => e.revealed);
-  const hidden = enemies.filter(e => !e.revealed);
   if (seen.length) {
     // Natural prose from the SAME list the UI and target menus use, grouped by
     // kind ("two goblins and a giant centipede") + a disposition beat so players
@@ -293,9 +326,10 @@ function spawnRoom(run, roll) {
       ? 'They loiter together at their ease — until they see you, and turn as one, weapons and teeth bared.'
       : `It ${seen[0].creature && seen[0].creature.undead ? 'stands in unnatural stillness' : 'looks up from its business'} — and fixes on you, hostile.`;
     logEvent(run, `You enter ${room.flavor}. Ahead: ${prose}. ${stance} Roll for initiative!`, 'urgent');
-  } else {
-    logEvent(run, `You enter ${room.flavor}. It seems quiet… but stay wary.`, 'urgent');
   }
+  // A MIXED room (some seen, some hidden) keeps the warning — the fight is on
+  // anyway, and knowing more lurks is actionable. The ALL-hidden case never
+  // reaches here (the quiet-room branch above owns it, with no tell).
   if (hidden.length) {
     logEvent(run, 'Something you have not seen lurks here — be ready.', 'event');
   }
@@ -818,6 +852,12 @@ function applyAction(run, clientId, action, roll = Math.random) {
     if (run._rested) return { ok: false, error: 'the party has already made camp here — descend to press on' };
     return restParty(run);
   }
+  if (run.phase === 'cleared' && type === 'search') {
+    if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
+    if (!run._seemsEmpty) return { ok: false, error: 'this room already gave up its secrets when you cleared it' };
+    if (run._searched) return { ok: false, error: 'you have already searched this room top to bottom' };
+    return searchRoom(run, roll);
+  }
   if (run.phase === 'cleared' && type === 'equip') {
     const hero = run.heroes.find(h => h.ownerClientId === clientId);
     if (!hero) return { ok: false, error: 'not a party member' };
@@ -1072,6 +1112,57 @@ function restParty(run) {
   return { ok: true, restored };
 }
 
+// SEARCH a seemingly-empty room (Tobias 2026-07-16): one deliberate sweep. Fresh
+// Perception (+2 for taking your time) vs each lurker's Stealth — spot ANY and the
+// ambush is FLUSHED into a real fight (spotted foes revealed; the rest stay hidden
+// in it). Spot none and the lurkers hold their breath while you pocket the room's
+// treasure… and they still follow you out (spawnRoom's stalker intake).
+function searchRoom(run, roll = Math.random) {
+  run._searched = true;
+  const lurkers = (run._lurkers || []).filter(e => !e.down);
+  const rollDie = (s, r) => 1 + Math.floor(r() * s);
+  let flushed = false;
+  run.heroes.forEach(h => { h.perceived = h.perceived || new Set(); });
+  lurkers.forEach(en => {
+    run.heroes.forEach(h => {
+      if (h.down || h.dead) return;
+      const check = rollDie(20, roll) + (h.perceptionMod || 0) + 2;   // +2: a deliberate sweep
+      if (check >= (en.stealth || 10)) { h.perceived.add(en.id); en.revealed = true; flushed = true; }
+    });
+  });
+  if (flushed) {
+    // The ambush is flushed — the fight this room always owed them (the room was
+    // never counted as passed, so the eventual clear counts it exactly once).
+    run._lurkers = null; run._seemsEmpty = false;
+    run.heroes.forEach(h => { h.flatFooted = !h.down && lurkers.some(en => !h.perceived.has(en.id)); });
+    run.combatants = run.heroes.concat(lurkers);
+    run.turnIndex = 0;
+    run.round = 1;
+    run.phase = 'initiative';
+    run.turnStartedAt = Date.now();
+    const spotted = lurkers.filter(e => e.revealed);
+    logEvent(run, `Your search flushes an AMBUSH — ${groupProse(spotted)} burst${spotted.length === 1 ? 's' : ''} from hiding! Roll for initiative!`, 'urgent');
+    return { ok: true, ambush: true };
+  }
+  // Nothing stirs (the lurkers hold their breath) — but the sweep turns up the
+  // room's hoard, the same table a cleared room would have rolled.
+  const xpForCR = pf1.xp.xpForCR;
+  const budget = lurkers.reduce((s, e) => s + xpForCR(e.crNum || (e.creature && e.creature.crNum) || 0.25), 0) || xpForCR(1);
+  const hoard = treasure.rollTreasure(budget, xpForCR, roll);
+  run.gold += hoard.coins;
+  hoard.drops.forEach(d => addItem(run, d.key, d.qty));
+  // Treasure XP, same 15% rule as a cleared room's haul.
+  const hoardVal = hoard.coins + hoard.drops.reduce((s2, d) => { const it = items.ITEM_BY_KEY[d.key]; return s2 + (it && it.value ? it.value * (d.qty || 1) : 0); }, 0);
+  const treasureXp = Math.round(hoardVal * 0.15);
+  const recips = run.heroes.filter(h => !h.left);
+  if (treasureXp > 0 && recips.length) {
+    const each = Math.max(1, Math.floor(treasureXp / recips.length));
+    recips.forEach(h => grantXp(run, h, each));
+  }
+  logEvent(run, `You search the room. ${treasure.prose(hoard)} Nothing else stirs.`, 'urgent');
+  return { ok: true, found: true };
+}
+
 function clearRoom(run, roll = Math.random) {
   run.combatants.forEach(c => { if (c.summoned && !c.down) { c.down = true; } });
   run.phase = 'cleared';
@@ -1296,7 +1387,9 @@ function publicRun(run) {
   const shown = run.combatants.filter(c => c.side === 'hero' || c.revealed);
   return {
     phase: run.phase, round: run.round, gold: run.gold, roomsCleared: run.roomsCleared,
-    rested: !!run._rested,   // party already made camp in this cleared room (Rest offered until then)
+    rested: !!run._rested,       // party already made camp in this cleared room (Rest offered until then)
+    seemsEmpty: !!run._seemsEmpty,   // an all-stealthed room the party failed to perceive — reads as EMPTY
+    searched: !!run._searched,       // the one deliberate sweep is spent
     room: run.room ? { flavor: run.room.flavor } : null,
     combatants: shown.map(c => ({
       id: c.id, side: c.side, name: c.name, icon: c.icon,

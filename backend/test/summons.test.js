@@ -13,11 +13,24 @@ function rollInit(run, roll) {
 }
 
 
+
+// v1.17.0 QUIET ROOMS: a seeded spawn can now come up all-hidden (no foes on the
+// board; they wait as lurkers). These tests need a foe ON the board — engage the
+// lurkers directly, which is exactly the pre-quiet-room state (hidden foes in
+// combat, revealed by hand where the test needs them).
+function forceEngage(run) {
+  if (run._seemsEmpty && run._lurkers) {
+    run.combatants = run.heroes.concat(run._lurkers);
+    run._lurkers = null; run._seemsEmpty = false; run._searched = false;
+    run.turnIndex = 0; run.round = 1; run.phase = 'initiative';
+  }
+}
+
 test('Summon Undead I raises a minion on the caster initiative that fights for the party', () => {
   const roll = seededRoller(7);
   const run = pr.createPartyRun([
     { clientId: 'c1', icon: '🧙', character: require('../src/cast').buildCompanion('Draymus').character },
-  ], roll);
+  ], roll); forceEngage(run);
   const wiz = run.heroes[0];
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true; foe.hp = 40; foe.maxHp = 40;    // durable target
@@ -45,7 +58,7 @@ test('summons never block room-clear and crumble when the room clears', () => {
   const roll = seededRoller(3);
   const run = pr.createPartyRun([
     { clientId: 'c1', icon: '🧙', character: require('../src/cast').buildCompanion('Draymus').character },
-  ], roll);
+  ], roll); forceEngage(run);
   const wiz = run.heroes[0];
   run.turnIndex = run.combatants.indexOf(wiz); run.phase = 'combat';
   pr.applyAction(run, 'c1', { type: 'cast', spell: 'summonundead1' }, roll);
@@ -62,15 +75,16 @@ test('every 5th room is a BOSS room: advanced foe with Boss: prefix and fatter s
   const { seededRoller: sr } = require('../src/dice');
   const { createCharacter: cc } = require('../src/characters');
   const roll = sr(12);
-  const run = pr.createPartyRun([{ clientId: 'c1', icon: '🛡️', character: cc({ name: 'Kara', race: 'human', cls: 'fighter' }) }], roll); rollInit(run, roll);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: '🛡️', character: cc({ name: 'Kara', race: 'human', cls: 'fighter' }) }], roll); forceEngage(run); rollInit(run, roll);
   // Fast-forward: clear 4 rooms by fiat, then descend into room 5.
   for (let i = 0; i < 4; i++) {
     run.combatants.filter(c => c.side === 'enemy' && !c.summoned).forEach(e => { e.hp = 0; });
     run.turnIndex = run.combatants.indexOf(run.heroes[0]); run.phase = 'combat';
     pr.applyAction(run, 'c1', { type: 'pass' }, roll);           // clears
-    if (i < 3) pr.applyAction(run, 'c1', { type: 'descend' }, roll);
+    if (i < 3) pr.applyAction(run, 'c1', { type: 'descend' }, roll); forceEngage(run);
   }
   pr.applyAction(run, 'c1', { type: 'descend' }, roll);          // into room 5
+  forceEngage(run);
   const boss = run.combatants.find(c => c.side === 'enemy' && /^Boss:/.test(c.name));
   assert.ok(boss, 'a Boss-prefixed foe in room 5: ' + run.combatants.filter(c => c.side === 'enemy').map(c => c.name).join(', '));
   assert.ok(boss.bossLevels >= 2 && boss.bossLevels <= 4, 'advanced 2-4 levels: ' + boss.bossLevels);

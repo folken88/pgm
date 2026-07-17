@@ -118,6 +118,11 @@ test('a wizard AI companion prefers spells over melee', () => {
     { clientId: 'aiW', ai: true, icon: '🧙', character: createCharacter({ name: 'Zara', race: 'elf', cls: 'wizard' }) },
   ];
   const run = pr.createPartyRun(partyList, roll); rollInit(run, roll);
+  // This test measures Zara's ACTION CHOICE, not her survivability — an
+  // unlucky opening grapple can drop a 1st-level wizard before her first
+  // turn and prove nothing. Give her the HP to reach a turn.
+  const zaraHero = run.heroes.find(h => h.name === 'Zara');
+  zaraHero.maxHp = 60; zaraHero.hp = 60;
   let guard = 0;
   while (guard++ < 8 && run.phase === 'combat' && !run.log.some(e => /Zara('s)? (casts|looses|Ray|Magic)/i.test(e.text))) {
     const v = pr.publicRun(run);
@@ -257,6 +262,10 @@ test('TPK kills the delve; a later party recovers the corpses and can raise them
   session.setCharacter(b.clientId, { race: 'human', cls: 'fighter' });
   session.startRun(b.clientId);
   const s2 = session._testInternals(b.clientId);
+  // v1.17.0 quiet rooms: if the opening room happened to spawn all-stealthed, the
+  // descend below would COUNT it as passed and shift the depth math this test's
+  // fiat relies on. Neutralize the quiet state — this test is about graves.
+  s2.run._lurkers = null; s2.run._seemsEmpty = false; s2.run._searched = false;
   s2.run.phase = 'cleared';                       // fast-forward: clear room 0, descend to depth 1... graves match depth roomsCleared+1
   session.action(b.clientId, { type: 'descend' });
   const snap = session.sessionSnapshotFor(b.clientId);
@@ -285,7 +294,10 @@ test('a live delve saves to disk and restores with a working engine', () => {
   assert.ok(fs.existsSync(file), 'session file written on start: ' + file);
   const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.strictEqual(doc.phase, 'playing');
-  assert.ok(doc.run && doc.run.combatants.length >= 2, 'run serialized with combatants');
+  // v1.17.0: the opening room may be QUIET (all foes stealthed → off-board as
+  // _lurkers). Either way the save must carry the party AND its foes.
+  const foesSaved = (doc.run ? doc.run.combatants.filter(x => x.side === 'enemy').length : 0) + ((doc.run && doc.run._lurkers) || []).length;
+  assert.ok(doc.run && doc.run.combatants.length >= 1 && foesSaved >= 1, 'run serialized with the party and its foes (on-board or lurking)');
   assert.ok(!doc.run.shim, 'shim excluded from the save');
   // Restore path: rebuild a run from the doc the way restoreSessions does.
   const { DungeonShim } = require('../src/pokerdungeon/shim');
@@ -296,7 +308,10 @@ test('a live delve saves to disk and restores with a working engine', () => {
   run.shim = new DungeonShim(run);
   const pr2 = require('../src/partyrun');
   if (run.phase === 'initiative') pr2.applyAction(run, run.heroes[0].ownerClientId, { type: 'initiative' });
-  const r = pr2.applyAction(run, run.heroes[0].ownerClientId, { type: 'pass' });
+  // A restored run must accept the phase-appropriate action: 'pass' in combat,
+  // 'search' in a quiet room (v1.17.0 — proves _lurkers survived the round-trip).
+  const act = run._seemsEmpty ? { type: 'search' } : { type: 'pass' };
+  const r = pr2.applyAction(run, run.heroes[0].ownerClientId, act);
   assert.ok(r.ok || /turn/.test(r.error || ''), 'restored run accepts actions: ' + (r.error || 'ok'));
   fs.unlinkSync(file);
 });

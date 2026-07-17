@@ -17,11 +17,28 @@ function party() {
   return [{ clientId: 'c1', icon: '🛡️', character: createCharacter({ name: 'Kara', race: 'human', cls: 'fighter' }) }];
 }
 
+
+// v1.17.0 QUIET ROOMS: a seeded spawn can now come up all-hidden (no foes on the
+// board; they wait as lurkers). These tests need a foe ON the board — engage the
+// lurkers directly, which is exactly the pre-quiet-room state (hidden foes in
+// combat, revealed by hand where the test needs them).
+function forceEngage(run) {
+  if (run._seemsEmpty && run._lurkers) {
+    run.combatants = run.heroes.concat(run._lurkers);
+    run._lurkers = null; run._seemsEmpty = false; run._searched = false;
+    run.turnIndex = 0; run.round = 1; run.phase = 'initiative';
+  }
+}
+
 test('a HELD enemy loses its turns (re-save each round) instead of acting forever', () => {
   const roll = seededRoller(4);
-  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
+  const run = pr.createPartyRun(party(), roll); forceEngage(run); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true;
+  // Enemy gen (poker-synced makeenemy) uses raw Math.random, so a room can roll
+  // TWO foes with the same name — and the assertion below matches by name. Give
+  // the held one a unique name so a same-named packmate's hit can't false-fail it.
+  foe.name = 'Heldwretch';
   foe.paralyzed = 3; foe.heldDC = 40; foe.fort = 0; foe.reflex = 0;   // will ~0 vs DC 40 — only nat 20 or expiry frees it
   // Play a few of Kara's turns passing; the foe should never land a hit while held.
   let guard = 0;
@@ -38,7 +55,7 @@ test('a HELD enemy loses its turns (re-save each round) instead of acting foreve
 
 test('a nauseated enemy recovers after its rounds tick down', () => {
   const roll = seededRoller(9);
-  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
+  const run = pr.createPartyRun(party(), roll); forceEngage(run); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true; foe.nauseated = 2;
   let guard = 0;
@@ -52,7 +69,7 @@ test('a nauseated enemy recovers after its rounds tick down', () => {
 
 test('acid DoT from a spell burns the foe at its turn start', () => {
   const roll = seededRoller(2);
-  const run = pr.createPartyRun(party(), roll); rollInit(run, roll);
+  const run = pr.createPartyRun(party(), roll); forceEngage(run); rollInit(run, roll);
   const foe = run.combatants.find(c => c.side === 'enemy');
   foe.revealed = true; foe.hp = 12; foe.maxHp = 12;
   foe.acid = { rounds: 2, dice: 1, die: 6 };

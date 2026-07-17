@@ -10,11 +10,24 @@ const pr = require('../src/partyrun');
 const { createCharacter } = require('../src/characters');
 const { seededRoller } = require('../src/dice');
 
+
+// v1.17.0 QUIET ROOMS: a seeded spawn can now come up all-hidden (no foes on the
+// board; they wait as lurkers). These tests need a foe ON the board — engage the
+// lurkers directly, which is exactly the pre-quiet-room state (hidden foes in
+// combat, revealed by hand where the test needs them).
+function forceEngage(run) {
+  if (run._seemsEmpty && run._lurkers) {
+    run.combatants = run.heroes.concat(run._lurkers);
+    run._lurkers = null; run._seemsEmpty = false; run._searched = false;
+    run.turnIndex = 0; run.round = 1; run.phase = 'initiative';
+  }
+}
+
 test('paced mode DEFERS the next enemy turn behind a timer, then resolves it on fire', () => {
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     const roll = seededRoller(2);
-    const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'T', race: 'human', cls: 'fighter' }) }], roll);
+    const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'T', race: 'human', cls: 'fighter' }) }], roll); forceEngage(run);
     let updates = 0;
     run.onUpdate = () => { updates++; };            // ← flips partyrun into paced mode
     pr.applyAction(run, 'c1', { type: 'initiative' }, roll);
@@ -46,7 +59,7 @@ test('paced mode DEFERS the next enemy turn behind a timer, then resolves it on 
 
 test('without onUpdate (tests/headless) turns still resolve synchronously', () => {
   const roll = seededRoller(2);
-  const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'T', race: 'human', cls: 'fighter' }) }], roll);
+  const run = pr.createPartyRun([{ clientId: 'c1', icon: 'X', character: createCharacter({ name: 'T', race: 'human', cls: 'fighter' }) }], roll); forceEngage(run);
   pr.applyAction(run, 'c1', { type: 'initiative' }, roll);
   // No timers involved: after initiative it is synchronously a human's turn or the room resolved.
   assert.ok(!run.paceTimer, 'no pace timer is used in synchronous mode');

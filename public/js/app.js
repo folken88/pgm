@@ -826,7 +826,11 @@
       : phase === 'retreated' ? 'bailed' : 'exploring';
     var mineKit = (run.turn && run.turn.ownerClientId === myId) ? adaptKit(run.turn.kit) : null;
     var mk = function (list) { return (list || []).map(function (x) { return typeof x === 'string' ? { key: x, label: x } : { key: x.key || x.label, label: x.label || x.key }; }); };
-    var enemies = (run.combatants || []).filter(function (c) { return c.side === 'enemy'; }).map(function (c) {
+    // Friendly SUMMONS are NOT targets — they must never reach the blind enemy
+    // picker / hot list (Josh 2026-07-17 on poker: "Jason summons ally Arinya…
+    // they pop up in my enemy picker as if I can shoot them" — poker fixed the
+    // same hole in v3.37.64; this is PGM's copy of that fix).
+    var enemies = (run.combatants || []).filter(function (c) { return c.side === 'enemy' && !c.summoned; }).map(function (c) {
       return {
         uid: c.id, name: c.name,
         hp: (c.hpPct != null ? c.hpPct : (c.down ? 0 : 100)), maxHp: 100,   // PGM hides exact enemy HP → percent, per its 25%-bucket design
@@ -875,7 +879,10 @@
     } else if (run.phase === 'combat') {
       if (run.turn) { if (myTurn) { banner.textContent = '⚔️ Your turn — select a target, then act.'; banner.classList.add('mine'); } else banner.textContent = '… ' + run.turn.name + "'s turn …"; }
       else banner.textContent = 'Resolving…';
-    } else if (run.phase === 'cleared') { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
+    } else if (run.phase === 'cleared') {
+      if (run.seemsEmpty) { banner.textContent = '🕯️ The room seems empty… search it, make camp, or press on.'; banner.classList.add('cleared'); }
+      else { banner.textContent = '✔ Room cleared — descend when ready.'; banner.classList.add('cleared'); }
+    }
     else if (run.phase === 'defeated') { banner.textContent = '☠ The party has fallen.'; banner.classList.add('defeated'); }
     else if (run.phase === 'retreated') { banner.textContent = '🏳️ The party has retreated — gold in hand.'; banner.classList.add('retreated'); }
     var rb = el('retreat-btn');
@@ -1495,7 +1502,8 @@
     if (run.phase === 'initiative') {
       bar.innerHTML = '<button class="ab-btn ab-primary ab-roll" data-dact="initiative">' + String.fromCodePoint(0x1F3B2) + ' Roll for initiative!</button>';
     } else if (run.phase === 'cleared') {
-      bar.innerHTML = '<span class="ab-status">' + String.fromCodePoint(0x1F6AA) + ' The room is yours.</span>' +
+      bar.innerHTML = '<span class="ab-status">' + (run.seemsEmpty ? String.fromCodePoint(0x1F56F) + '️ The room seems empty.' : String.fromCodePoint(0x1F6AA) + ' The room is yours.') + '</span>' +
+        (run.seemsEmpty && !run.searched ? '<button class="ab-btn" data-dact="search" title="One deliberate sweep — find the room\'s treasure… or flush out whatever might be hiding">' + String.fromCodePoint(0x1F50D) + ' Search the room</button>' : '') +
         (run.rested ? '<span class="ab-status">' + String.fromCodePoint(0x1F3D5) + '️ Camp made.</span>'
                     : '<button class="ab-btn" data-dact="rest" title="Heal the party (to full with a healer along); the next room comes +1 CR harder">' + String.fromCodePoint(0x1F3D5) + '️ Rest & make camp</button>') +
         '<button class="ab-btn ab-primary" data-dact="descend">' + String.fromCodePoint(0x1F6AA) + ' Open the next door</button>';
@@ -1597,6 +1605,7 @@
       usableItems(run).filter(function (i) { return i.type === 'gear'; }).forEach(function (i) {
         choices.push({ id: 'equip', item: i.key, label: 'Equip ' + (i.short || i.name) });
       });
+      if (run.seemsEmpty && !run.searched) choices.push({ id: 'search', label: 'Search the room — find its treasure, or flush out anything hiding' });
       if (!run.rested) choices.push({ id: 'rest', label: 'Rest and make camp — heal the party, but the next room comes one step harder' });
       choices.push({ id: 'descend', label: 'Descend deeper' });
     } else if (run.phase === 'defeated' || run.phase === 'retreated') { choices.push({ id: 'leave', label: 'Return to start' }); }
@@ -1809,6 +1818,7 @@
           return items;
         }
         if (mode === 'game') {
+          if (run && run.phase === 'cleared' && run.seemsEmpty && !run.searched) items.push({ label: 'Search the room — find its treasure, or flush out anything hiding', run: function () { doGameAction({ id: 'search' }); } });
           if (run && run.phase === 'cleared' && !run.rested) items.push({ label: 'Rest and make camp — heal the party; the next room comes one step harder', run: function () { doGameAction({ id: 'rest' }); } });
           if (run && run.phase === 'cleared') items.push({ label: 'Open the next door — descend deeper', run: function () { if (info.descend) info.descend(); } });
           // Level up is out-of-combat only; offered when a choice awaits (or to review).

@@ -19,6 +19,28 @@ PGM is made by:
 
 ---
 
+## v1.17.0 — 2026-07-16
+
+**The Quiet Room.** Until now, a room full of hidden enemies always warned you that "something
+lurks here." No more. If **every** foe is stealthed and **nobody** in the party perceives a thing,
+the GM simply tells you the room seems empty — and you have a choice to make:
+
+- **Search the room** — one deliberate sweep (easier than a passive glance). Spot the hiders and
+  the ambush springs as a real fight, on your terms. Find nothing and you still turn up the
+  treasure the room was hiding — pocket it and move on.
+- **Make camp** — rest as usual. Risky, if you guessed wrong about "empty."
+- **Press on** — open the next door. But anything you never found **follows you**: the next
+  room's fight may include the stalker from the last one, right alongside the new foes.
+
+Rooms where you spot *some* of the enemies still give the old "something lurks — be ready"
+warning. Blind players hear the quiet-room prompt and the Search option like every other action.
+
+**Also: your summons no longer appear in the enemy target list.** Same bug Josh found in
+poker-dungeon (fixed there in v3.37.64) — PGM had the identical hole, now closed: a summoned
+ally can't be accidentally targeted as if it were a foe.
+
+---
+
 ## v1.16.2 — 2026-07-16
 
 **Hotfix: the new battle board broke the combat layout.** In v1.16.0 the action bar, combat log and
