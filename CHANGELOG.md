@@ -19,6 +19,21 @@ PGM is made by:
 
 ---
 
+## v1.16.2 — 2026-07-16
+
+**Hotfix: the new battle board broke the combat layout.** In v1.16.0 the action bar, combat log and
+choices were pushed into the right column and the loot panel fell off the screen — the fight was
+effectively unplayable. The board now sits properly in the middle column with the action bar and log
+beneath it and the loot panel back on the right. Re-tested by actually fighting through rooms:
+clicking an enemy attacks it, the bar works, the log colors work.
+
+(Two things from the broken screenshot that were **not** bugs: a "quiet" room with a warning that
+something lurks is the **stealth** mechanic — Hold your action and the ambusher reveals itself; and
+the numbered choice buttons are deliberately invisible to sighted players — the action bar is the
+sighted surface, the numbered list is the screen-reader one.)
+
+---
+
 ## v1.16.1 — 2026-07-16
 
 **Enemy archers and gunners actually behave like archers now.** A missing one-line copy meant

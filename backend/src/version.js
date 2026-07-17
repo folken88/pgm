@@ -7,6 +7,18 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.16.2 2026-07-16 BOARD LAYOUT HOTFIX (Tobias: "it does not work at all. can't see the enemies,
+//                    can't take actions. broken."). v1.16.0 split the middle column into TWO grid
+//                    children (.battlefield.dungeon-stage + .battle-below) — but the game layout's
+//                    grid expects ONE middle child, so the action bar / log / choices / chat were
+//                    shoved into the RIGHT column and the loot panel fell off the layout. The stage
+//                    now NESTS inside .battlefield (one child again); action bar/log/choices/chat are
+//                    direct children as before, so the .battlefield flex rules (log grows, rest
+//                    doesn't) apply again. Re-tested by PLAYING: enemy card renders and click-to-
+//                    attack kills a kobold, bar under the board, color-coded log under the bar, loot
+//                    panel back on the right, no console errors. (His "room is quiet" moment was the
+//                    STEALTH room — an unseen lurker; Hold passes the turn and the foe reveals. The
+//                    invisible numbered choices are by DESIGN for sighted players — bar drives play.)
 //  1.16.1 2026-07-16 THE GUNNERS FIRE (ported from poker v3.37.65): enemyAI reads e.ranged
 //                    ("shoots" narration, bow/gun SFX on a MISS too, archers don't wrestle) but
 //                    makeenemy never copied the flag off the base entry — dead feature. Added
@@ -449,6 +461,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.16.1';
-const HEADLINE = 'Enemy archers and gunners found their trigger fingers — they sound off on every shot, shoot at flyers, and stop trying to wrestle you.';
+const VERSION = '1.16.2';
+const HEADLINE = 'Hotfix for the new battle board: v1.16.0 broke the combat layout — the action bar, log and loot panel landed in the wrong columns. Everything is back in place and the board is verified playable. Hard refresh.';
 module.exports = { VERSION, HEADLINE };

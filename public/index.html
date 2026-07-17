@@ -153,15 +153,17 @@
           <div id="party-status"></div>
         </aside>
 
-        <!-- MIDDLE: the battle board — poker-dungeon's stage, transplanted
-             (Tobias 2026-07-15): dark map backdrop, enemy cards (.dmon) across
-             the top, the turn line centered, hero cards (.dpc) beneath. -->
-        <div class="battlefield dungeon-stage">
-          <div id="enemy-row" class="dungeon-enemies" aria-label="Enemies, in initiative order"></div>
-          <p id="turn-banner" class="turn-banner dungeon-turn" aria-live="polite"></p>
-          <div id="ally-row" class="dungeon-party" aria-label="Allies, in initiative order"></div>
-        </div>
-        <div class="battle-below">
+        <!-- MIDDLE: the battle column. The BOARD is poker-dungeon's stage,
+             transplanted (Tobias 2026-07-15): dark map backdrop, enemy cards
+             (.dmon) across the top, the turn line centered, hero cards (.dpc)
+             beneath. The stage nests INSIDE .battlefield — the game layout's
+             grid expects ONE middle-column child (v1.16.1 layout fix). -->
+        <div class="battlefield">
+          <div class="dungeon-stage">
+            <div id="enemy-row" class="dungeon-enemies" aria-label="Enemies, in initiative order"></div>
+            <p id="turn-banner" class="turn-banner dungeon-turn" aria-live="polite"></p>
+            <div id="ally-row" class="dungeon-party" aria-label="Allies, in initiative order"></div>
+          </div>
           <!-- Poker-style action bar (sighted surface; blind players use the
                numbered choices + K spellbook, unchanged) -->
           <div id="action-bar" class="action-bar" aria-hidden="true"></div>
