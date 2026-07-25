@@ -93,7 +93,7 @@ const STUDIED_TARGET = { key: 'studiedtarget', name: 'Studied Target', icon: '�
 // +your cavalier level in DAMAGE this room (applied in _swingVsAC via challengedId/
 // challengeN). A ROOM-cost ability (uses scale: 1 + 1 per 4 levels), so it's a
 // limited, focused kill-order (unlike the slayer's at-will Studied Target).
-const CHALLENGE = { key: 'challenge', name: 'Challenge', icon: '⚔️', cost: 'room', uses: (lvl) => 1 + Math.floor(((lvl || 1) - 1) / 4), effect: 'challenge', target: 'enemy', sound: '/audio/taunt_predator.mp3', desc: 'A cavalier\'s oath: name ONE foe your quarry — every strike you land on it this room deals +your level in bonus damage. Uses per room = 1 + 1 per 4 levels.' };
+const CHALLENGE = { key: 'challenge', name: 'Challenge', icon: '⚔️', cost: 'room', uses: (lvl) => 1 + Math.floor(((lvl || 1) - 1) / 4), effect: 'challenge', target: 'enemy', freeAction: true, sound: '/audio/taunt_predator.mp3', desc: 'SWIFT ACTION — name ONE foe your quarry, then STILL attack (or act) the same turn: every strike you land on it this room deals +your level in bonus damage. PF1: Challenge is a swift action. Uses per room = 1 + 1 per 4 levels.' };
 // ORDER OF THE FLAME (Lord Gweyir) — a FREE, unlimited challenge-and-strike in one. Char-gated;
 // applies his CURRENT glory stack (+2×N damage / −2×N AC), then attacks; a KILL grows the stack
 // for next turn. Chain kills (fodder is fair game!) to pump it, then unleash on a real threat.
@@ -345,6 +345,8 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       domward:     () => this._abDomWard(m, ab, payload),
       dombleed:    () => this._abDomBleed(m, ab),
       tpstrike:    () => this._abTpStrike(m, ab, payload),
+      freedommove: () => this._abFreedomMove(m, ab, payload),
+      dominfo:     () => this._abDomInfo(m, ab),
     }[ab.effect];
     if (!D) return { ok: false, error: 'unknown ability' };
     // NEGATIVE ENERGY MENDS THE UNDEAD (PF1, Tobias 2026-07-04): a Touch of
@@ -592,11 +594,51 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     for (const key of m.domains) {
       const g = DOMAINS[key] && DOMAINS[key].granted;
       if (!g) continue;
-      if (g.kind === 'fom') m._domFoMRounds = lvl;               // Liberation: level rounds/room, auto-fires
-      else if (g.kind === 'healboost') m.domainHealBoost = true; // Healing: passive — cures & channels +1/die
-      else if (g.kind === 'sunvuln') m.domainSunVuln = true;     // Sun: passive — bonus damage vs undead
-      else if (DOMAIN_POWERS[g.kind]) m._domPowers.push(DOMAIN_POWERS[g.kind]);
+      // PASSIVE domains (Liberation / Healing / Sun) grant no button, so after
+      // switching to them the pad went silent and Josh concluded domains broke
+      // entirely (run lucky-puffin: "they disappear completely"). Each passive now
+      // ALSO pushes a free INFO entry — press it and it speaks its live status
+      // without costing the turn (freeAction). The mechanics stay auto/passive.
+      const _dm = DOMAINS[key] || {};
+      const _info = (kind) => m._domPowers.push({ key: 'dom_' + key, name: g.name, icon: _dm.icon, cost: 'free', freeAction: true, effect: 'dominfo', domKind: kind, domName: _dm.name || key, desc: `${_dm.name || key} domain — PASSIVE, always working on its own. Press to hear its current status (free, costs nothing).` });
+      if (g.kind === 'fom') { m._domFoMRounds = lvl; _info('fom'); }          // Liberation: level rounds/room, auto-fires
+      else if (g.kind === 'healboost') { m.domainHealBoost = true; _info('healboost'); } // Healing: passive — cures & channels +1/die
+      else if (g.kind === 'sunvuln') { m.domainSunVuln = true; _info('sunvuln'); }       // Sun: passive — bonus damage vs undead
+      else if (DOMAIN_POWERS[g.kind]) {
+        // DOMAIN_POWERS is keyed by KIND (smite/reroll/…), so several domains share one
+        // template — Fire and War are both `smite`, Law and Luck are both `reroll`. Pushing
+        // the raw template meant Jason's Fire+Law showed on the pad as "Battle Rage" (War's
+        // name) and "Good Fortune" (Luck's name) — mechanically right, but named for the
+        // wrong domain (Josh, run cursed-musket: "his domain spells are Battle Rage/War and
+        // Good Fortune/Luck… they do not match those selected domains"). Re-label the
+        // template with the ACTUAL picked domain's name/icon/key so the pad matches the
+        // picker: Fire → "Fire Bolt", Law → "Touch of Law". A per-domain key also stops two
+        // same-kind domains from colliding in the uses ledger.
+        const _base = DOMAIN_POWERS[g.kind];
+        const _dom = DOMAINS[key] || {};
+        m._domPowers.push({ ..._base,
+          key: 'dom_' + key,
+          name: g.name || _base.name,
+          icon: _dom.icon || _base.icon,
+          desc: String(_base.desc || '').replace(/Domain \([^)]+\)/, `Domain (${_dom.name || key})`),
+        });
+      }
     }
+    // ANNOUNCE a domain CHANGE when it lands (v3.37.81) — picks save immediately but
+    // take effect at the next door, and until now that moment was silent: Josh switched
+    // Jason to Liberation+Healing and heard nothing, ever ("Jason has no domain spells
+    // now"). One line, once, naming each granted power and whether it's a pad button
+    // or an always-on passive.
+    const _sig = JSON.stringify(m.domains);
+    if (m._domLastSig !== undefined && m._domLastSig !== _sig && m.domains.length) {
+      const bits = m.domains.map(k => {
+        const d = DOMAINS[k] || {}, gr = d.granted || {};
+        const passive = gr.kind === 'fom' || gr.kind === 'healboost' || gr.kind === 'sunvuln';
+        return `${d.icon || ''} ${d.name || k} grants ${gr.name || 'a power'} (${passive ? 'works on its own — its pad entry just reports status' : 'a new button on your pad'})`;
+      });
+      this._note(`⛪ ${m.nickname}'s new domains take effect: ${bits.join('; ')}.`);
+    }
+    m._domLastSig = _sig;
   },
   // Per-room reset: refill the shared spell pool (full casters) + own-count
   // abilities, and clear sticky room buffs. Called each room and on join.
@@ -619,6 +661,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     m.buffs = null;          // rage / divine favor / inspire clear
     m.bane = null;           // inquisitor Bane declaration clears between rooms
     m.buffApplied = {};      // which sticky buffs are already active (no stacking)
+    m._fomCastRounds = 0;    // cast Freedom of Movement fades between rooms (Liberation's pool refills via _domainSetup above)
     m._qcUsed = false;       // cleric Quicken Channel — one swift channel per room
     m._offDef = false;       // rogue Offensive Defense AC wears off between rooms
     // Power Attack / Deadly Aim are STANCES, not per-room buffs — silently re-assert
@@ -852,6 +895,37 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     this._note(`${ab.icon} ${m.nickname} casts ${ab.name} — ${a.playerId === m.playerId ? 'they blink' : `${a.nickname} blinks`} through folded space! Untouchable until ${m.nickname} acts again — and their next strike reaches ANY foe with a FULL attack.`, ab.sound);
     this._broadcast();
     return { ok: true };
+  },
+  // FREEDOM OF MOVEMENT (4th-level divine, v3.37.81 — Josh: "not on any spell list").
+  // Grants a per-ROOM pool of shrugged impediments (caster-level), spent by the same
+  // _fomSpend that powers the Liberation domain — grapples, chain-hooks and holds slip
+  // off until the pool runs dry. Casting it on an already-grappled ally frees them NOW.
+  _abFreedomMove(m, ab, payload) {
+    const pickedId = payload && (payload.allyUid || payload.targetUid || payload.memberId);
+    const explicit = pickedId ? this.livingParty().find(a => a.playerId === pickedId) : null;
+    const a = explicit || this.livingParty().find(x => x.grappled) || m;   // default: whoever's in a grapple, else self
+    const rounds = m.level || 1;
+    a._fomCastRounds = Math.max(a._fomCastRounds || 0, rounds);
+    let freed = '';
+    if (a.grappled) { a.grappled = false; a.grappledBy = null; a.grappleRounds = 0; freed = ` The grapple holding ${a.playerId === m.playerId ? 'them' : a.nickname} slips off instantly!`; }
+    this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${a.playerId === m.playerId ? 'themselves' : a.nickname} — nothing can bind them: the next ${rounds} grapples, hooks and holds simply slip off.${freed}`, ab.sound);
+    this._broadcast();
+    return { ok: true };
+  },
+  // DOMAIN PASSIVE INFO (v3.37.81 — Josh, run lucky-puffin: switching Jason to
+  // Liberation+Healing made his domains "disappear completely"). Passive domains
+  // (Liberation / Healing / Sun) grant no button, so a blind player heard NOTHING
+  // on the pad and concluded the system broke. Each passive now has a free INFO
+  // entry that speaks its live status without costing the turn.
+  _abDomInfo(m, ab) {
+    let status;
+    if (ab.domKind === 'fom') status = `${m._domFoMRounds || 0} auto-shrugged grapples/holds left this room — it fires by itself, no action needed`;
+    else if (ab.domKind === 'healboost') status = `passive — every cure and channel you cast heals +1 per die, always on`;
+    else if (ab.domKind === 'sunvuln') status = `passive — your channels sear the undead for extra damage, always on`;
+    else status = 'passive — always on';
+    this._note(`${ab.icon} ${ab.name} (${ab.domName} domain): ${status}.`);
+    this._broadcast();
+    return { ok: true, freeAction: true };
   },
   // A flying creature holds the HIGH GROUND over the grounded party: +2 AC (hard
   // to reach a flyer from the floor). All heroes are grounded, so it always applies.
@@ -1561,7 +1635,12 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       if (hurt.paralyzed > 0 && (isRemovePara || hurt.heldDC != null)) { hurt.paralyzed = 0; hurt.heldDC = null; cleared.push('paralysis'); }
       if (hurt.slowed > 0)    { hurt.slowed = 0; hurt._slowTick = 0; cleared.push('slow'); }
       if (!isRemovePara && hurt.blinded > 0) { hurt.blinded = 0; cleared.push('blindness'); }
-      this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${hurt.nickname} — clears ${cleared.join(', ')}! [dispel ${dc.total} vs DC ${dc.dc}]`, sound);
+      // Name what dispel CAN'T touch that's still on them (v3.37.81 — Josh, run
+      // proud-waffle: heard "clears paralysis" then still lost his turn to a
+      // SEPARATE stun. The clear line now says what remains, so a cleared hold
+      // followed by a lost turn is no longer a mystery).
+      const _still = [hurt.stunned > 0 && 'stunned', hurt.grappled && 'grappled', hurt.asleep && 'asleep', hurt.sickened > 0 && 'sickened'].filter(Boolean);
+      this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${hurt.nickname} — clears ${cleared.join(', ')}!${_still.length ? ` (but they are STILL ${_still.join(' and ')} — that's physical, beyond dispel)` : ''} [dispel ${dc.total} vs DC ${dc.dc}]`, sound);
       this._echoToTable(sound); return;
     }
     // 2) No ally debuff → strip the strongest buff off a foe (dispel check vs ITS CL).
@@ -1573,6 +1652,10 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     if (foe) {
       const dc = this._dispelCheck(m, this._enemyCL(foe), ab.greater);   // DC = 11 + the foe's caster level (PF1), not depth
       if (!dc.ok) {   // its enchantment HOLDS
+        // FUTILITY tally (v3.37.84): two of these vs the same foe and the bot's
+        // dispel branch stops feeding it turns (Femmik at +18 vs the Pit Fiend's
+        // DC 32, four failed casts in a row — run clever-ferret).
+        const _led = this._ccLedger(m); _led['dispel:' + foe.uid] = (_led['dispel:' + foe.uid] || 0) + 1;
         this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${foe.name} — but its enchantment HOLDS! [dispel d20 ${dc.roll} +${dc.cl} = ${dc.total} vs DC ${dc.dc}]`, FAIL_SOUND);
         this._echoToTable(FAIL_SOUND); return;
       }
@@ -2007,6 +2090,11 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     // costs its turn either way) — see the heldDC handling in _advanceToActor.
     if (!sv.saved && ab.debuff === 'paralyzed') { e.paralyzed = Math.max(2, Math.min(12, m.level || 1)); e.heldDC = dc; }
     else if (!sv.saved && ab.debuff === 'sickened') e.nauseated = SICKENED_ROUNDS;   // save-or-NAUSEATED (Stinking Cloud): retches, loses turns while it lingers
+    // Spell-adaptation batch 1 (v3.37.85) — three more conditions the engine already
+    // tracks, now reachable as save-or-suffer spells:
+    else if (!sv.saved && ab.debuff === 'shaken')  e.sickened = Math.max(e.sickened || 0, SICKENED_ROUNDS);   // Doom / Ray of Enfeeblement: −2 to hit & damage
+    else if (!sv.saved && ab.debuff === 'blinded') e.blinded = Math.max(e.blinded || 0, Math.max(2, Math.min(12, m.level || 1)));   // Blindness: −4 to hit, denied Dex
+    else if (!sv.saved && ab.debuff === 'dazed')   e.stunned = Math.max(e.stunned || 0, 1);   // Daze Monster: loses ONE turn, no re-save
     this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${e.name} — save ${sv.total} vs DC ${dc}: ${sv.saved ? 'resists' : `${(ab.debuff === 'sickened' ? 'NAUSEATED' : String(ab.debuff).toUpperCase())}!`}`, sound);
     this._echoToTable(sound);
   },
@@ -2483,6 +2571,9 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       this._note(`${ab.icon} ${m.nickname} ${ab.enemyPenalty ? `intones ${ab.name} — allies blessed, enemies cursed across the field` : ab.gmw ? `blesses the party's weapons with ${ab.name}` : `strikes up ${ab.name} — the party is emboldened`}${inspTag}!`, sound);
     }
     else if (ab.target === 'ally') { const t = this._buffTarget(m, ab, payload); apply(t); this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${t.nickname}.`, sound); }
+    // Elemental Body SPEAKS its protections (v3.37.86 — Josh, run dapper-moose: cast it
+    // twice, heard only "uses Elemental Body!" and had no idea what it granted).
+    else if (ab.elemBody) { apply(m); this._note(`${ab.icon} ${m.nickname} becomes a being of raw element — IMMUNE to paralysis and hold, stun, sickening and blinding for the rest of the room!`, sound); }
     else { apply(m); this._note(`${ab.icon} ${m.nickname} uses ${ab.name}!`, sound); }
     this._echoToTable(sound);
   },

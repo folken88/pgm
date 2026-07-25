@@ -478,6 +478,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.17.0';
+const VERSION = '1.17.1';
 const HEADLINE = 'The QUIET ROOM: when every foe hides and nobody spots a thing, the GM says the room seems empty — search it (find the hoard, or flush the ambush), rest, or press on. Unfound stalkers FOLLOW you into the next fight. Plus: summons no longer clutter your target list.';
 module.exports = { VERSION, HEADLINE };

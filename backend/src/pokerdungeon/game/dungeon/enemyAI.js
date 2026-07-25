@@ -36,12 +36,23 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     if (roll === 1) return { hit: false, roll, toHit, total, ac: targetAC, sound: SND.fumble };
     const hit = roll === 20 || total >= targetAC;
     if (!hit) return { hit: false, roll, toHit, total, ac: targetAC, sound: pick(SND.whiffSword) };
+    // (hit sound chosen by foe archetype below, via _foeHitSound)
     // GLORIOUS CHALLENGE (Order of the Flame): +2 melee damage per CONSECUTIVE glorious
     // challenge this room — a kill-streak morale bonus that compounds (see _enemyMelee).
     const glory = e.gloriousChallenge ? 2 * (e.gloriousN || 0) : 0;
     let dmg = e.dmgBonus - sick - pray + glory;
     for (let i = 0; i < (e.dmgCount || 1); i++) dmg += dRoll(e.dmgDie);   // e.g. golem slam = 2d10+9
-    return { hit: true, damage: Math.max(1, dmg), roll, toHit, total, ac: targetAC, sound: pick(SND.flesh) };
+    return { hit: true, damage: Math.max(1, dmg), roll, toHit, total, ac: targetAC, sound: this._foeHitSound(e) };
+  },
+  // The connecting-blow sound for a foe with NO explicit atkSound — chosen by ARCHETYPE
+  // (v3.37.79) so a blind player can tell foe TYPES apart in a crowded room. A foe with
+  // its own atkSound/atkSounds still overrides this at the call site (_enemyMelee).
+  _foeHitSound(e) {
+    const t = (e && e.type) || 'humanoid';
+    if (t === 'undead')    return pick(SND.hitUndead);
+    if (t === 'construct') return pick(SND.hitConstruct);
+    if (t === 'animal' || t === 'magical beast' || t === 'vermin' || t === 'dragon' || t === 'ooze' || e.natural) return pick(SND.hitBeast);
+    return pick(SND.hitBlade);   // humanoids / outsiders / fey / default — weapon impacts
   },
   _enemyAct(e) {
     e.flatFooted = false;   // acting ends flat-footed
@@ -160,6 +171,10 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
         // slips every hold, so the chain would land damage but never grab.
         const hookable = this._targetableParty().filter(p => !this._freedomOfMovement(p));
         const weakest = (hookable.length ? hookable : this._targetableParty()).slice().sort((a, b) => a.hp - b.hp)[0];
+        if (weakest && this._concealed(e, weakest)) {   // can't hook what it can't see — the chain finds air (nimble-gecko)
+          this._note(`⛓️ ${e.glyph} ${e.name} hurls its chain where it THINKS ${weakest.nickname} is — the hook whips through empty air. [total concealment]`, null, { side: 'enemy' });
+          this._echoToTable(); this._broadcast(); return;
+        }
         if (weakest) return this._enemyHook(e, weakest);
       }
     }
@@ -206,10 +221,12 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
         const swings = (e.slowed > 0) ? 1 : ((e._lastAtkTarget === tgtId) ? Math.max(1, e.attacks || 1) : 1);
         for (let i = 0; i < swings; i++) {
           if (target.hp <= 0) break;
-          const r = this._monsterSwing(e, this._enemyAC(target));
-          if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds); else if (e.atkSound && (r.hit || e.ranged)) r.sound = e.atkSound;   // ranged foes fire their bow/gun sound on a MISS too (a missed shot isn't a sword clang — Josh)
-          if (r.hit) { this._dmgE(target, r.damage); this._note(`${e.glyph} ${e.name} smashes your undead ${target.name} for ${r.damage}!${target.hp <= 0 ? ' ☠️ Destroyed!' : ''}`, r.sound, { side: 'enemy' }); }
-          else this._note(`${e.glyph} ${e.name} swings at your undead ${target.name} — and misses.`, r.sound, { side: 'enemy' });
+          // Sound + ranged/melee verbs come from the _foeSwing chokepoint (seam S1a)
+          // — same rules as attacks on heroes, so the two can never drift again
+          // (the "Erinyes smashes your Ghoul while a bow twangs" bug, proud-waffle).
+          const r = this._foeSwing(e, this._enemyAC(target), { meleeVerb: 'smashes' });
+          if (r.hit) { this._dmgE(target, r.damage); this._note(`${e.glyph} ${e.name} ${r.verbHit} your ${target.name} for ${r.damage}!${target.hp <= 0 ? ' ☠️ Destroyed!' : ''}`, r.sound, { side: 'enemy' }); }
+          else this._note(this._foeMissText(e, r, `your ${target.name}`, false), r.sound, { side: 'enemy' });
         }
         e._lastAtkTarget = tgtId;
         this._echoToTable();
@@ -233,6 +250,14 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
         this._enemyFightDefensively(e);
         if (target.grappled && target.grappledBy === e.uid) {
           this._enemyMelee(e, target);   // already holding them — crush instead of re-grabbing
+        } else if (this._concealed(e, target)) {
+          // TOTAL CONCEALMENT (PF1) — an INVISIBLE hero this foe can't see foils half its
+          // strikes: it lashes at where it guesses the hero is. Verified needed in run
+          // nimble-gecko — Gearsman Scrapers were grabbing GREATER-INVISIBLE heroes on
+          // straight rolls with NO miss chance. (An ALREADY-grappled hero is exempt above:
+          // contact beats concealment.) Covers grapple/trip/bull-rush/melee in one place.
+          this._note(`${e.glyph} ${e.name} lunges where it THINKS ${target.nickname} is — the unseen hero isn't there. [total concealment]`, null, { side: 'enemy' });
+          e._lastAtkTarget = target.playerId; this._echoToTable(); this._broadcast();
         } else {
           const mode = (e.slowed > 0) ? 'attack' : this._pickEnemyManeuver(e, target);
           if (mode === 'grapple')       this._enemyGrapple(e, target);
@@ -276,6 +301,17 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     }
   },
   // One enemy swing at a chosen target (handles the paralysis rider + signature sound).
+  // TOTAL CONCEALMENT (PF1, v3.37.78). An INVISIBLE hero a foe CAN'T see (no true-seeing /
+  // blindsense / see-invisibility) foils half its attacks — a 50% miss, lashing where it
+  // last guessed. This is what makes (mass) Invisibility actually protect the party: before
+  // this, enemies rolled straight vs AC against greater-invisible heroes (run nimble-gecko:
+  // Scrapers grappled J'Mal/Draymus on `d20 +21 vs AC 37`, no miss). A foe already GRAPPLING
+  // the hero is in contact and ignores concealment (handled at the call sites).
+  _concealed(e, target) {
+    if (!target || !(target.invisible || target.greaterInvis)) return false;
+    if (e.trueSeeing || e.blindsense || e.seeInvis) return false;
+    return dRoll(2) === 1;   // 50%
+  },
   _enemyMelee(e, target) {
     // A foe that MOVES to engage provokes: reach heroes get an AoO before it strikes (see above).
     if (target && e._lastMeleeTargetId !== target.playerId) { e._lastMeleeTargetId = target.playerId; this._provokeReachAoO(e); if (e.hp <= 0) return; }
@@ -288,14 +324,11 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
       this._note(`☄️ ${e.glyph} ${e.name} BLAZES in a final surge of glory — +4 to ALL its attacks for the rest of the room!`, '/audio/draugr_shout03_burning.mp3', { side: 'enemy' });
     }
     // _acOf strips shield AC for dual-wielders AND ranged-weapon wielders.
-    const effAC = this._acOf(target).ac + this._acBonus(target) - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0) - (target.stunned > 0 ? 2 : 0) - (target.slowed > 0 ? 1 : 0) - this._acPenalty(target);   // helpless / stunned / slowed / rage / reckless / cleave: easier to hit (enemy melee vs prone = −4)
-    const r = this._monsterSwing(e, effAC);
-    if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds);   // monk's randomized "bruce" kiai (hit or miss)
-    else if (e.atkSound && (r.hit || e.ranged)) r.sound = e.atkSound;      // melee atkSound = the connecting blow (hit only, e.g. rogue "riki" stab); a RANGED foe fires its bow/gun sound on a MISS too (Josh: a missed shot shouldn't clang like a sword)
-    // RANGED foes SHOOT — a bow/gun verb so a blind player hears it's an arrow/bullet, not
-    // a sword (Josh: "erinyes aren't archers — it isn't saying they're shooting bows"). Works
-    // for bows AND firearms; the atkSound already differentiates the two.
-    const _rHit = e.ranged ? 'shoots' : 'hits';
+    const effAC = this._foeTargetAC(target);   // helpless / stunned / slowed / rage / reckless / cleave: easier to hit (S1b chokepoint)
+    // Roll + sound + ranged/melee verb all come from the _foeSwing chokepoint (seam
+    // S1a) — one set of rules for every target kind. See the chokepoint's comment.
+    const r = this._foeSwing(e, effAC);
+    const _rHit = r.verbHit;
     if (r.hit) {
       // Swashbuckler PARRY — the first melee attack against them each round can be
       // turned aside (parry roll vs the foe's attack total). On success: NO damage
@@ -333,7 +366,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
       if (r.crit && e.gloriousChallenge && !e._dauntedRoom) {
         e._dauntedRoom = true;
         let n = 0;
-        for (const m of this.livingParty()) { if (!m.undead) { m.sickened = Math.max(m.sickened || 0, SICKENED_ROUNDS); n++; } }
+        for (const m of this.livingParty()) { if (!m.undead && !m.elemBody) { m.sickened = Math.max(m.sickened || 0, SICKENED_ROUNDS); n++; } }   // elemental bodies can't be shaken (v3.37.86)
         if (n) this._note(`😱 ${e.glyph} ${e.name}'s GLORIOUS critical DAUNTS the party — ${n} hero${n > 1 ? 's' : ''} shaken (−2 to hit, damage & saves)! (Daunting Success)`, '/audio/draugr_shout03_burning.mp3', { side: 'enemy' });
       }
       // Domain parity (Death — Bleeding Touch): a death-priest foe's first landed
@@ -375,9 +408,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
       }
       if (target.hp > 0 && target.isBot) this._tryBanter(target, 'damage', { enemy: e.name, dmg: r.damage });
     } else {
-      this._note(e.ranged
-        ? `${e.glyph} ${e.name}'s shot flies wide of ${target.nickname}. ${this._atkStr(r)}`
-        : `${e.glyph} ${e.name} misses ${target.nickname}. ${this._atkStr(r)}`, r.sound);
+      this._note(this._foeMissText(e, r, target.nickname, true), r.sound);
     }
     this._echoToTable(r.sound);
   },
@@ -386,6 +417,39 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   // foe rolls a WEIGHTED decision (partly fixed weights, partly RNG) over the attack
   // modes it can use on its target — so the same monster mixes things up turn to turn.
   // A foe's maneuver bonus: its attack bonus stands in for BAB+STR.
+  // ── FOE-SWING CHOKEPOINT (Stabilization seam S1a, v3.37.82) ────────────────
+  // THE one place an enemy attack roll gets its SOUND and its VERBS, whoever the
+  // target is (hero or party summon). The rules lived copy-pasted at each call
+  // site and drifted — the Erinyes "smashes your Ghoul while a bow twangs" class
+  // of bug (run proud-waffle). Sound precedence: signature POOL plays hit or miss
+  // (monk kiai) > single signature plays on a hit — or on a MISS too if RANGED (a
+  // missed shot still twangs, Josh) > the archetype thunk _monsterSwing set.
+  // opts.meleeVerb keeps site flavor ("smashes" vs summons). See
+  // docs/project/STABILIZATION-PLAN.md for the S1b–S1d follow-ons.
+  // ── THE one effective-AC computation for a foe attacking a hero (seam S1b,
+  // v3.37.87). Was copy-pasted 3× with DRIFTING term lists: melee had the
+  // stunned −2 / slowed −1 penalties, the chain-hook and vampiric spellstrike
+  // didn't — but stunned/slowed make you easier to hit by EVERY attack (PF1).
+  // Unifying is a rules-correctness fix (a slight foe buff vs CC'd heroes).
+  _foeTargetAC(target) {
+    return this._acOf(target).ac + this._acBonus(target)
+      - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0)
+      - (target.stunned > 0 ? 2 : 0) - (target.slowed > 0 ? 1 : 0)
+      - this._acPenalty(target);
+  },
+  _foeSwing(e, targetAC, opts = {}) {
+    const r = this._monsterSwing(e, targetAC);
+    if (e.atkSounds && e.atkSounds.length) r.sound = pick(e.atkSounds);
+    else if (e.atkSound && (r.hit || e.ranged)) r.sound = e.atkSound;
+    r.verbHit = e.ranged ? 'shoots' : (opts.meleeVerb || 'hits');
+    return r;
+  },
+  // The matching MISS line — one wording for every target kind.
+  _foeMissText(e, r, who, withRoll) {
+    return (e.ranged
+      ? `${e.glyph} ${e.name}'s shot flies wide of ${who}.`
+      : `${e.glyph} ${e.name} misses ${who}.`) + (withRoll ? ` ${this._atkStr(r)}` : '');
+  },
   _enemyMnvCMB(e) { return dRoll(20) + (e.toHit || 0); },
   // Is this hero a soft, high-value backliner (a caster) — prime grapple bait?
   _isSquishy(m) { return /wizard|sorcerer|cleric|oracle|druid|bard|witch|magus|inquisitor|summoner|alchemist/.test((m.cls || '').toLowerCase()); },
@@ -426,11 +490,19 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   // spends one round via _fomSpend; at 0 the grapple/hold lands normally.
   // Inquisitors DEFAULT to Liberation (db.getDomains), so Tim's "never grapple me
   // again" behavior persists — now with the real PF1 limit.
-  _freedomOfMovement(m) { return !!m && (m._domFoMRounds || 0) > 0; },
+  // Two pools, one shield: the Liberation DOMAIN's auto pool (_domFoMRounds, refills
+  // each room) and the CAST Freedom of Movement spell (_fomCastRounds, v3.37.81 —
+  // now on the cleric/inquisitor lists). Domain rounds spend first (they're free).
+  _freedomOfMovement(m) { return !!m && ((m._domFoMRounds || 0) > 0 || (m._fomCastRounds || 0) > 0); },
   _fomSpend(m, what) {
     if (!this._freedomOfMovement(m)) return false;
-    m._domFoMRounds -= 1;
-    this._note(`🕊️ LIBERATION — ${m.nickname} shrugs off ${what} (${m._domFoMRounds} round${m._domFoMRounds === 1 ? '' : 's'} of freedom left).`);
+    if ((m._domFoMRounds || 0) > 0) {
+      m._domFoMRounds -= 1;
+      this._note(`🕊️ LIBERATION — ${m.nickname} shrugs off ${what} (${m._domFoMRounds} round${m._domFoMRounds === 1 ? '' : 's'} of freedom left).`);
+    } else {
+      m._fomCastRounds -= 1;
+      this._note(`🕊️ FREEDOM OF MOVEMENT — ${m.nickname} slips ${what} like water (${m._fomCastRounds} left).`);
+    }
     return true;
   },
   _enemyGrapple(e, target) {
@@ -440,7 +512,12 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     const cmb = this._enemyMnvCMB(e), cmd = this._heroCMD(target);
     if (cmb < cmd) { this._note(`🤼 ${e.glyph} ${e.name} lunges to grab ${target.nickname}, who twists away. [CMB ${cmb} vs CMD ${cmd}]`, pick(SND.whiffSword), { side: 'enemy' }); this._echoToTable(); return; }
     target.grappled = true; target.grappledBy = e.uid; target.grappleRounds = 2; target.grappledCL = this._enemyCL(e); target.grappleCMB = e.toHit || 0;   // stamp CMB for the cast-while-grappled concentration DC
-    this._note(`🤼 ${e.glyph} ${e.name} GRAPPLES ${target.nickname} — seized! −2 to hit and easier to strike until they break free. [CMB ${cmb} vs CMD ${cmd}]`, null, { side: 'enemy' });
+    // SAY WHY a grounded foe could grab a FLYER (v3.37.81 — Josh, run proud-waffle:
+    // "got grappled by a skeletal ogre somehow even though I'm flying as Reese").
+    // The mechanic was right — a HELD/grappled flyer hangs helpless in reach (the
+    // `grounded` rule) — but the narration never explained it, so it read as a bug.
+    const _aerial = (target.flying && target.paralyzed > 0) ? ' Held rigid mid-air, they hang in easy reach —' : '';
+    this._note(`🤼 ${e.glyph} ${e.name} GRAPPLES ${target.nickname} —${_aerial} seized! −2 to hit and easier to strike until they break free. [CMB ${cmb} vs CMD ${cmd}]`, null, { side: 'enemy' });
     this._broadcast();
     this._enemyMelee(e, target);   // the crushing squeeze comes with the grab
   },
@@ -469,6 +546,8 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     // PF1: Hold is a mind-affecting compulsion — UNDEAD heroes (Tar-Baphon, Vrood,
     // Vesorianna, Farrus) have no mind to seize. (Mirrors the heroes' rule.)
     if (target.undead) { this._note(`🪄 ${e.glyph} ${e.name} casts Hold Person on ${target.nickname} — but the undead have no mind to seize. No effect.`, null, { side: 'enemy' }); this._broadcast(); return; }
+    // Elemental Body: immune to paralysis — Hold slides off (v3.37.86, PF1).
+    if (target.elemBody) { this._note(`🌪️ ${e.glyph} ${e.name} casts Hold Person on ${target.nickname} — but a body of raw element cannot be paralyzed. No effect.`, null, { side: 'enemy' }); this._broadcast(); return; }
     const dc = e.spellDC || 13;
     const sm = this._partySaveMod(target, ['enchantment', 'spell']), sroll = dRoll(20), stot = sroll + sm;   // Hold (compulsion spell)
     const saved = sroll === 20 ? true : sroll === 1 ? false : stot >= dc;
@@ -548,8 +627,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   _enemyHook(e, target) {
     const cfg = e.hook || {};
     const snd = cfg.grabSound || GRAB_CHAIN_SND;   // the chain-hook GRAB always rattles out the "come here!" chain (Josh); cfg.sound is reserved for the constrict/crush
-    const effAC = this._acOf(target).ac + this._acBonus(target) - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0) - this._acPenalty(target);
-    const r = this._monsterSwing(e, effAC);
+    const r = this._foeSwing(e, this._foeTargetAC(target));   // S1b: shared AC stack (gains the stunned/slowed penalties melee already had) + chokepoint roll
     if (!r.hit) {
       this._note(`⛓️ ${e.glyph} ${e.name} hurls its barbed chain at ${target.nickname} — the hook scrapes past. ${this._atkStr(r)}`, snd, { side: 'enemy' });
       this._echoToTable(snd); this._broadcast(); return;
@@ -694,7 +772,14 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     e.invisible = false;   // any other cast below is hostile → invisibility drops
     // 1) Lock down a dangerous, un-held melee bruiser with Hold Monster (5th) —
     //    only if nobody's already held (don't waste it).
-    const bruiser = heroes.find(m => !(m.paralyzed > 0) && !m.undead && MART.has(m.cls) && m.hp > m.maxHp * 0.4);   // undead heroes have no mind to hold
+    // FUTILITY (v3.37.83, runs clever-ferret + golden-panda): a hero who has shrugged
+    // this caster's Hold TWICE (or whose SR turned it) is a bad bet — stop rolling the
+    // same failed die. Azwraith (+23 Will vs DC 22) resisted the Pit Fiend's Hold every
+    // round for 61 ROUNDS, and because this branch fires FIRST, the fiend never reached
+    // its fireball/cone/chain-lightning artillery below. e is rebuilt each room, so the
+    // memory self-resets. When every bruiser is a proven bad bet, it BLASTS instead.
+    const _futileHold = (m) => ((e._holdResists && e._holdResists[m.playerId]) || 0) >= 2;
+    const bruiser = heroes.find(m => !(m.paralyzed > 0) && !m.undead && MART.has(m.cls) && m.hp > m.maxHp * 0.4 && !_futileHold(m));   // undead heroes have no mind to hold
     if (cl >= 9 && bruiser && !heroes.some(m => m.paralyzed > 0)) return this._enemyHoldHero(e, bruiser, dc(5), 'Hold Monster');
     // 2) Finish a badly-wounded hero with auto-hitting Magic Missile (1st).
     if (weakest.hp <= weakest.maxHp * 0.28) return this._enemyMissiles(e, weakest, Math.min(5, Math.floor((cl + 1) / 2)));
@@ -779,18 +864,44 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   _enemyHoldHero(e, target, dc, label) {
     // PF1: a mind-affecting compulsion — no effect on an undead hero.
     if (target.undead) { this._note(`🪄 ${e.glyph} ${e.name} casts ${label} on ${target.nickname} — but the undead have no mind to seize. No effect.`, null, { side: 'enemy' }); this._broadcast(); return; }
-    if (this._srBlocksHero(e, target, label)) { this._broadcast(); return; }   // PF1 SR (drow heroes)
+    // ELEMENTAL BODY (v3.37.86 — Josh, run dapper-moose: "make sure it's applying
+    // correctly"): its promised paralysis immunity covered the melee paralyze rider
+    // but NOT Hold — a being of raw element cannot be paralyzed by it (PF1). Counts
+    // as permanently futile so the caster stops wasting rounds on them.
+    if (target.elemBody) { e._holdResists = e._holdResists || {}; e._holdResists[target.playerId] = 9; this._note(`🌪️ ${e.glyph} ${e.name} casts ${label} on ${target.nickname} — but a body of raw element cannot be paralyzed. No effect.`, null, { side: 'enemy' }); this._broadcast(); return; }
+    if (this._srBlocksHero(e, target, label)) { e._holdResists = e._holdResists || {}; e._holdResists[target.playerId] = 9; this._broadcast(); return; }   // PF1 SR (drow heroes) — SR turning it once means it always will: permanently futile
     const sm = this._partySaveMod(target, ['enchantment', 'spell']), sroll = dRoll(20), stot = sroll + sm;   // Hold (compulsion spell)
     const saved = sroll === 20 ? true : sroll === 1 ? false : stot >= dc;
     const roll = `[Will d20 ${sroll} ${this._fmtBonus(sm)} = ${stot} vs DC ${dc}]`;
     if (!saved) { target.paralyzed = Math.max(target.paralyzed || 0, 3); target.heldDC = dc; target.paralyzedCL = this._enemyCL(e); this._note(`🪄 ${e.glyph} ${e.name} casts ${label} on ${target.nickname} — HELD! ${roll} (re-save each turn to break free)`, '/audio/spell_dimensional_anchor.mp3', { side: 'enemy' }); }
-    else this._note(`🪄 ${e.glyph} ${e.name} casts ${label} on ${target.nickname}, who resists. ${roll}`, null, { side: 'enemy' });
+    else {
+      // Remember the shrug — two of these and _lichCast stops betting on this hero
+      // (the anti-Hold-bot futility memory, v3.37.83).
+      e._holdResists = e._holdResists || {}; e._holdResists[target.playerId] = (e._holdResists[target.playerId] || 0) + 1;
+      this._note(`🪄 ${e.glyph} ${e.name} casts ${label} on ${target.nickname}, who resists. ${roll}`, null, { side: 'enemy' });
+    }
     this._broadcast();
   },
   // Lich Magic Missile — N unerring bolts (no save, no attack roll), 1d4+1 each.
   _enemyMissiles(e, target, n) {
+    // PF1: you must SEE a target to Magic Missile it — an invisible hero can't be picked
+    // out, so half the volleys streak into empty air (total concealment, v3.37.78).
+    if (this._concealed(e, target)) {
+      this._note(`✨ ${e.glyph} ${e.name}'s Magic Missiles streak toward where it THINKS ${target.nickname} is — and find nothing. [total concealment]`, '/audio/spell_magicmissile.mp3', { side: 'enemy' });
+      this._echoToTable('/audio/spell_magicmissile.mp3'); this._broadcast(); return;
+    }
     // PF1: SR applies even to Magic Missile's unerring bolts.
     if (this._srBlocksHero(e, target, 'the missiles')) { this._echoToTable(); this._broadcast(); return; }
+    // PF1: the SHIELD spell stops Magic Missile COLD — no save, no damage. The HERO
+    // side has always honoured this in reverse (a hero's Magic Missile bounces off a
+    // shielded foe — abilities.js `e.shieldUp`), but the enemy→hero path never checked,
+    // so a shielded hero still ate every dart. Verified in run tidy-dumpling (2026-07-20):
+    // the harpy sorcerers' own precast Shield blocked the party's missiles while the party
+    // had no such protection, and Tar Baphon died to two unerring volleys. Parity restored.
+    if (target.buffApplied && target.buffApplied.shield) {
+      this._note(`🛡️ ${e.glyph} ${e.name}'s ${n} Magic Missile${n > 1 ? 's' : ''} splash harmlessly off ${target.nickname}'s SHIELD.`, '/audio/spell_magicmissile.mp3', { side: 'enemy' });
+      this._echoToTable('/audio/spell_magicmissile.mp3'); this._broadcast(); return;
+    }
     const dmg = dRollN(n, 4) + n;
     this._dmgToMember(target, dmg);
     this._note(`✨ ${e.glyph} ${e.name} looses ${n} Magic Missile${n > 1 ? 's' : ''} at ${target.nickname} — ${dmg} force, unerring.${target.hp <= 0 ? ' ☠️' : ''}`, '/audio/spell_magicmissile.mp3', { side: 'enemy' });
@@ -802,8 +913,7 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
   _enemySpellstrike(e, target) {
     const cfg = e.spellstrike || {};
     const SS = cfg.name || 'VAMPIRIC TOUCH';
-    const effAC = this._acOf(target).ac + this._acBonus(target) - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0) - this._acPenalty(target);
-    const r = this._monsterSwing(e, effAC);
+    const r = this._foeSwing(e, this._foeTargetAC(target));   // S1b: shared AC stack (gains the stunned/slowed penalties melee already had) + chokepoint roll
     const snd = cfg.sound || null;
     if (!r.hit) { this._note(`🩸 ${e.glyph} ${e.name}'s ${SS.toLowerCase()} misses ${target.nickname}. ${this._atkStr(r)}`, snd, { side: 'enemy' }); this._echoToTable(snd); this._broadcast(); return; }
     const [phys, drTag] = this._physDR(target, r.damage);   // Stoneskin soaks the weapon part only

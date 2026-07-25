@@ -614,3 +614,11 @@ reconstructed from the commit history.
 
 The poker-dungeon rules engine transplanted into PGM behind a compatibility shim, the
 blind-first frontend, live updates, and the first delves.
+
+## Poker-sync 2026-07-25 (v-bump)
+Synced poker v3.37.87 combat brain: invisibility = real 50% concealment,
+archetype hit sounds per foe type (undead/construct/beast/blade pools +
+16 new clips), boss anti-Hold-bot futility, ally-caster futility memory +
+self-preservation (defensive self-casts under 45% HP), Elemental Body
+immunity enforcement, _foeSwing/_foeTargetAC chokepoints. PGM-side:
+sounds.js gained the archetype pools; sync script's SOUNDS list extended.
