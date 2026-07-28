@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.18.1 2026-07-28 POKER v3.37.95 FOLLOW-UP: bot THEURGE un-broken (heroAI guard checked the raw
+//                    class kit — KITS.theurge has an empty abilities[] — so theurge companions were
+//                    cantrip-locked; synced fix) + crossbow strikes say "with the crossbow" (synced)
+//                    + swing.js hand-port: Power Attack backed out of RANGED swings, Deadly Aim out
+//                    of MELEE (both stances fold into m.buffs and applied blind) + db stub
+//                    getPadMap/setPadMap (poker's pad-map v2 dep; PGM has no pad prefs yet).
 //  1.18.0 2026-07-28 POKER PARITY SYNC v3.37.88→.94 — TEAMWORK FEATS + ENEMY CRITS + the tactics
 //                    brain. Synced mixins carry: 8 teamwork feats (Outflank/Lookout/Shake It Off/…)
 //                    with the pairing rule + inquisitor Solo Tactics; cavalier TACTICIAN shares one
@@ -492,6 +498,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.18.0';
-const HEADLINE = 'TEAMWORK FEATS arrive from poker: cavaliers drill the party with Tactician to share Outflank, Lookout, Shake It Off and more for the whole room — and enemies can finally land critical hits, so keep your healer close. New spells too, including Freedom of Movement.';
+const VERSION = '1.18.1';
+const HEADLINE = 'Theurge companions remember their whole spellbook again (they had been quietly stuck on cantrips), crossbow strikes at flyers now say so, and Power Attack stops sneaking onto ranged shots — Pathfinder says melee only.';
 module.exports = { VERSION, HEADLINE };

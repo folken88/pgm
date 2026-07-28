@@ -11,6 +11,7 @@ module.exports = {
   // Numpad manager (poker v3.37.93) — PGM has no per-player pad prefs yet, so
   // nothing is ever hidden; the padPick action exists but doesn't persist here.
   getHiddenPad() { return []; }, setHiddenPad() {},
+  getPadMap() { return {}; }, setPadMap() {},   // pad map v2 (poker v3.37.95) — no per-player pad prefs in PGM yet
   addXp() { return 0; }, setGear() {}, getGear() { return {}; },
   GEAR_SLOT_KEYS: ['weapon', 'armor', 'shield', 'ring', 'cloak'],
 };
