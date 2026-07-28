@@ -7,6 +7,10 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.18.2 2026-07-28 MANEUVERS = FIGHTER-TYPE ONLY (Tobias ruling, poker v3.37.96 pf1core refresh):
+//                    combat maneuvers belong to FULL-BAB classes; RANGER gains its missing Trip/
+//                    Disarm/Bull Rush/Grapple/Fight Defensively; casters/skirmishers never see them.
+//                    (The poker-side injection now re-runs AFTER the kits.generated override.)
 //  1.18.1 2026-07-28 POKER v3.37.95 FOLLOW-UP: bot THEURGE un-broken (heroAI guard checked the raw
 //                    class kit — KITS.theurge has an empty abilities[] — so theurge companions were
 //                    cantrip-locked; synced fix) + crossbow strikes say "with the crossbow" (synced)
@@ -498,6 +502,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.18.1';
-const HEADLINE = 'Theurge companions remember their whole spellbook again (they had been quietly stuck on cantrips), crossbow strikes at flyers now say so, and Power Attack stops sneaking onto ranged shots — Pathfinder says melee only.';
+const VERSION = '1.18.2';
+const HEADLINE = 'Rangers finally get their Trip, Disarm, Bull Rush and Grapple — maneuvers now follow the Pathfinder full-BAB rule. Plus: theurge companions remember their whole spellbook again (they had been quietly stuck on cantrips), crossbow strikes at flyers now say so, and Power Attack stops sneaking onto ranged shots — Pathfinder says melee only.';
 module.exports = { VERSION, HEADLINE };
