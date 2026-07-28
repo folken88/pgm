@@ -265,7 +265,7 @@ function spawnRoom(run, roll) {
       if (check >= en.stealth) { h.perceived.add(en.id); en.revealed = true; }
     });
   });
-  run.heroes.forEach(h => { h.flatFooted = !h.down && enemies.some(en => !h.perceived.has(en.id)); });
+  run.heroes.forEach(h => { h.flatFooted = !h.down && enemies.some(en => !h.perceived.has(en.id)) && !(run.shim._twkActive && run.shim._twkActive(h, 'lookout')); });   // LOOKOUT (teamwork): a paired watch is never surprised
   // NECESSARY skill check (Tobias 2026-07-12): the entry Perception roll grants
   // XP — full for spotting the ambush, 25% for being caught out. Once per room,
   // server-driven (not player-spammable). Stored now, paid at room clear.
@@ -287,7 +287,7 @@ function spawnRoom(run, roll) {
   // The tentacle field is the same shape of per-room shim state: poker clears it at
   // the same door, but PGM's shim only ever set it in the constructor — so a Black
   // Tentacles cast used to follow the party downstairs for the rest of the delve.
-  try { run.shim.invisPurged = false; run.shim.blackTentacles = null; } catch (_) {}
+  try { run.shim.invisPurged = false; run.shim.blackTentacles = null; run.shim._twkShare = null; } catch (_) {}   // Tactician's shared teamwork feat lapses between rooms (poker v3.37.92)
 
   const seen = enemies.filter(e => e.revealed);
   const hidden = enemies.filter(e => !e.revealed);
@@ -1134,7 +1134,7 @@ function searchRoom(run, roll = Math.random) {
     // The ambush is flushed — the fight this room always owed them (the room was
     // never counted as passed, so the eventual clear counts it exactly once).
     run._lurkers = null; run._seemsEmpty = false;
-    run.heroes.forEach(h => { h.flatFooted = !h.down && lurkers.some(en => !h.perceived.has(en.id)); });
+    run.heroes.forEach(h => { h.flatFooted = !h.down && lurkers.some(en => !h.perceived.has(en.id)) && !(run.shim._twkActive && run.shim._twkActive(h, 'lookout')); });   // LOOKOUT holds in an ambush too
     run.combatants = run.heroes.concat(lurkers);
     run.turnIndex = 0;
     run.round = 1;

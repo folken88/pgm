@@ -97,7 +97,7 @@ function slotsFor(cls, level, castMod = 0) {
   let base;
   if (FULL_PREPARED.has(cls))            base = _tableSlots(CLERIC_SLOTS_BY_LEVEL, level);
   else if (FOURTH_PREPARED.has(cls))     base = _tableSlots(PALADIN_SLOTS_BY_LEVEL, level);
-  else if (cls === 'inquisitor')         base = _tableSlots(INQ_SLOTS_BY_LEVEL, level);   // 6-level SPONTANEOUS divine, slower
+  else if (cls === 'inquisitor' || cls === 'magus') base = _tableSlots(INQ_SLOTS_BY_LEVEL, level);   // 6-level casters, same PF1 per-day table: inquisitor (spontaneous divine) + magus (PREPARED arcane). The magus was missing entirely → buildDefaultPrepared returned {} → castableKeys EMPTY → Reese's whole 23-spell book filtered out server-side, no Spellbook button, nothing (Josh, runs nimble-puffin/proud-waffle: "no spell book or access to a spell book… no chain lightening shot, no disintegrate")
   else if (SPONTANEOUS_CLASSES.has(cls)) base = _tableSlots(SORC_SLOTS_BY_LEVEL, level);
   else return null;
   // ABILITY-SCORE BONUS SPELLS — the caster's Int/Wis/Cha modifier grants extra spells
@@ -196,7 +196,7 @@ const SPELL = {
   charmperson:   { key: 'charmperson',   name: 'Charm Person',    icon: '💞', cost: 'pool', effect: 'charm', target: 'enemy', save: 'will', minLevel: 1, slvl: 1, sound: S.fascinate, desc: 'A living foe, Will save or CHARMED — it regards your party as friends and WON\'T attack you (it only tends its own side). A hit from your party snaps it out. No effect on the mindless (undead / constructs).' },
   shield:        { key: 'shield',        name: 'Shield',         icon: '🛡️', cost: 'pool', effect: 'buff', target: 'self', buff: { ac: 4 }, slvl: 1, sticky: true, sound: S.invoke, desc: 'A wall of force — +4 shield AC for the rest of the room.' },
   catsgrace:     { key: 'catsgrace',     name: "Cat's Grace",    icon: '🐈', cost: 'pool', effect: 'buff', target: 'ally', buff: { ac: 2, toHit: 1, dexMod: 1 }, slvl: 2, sticky: true, sound: S.invoke, desc: 'Feline-quick — one ally gets +2 AC and +1 ranged to-hit (Dex) for the rest of the room.' },
-  fly:           { key: 'fly',           name: 'Fly',            icon: '🪽', cost: 'pool', effect: 'buff', target: 'ally', fly: true, canHitFlyers: true, slvl: 3, sticky: true, sound: S.invis, desc: 'Take to the air, or send an ALLY aloft (Fly is a touch spell — Josh). Grounded foes cannot reach the flyer, and the flyer CAN close with airborne enemies. Lasts the room.' },
+  fly:           { key: 'fly',           name: 'Fly',            icon: '🪽', cost: 'pool', effect: 'buff', target: 'ally', fly: true, canHitFlyers: true, slvl: 3, sticky: true, sound: S.invis, desc: 'Take to the air, or send an ALLY aloft (Fly is a touch spell — Josh). Grounded foes cannot reach the flyer, and the flyer CAN close with airborne enemies — cast it on Freya or J\'Mal to send them up after the flying angels. Lasts the room.' },
   coneofcold:    { key: 'coneofcold',    name: 'Cone of Cold',   icon: '🥶', cost: 'pool', effect: 'aoe', target: 'aoe', randBase: 2, randDie: 3, save: 'reflex', die: 6, dice: 'level', dcap: 15, minLevel: 9, dtype: 'cold', slvl: 5, sound: S.coldcone, desc: 'A blast of frost engulfs 2+1d3 foes — Reflex for half (level d6).' },
   disintegrate:  { key: 'disintegrate',  name: 'Disintegrate',   icon: '☢️', cost: 'pool', effect: 'disintegrate', target: 'enemy', maxTargets: 1, save: 'fort', die: 6, dice: 'level', dcap: 20, minLevel: 11, dtype: 'force', slvl: 6, sound: S.disintegrate, desc: 'A thin green ray — ranged touch attack, then 2d6 per caster level (max 40d6). Fort partial: a made save still takes 5d6. Reduced to 0 HP → disintegrated to dust.' },
   firesnake:     { key: 'firesnake',     name: 'Fire Snake',     icon: '🐍', cost: 'pool', effect: 'aoe', target: 'aoe', maxTargets: 4, save: 'reflex', die: 6, dice: 'level', dcap: 15, minLevel: 7, dtype: 'fire', slvl: 5, sounds: FIREBALL_SFX, desc: 'A serpent of flame weaves through up to 4 foes — 1d6 fire per caster level (max 15d6), Reflex for half.' },
@@ -208,6 +208,29 @@ const SPELL = {
   // ── 4th-level ──
   blacktentacles: { key: 'blacktentacles', name: 'Black Tentacles', icon: '🦑', effect: 'blacktentacles', target: 'aoe', slvl: 4, sound: '/audio/kraken_crush.mp3', desc: 'Writhing tentacles erupt across the room — EACH ROUND they grapple a random 1d4+1 foes (CMB vs CMD); the grappled are helpless until they tear free. Lasts the room.' },
   infernalhealgreater: { key: 'infernalhealgreater', name: 'Infernal Healing, Greater', icon: '🩸', effect: 'infernalheal', target: 'ally', heal: 4, sticky: true, slvl: 4, sound: S.cure, desc: 'Diabolic ichor knits the ally with the LEAST HP (or the caster, if everyone is at full health) — fast healing 4 (heals 4 HP at the start of each of their turns) for the rest of the room.' },
+  freedommove:   { key: 'freedommove',   name: 'Freedom of Movement', icon: '🕊️', effect: 'freedommove', target: 'ally', slvl: 4, sticky: true, sound: S.invoke, desc: 'Nothing can bind the target: grapples, chain-hooks and holds simply slip off — one impediment shrugged per round of freedom (caster-level rounds this room). Casting it on a grappled ally frees them at once. THE counter to grapple rooms (the Gearsman Scrapers).' },
+  // ── SPELL-ADAPTATION BATCH 1 (v3.37.85, Tobias: "low hanging fruit" from CRB +
+  //    Ultimate Magic) — 18 spells expressible with EXISTING effect handlers (plus
+  //    three one-line save_debuff arms: shaken / blinded / dazed). Class levels are
+  //    the REAL PF1 lists, read from the content DB (PZO1110 / PZO1117). ──
+  doom:          { key: 'doom',          name: 'Doom',            icon: '🥀', effect: 'save_debuff', debuff: 'shaken', save: 'will', target: 'enemy', slvl: 1, sound: S.umbral, desc: 'A dread word saps a foe\'s nerve — Will save or SHAKEN (−2 to hit and damage) for the fight\'s opening.' },
+  rayenfeeble:   { key: 'rayenfeeble',   name: 'Ray of Enfeeblement', icon: '🦴', effect: 'save_debuff', debuff: 'shaken', save: 'fort', target: 'enemy', slvl: 1, sound: S.umbral, desc: 'A black ray saps a foe\'s strength — Fortitude save or its blows weaken (−2 to hit and damage).' },
+  enlargeperson: { key: 'enlargeperson', name: 'Enlarge Person',  icon: '🦣', effect: 'buff', target: 'ally', buff: { dmg: 2 }, slvl: 1, sticky: true, sound: S.invoke, desc: 'One ally grows a size category — heavier blows (+2 damage) for the rest of the room. Put it on the fighter.' },
+  blindness:     { key: 'blindness',     name: 'Blindness',       icon: '🙈', effect: 'save_debuff', debuff: 'blinded', save: 'fort', target: 'enemy', slvl: 2, sound: S.umbral, desc: 'Fortitude save or STRUCK BLIND — −4 to hit and denied its Dex (easier to hit, Sneak-Attackable) for caster-level rounds.' },
+  dazemonster:   { key: 'dazemonster',   name: 'Daze Monster',    icon: '💫', effect: 'save_debuff', debuff: 'dazed', save: 'will', target: 'enemy', slvl: 2, sound: S.invoke, desc: 'Will save or DAZED — the creature loses its next turn outright. Cheap, reliable turn-denial.' },
+  falselife:     { key: 'falselife',     name: 'False Life',      icon: '🫀', effect: 'buff', target: 'self', buff: { conHp: 1 }, slvl: 2, sticky: true, sound: S.umbral, desc: 'Necromantic vigor — the caster gains temporary HP (+1 per level) for the rest of the room.' },
+  flameblade:    { key: 'flameblade',    name: 'Flame Blade',     icon: '🗡️', effect: 'touch', die: 8, dice: 'halflevel', dcap: 10, dtype: 'fire', target: 'enemy', slvl: 2, sound: S.fire, desc: 'A scimitar of pure fire — a touch attack for ½level d8 FIRE (max 10d8).' },
+  stinkingcloud: { key: 'stinkingcloud', name: 'Stinking Cloud',  icon: '🤢', effect: 'save_debuff', debuff: 'sickened', save: 'fort', target: 'enemy', slvl: 3, desc: 'A choking miasma envelops one foe — Fortitude save or NAUSEATED: retching, losing turns while it lingers.' },
+  magicvestment: { key: 'magicvestment', name: 'Magic Vestment',  icon: '🥋', effect: 'buff', target: 'ally', buff: { ac: 3 }, slvl: 3, sticky: true, sound: S.invoke, desc: 'An ally\'s armor drinks in enchantment — +3 AC for the rest of the room.' },
+  sleetstorm:    { key: 'sleetstorm',    name: 'Sleet Storm',     icon: '🌨️', effect: 'grease', target: 'aoe', randN: 2, randDie: 4, save: 'reflex', slvl: 3, sound: S.gust, desc: 'Driving ice sheets the ground — a RANDOM 2d4 foes save Reflex or slip PRONE.' },
+  forcepunch:    { key: 'forcepunch',    name: 'Force Punch',     icon: '👊', effect: 'forcepush', target: 'enemy', slvl: 3, sound: S.gust, desc: 'A fist of pure force SLAMS a foe backward — every melee ally who can act gets a FREE attack against it as it reels. You forgo your own strike.' },
+  airwalk:       { key: 'airwalk',       name: 'Air Walk',        icon: '🌤️', effect: 'buff', target: 'ally', buff: {}, fly: true, canHitFlyers: true, slvl: 4, sticky: true, sound: S.invoke, desc: 'One ally treads the air itself — airborne for the room: grounded foes can\'t reach them, and they CAN close with flyers. The divine answer to Fly.' },
+  divinepower:   { key: 'divinepower',   name: 'Divine Power',    icon: '⚡', effect: 'buff', target: 'self', buff: { toHit: 4, dmg: 4, conHp: 1 }, slvl: 4, sticky: true, sound: S.charge, desc: 'The caster channels their god\'s might — +4 to hit, +4 damage and +1 temporary HP per level for the rest of the room. The battle-cleric switch.' },
+  icestorm:      { key: 'icestorm',      name: 'Ice Storm',       icon: '🧊', effect: 'aoe', target: 'aoe', maxTargets: 4, save: 'reflex', die: 6, dice: 5, dtype: 'cold', slvl: 4, sound: S.coldcone, desc: 'Fist-sized hail hammers up to 4 foes — 5d6 COLD, Reflex for half.' },
+  shout:         { key: 'shout',         name: 'Shout',           icon: '📢', effect: 'aoe', target: 'aoe', maxTargets: 3, save: 'fort', die: 6, dice: 5, dtype: 'sonic', slvl: 4, sound: '/audio/draugr_shout03_burning.mp3', desc: 'A devastating sonic BOOM staggers up to 3 foes — 5d6 SONIC, Fortitude for half.' },
+  unholyblight:  { key: 'unholyblight',  name: 'Unholy Blight',   icon: '☠️', effect: 'aoe', target: 'aoe', maxTargets: 2, save: 'will', die: 8, dice: 'halflevel', dcap: 5, dtype: 'unholy', slvl: 4, sound: S.umbral, desc: 'A cold cloud of evil sears 2 foes — Will for half (½level d8). The dark mirror of Holy Smite; it bites hardest against the Heavenly Host.' },
+  callstorm:     { key: 'callstorm',     name: 'Call Lightning Storm', icon: '⛈️', effect: 'aoe', target: 'aoe', maxTargets: 3, save: 'reflex', die: 6, dice: 'level', dcap: 15, dtype: 'electricity', slvl: 5, sound: null, desc: 'The sky itself opens — bolts hammer up to 3 foes for level d6 ELECTRICITY (max 15d6), Reflex for half.' },
+  righteousmight:{ key: 'righteousmight',name: 'Righteous Might', icon: '💪', effect: 'buff', target: 'self', buff: { toHit: 2, dmg: 4, ac: 2 }, slvl: 5, sticky: true, sound: S.charge, desc: 'The caster swells into a giant of the faith — +2 to hit, +4 damage, +2 AC for the rest of the room.' },
   invisgreater:  { key: 'invisgreater',  name: 'Invisibility, Greater', icon: '🫥', img: '/dungeon/buffs/invisible.webp', effect: 'invisible', greater: true, target: 'ally', slvl: 4, sound: S.invis, desc: 'Total concealment for the whole fight — you STAY invisible even when you attack. Cast it on a rogue ally and they Sneak Attack every foe that cannot see them.' },
   riverofwind:   { key: 'riverofwind',   name: 'River of Wind',  icon: '🌬️', effect: 'grease', target: 'aoe', randN: 3, randDie: 4, save: 'fort', slvl: 4, sound: S.gust, desc: 'A roaring torrent of air bowls over a RANDOM 3d4 foes — Fortitude save or be knocked prone.' },
   // ── 5th-level ──
@@ -229,7 +252,10 @@ const SPELL = {
   bladeddash:    { key: 'bladeddash',    name: 'Bladed Dash',    icon: '💨', effect: 'bladeddash', target: 'enemy', slvl: 2, sound: S.haste, desc: 'Dash through the fray with a single deadly cut — strike one foe, then you become UNTARGETABLE (no attack, buff, or heal can reach you) until your next turn.' },
   displacement:  { key: 'displacement',  name: 'Displacement',   icon: '🌫️', effect: 'buff', target: 'self', displace: true, sticky: true, slvl: 3, sound: S.invis, desc: 'Your form blurs and slips aside — 50% of attacks that would hit you MISS instead, for the rest of the room.' },
   fireshield:    { key: 'fireshield',    name: 'Fire Shield',    icon: '🔥', effect: 'buff', target: 'self', fireShield: true, sticky: true, slvl: 4, sound: S.invoke, desc: 'Wreathe yourself in flame — any foe that hits you in melee is scorched for 1d6 + level fire. Lasts the room.' },
-  elementalbody: { key: 'elementalbody', name: 'Elemental Body',  icon: '🌪️', effect: 'buff', target: 'self', elemBody: true, sticky: true, slvl: 4, sound: S.invoke, desc: 'Become a being of raw element — IMMUNE to critical hits and to paralysis, stun, sickening & blinding, for the rest of the room.' },
+  // v3.37.88: enemy crits EXIST now (Josh's ask), so Elemental Body's crit immunity
+  // is back and REAL — enforced via opts.critImmune in _monsterSwing. Desc = the
+  // enforced set, nothing more (the .86 honesty rule).
+  elementalbody: { key: 'elementalbody', name: 'Elemental Body',  icon: '🌪️', effect: 'buff', target: 'self', elemBody: true, sticky: true, slvl: 4, sound: S.invoke, desc: 'Become a being of raw element — IMMUNE to critical hits, paralysis and hold, stun, sickening & blinding, for the rest of the room.' },
   dimensionalblade: { key: 'dimensionalblade', name: 'Dimensional Blade', icon: '🗡️', effect: 'dimensionalblade', target: 'self', freeAction: true, slvl: 5, sound: S.anchor, desc: 'Fold your weapon a half-step out of phase — a FREE action: your strikes resolve as TOUCH attacks (ignoring armor & natural armor) for 1 round.' },
   chainlightning:{ key: 'chainlightning',name: 'Chain Lightning', icon: '⚡', effect: 'aoe', target: 'aoe', maxTargets: 10, randBase: 4, randDie: 6, save: 'reflex', die: 6, dice: 'level', dcap: 15, dtype: 'electricity', slvl: 6, sound: null, desc: 'A bolt forks from foe to foe — 4 + 1d6 enemies (5–10), Reflex for half (level d6, cap 15d6).' },   // no fixed sound → rotates through the SND.lightning playlist like Lightning Bolt (Tobias 2026-07-03; the Hetfield one-off stays on Storm of Vengeance)
   dispelmagicgreater: { key: 'dispelmagicgreater', name: 'Dispel Magic, Greater', icon: '🌀', effect: 'cleanse', greater: true, target: 'ally', slvl: 6, sound: S.dispel, desc: 'A sweeping unweaving — end ALL hostile SPELL effects on an ally (hold, slow, magical blindness), or tear every buff off a foe. Physical conditions stay (PF1).' },
@@ -397,6 +423,7 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     { key: 'searinglight', name: 'Searing Light',        icon: '🔆', cost: 'room', uses: 1, slvl: 3, minLevel: 5, effect: 'touch', target: 'enemy', die: 8, dice: 'halflevel', dcap: 5, searing: true, dtype: 'holy', sound: S.searing, desc: 'A ray of divine light — ranged touch. 1d8 per 2 levels (max 5d8); UNDEAD take 1d6 per level (max 10d6), and light-vulnerable undead (vampires) 1d8 per level (max 10d8); a construct/object takes only 1d6 per 2 levels (max 5d6). (PF1)' },
     { key: 'cureserious',  name: 'Cure Serious Wounds',  icon: '💚', cost: 'room', uses: 1, slvl: 3, minLevel: 5, effect: 'heal', heal: 'single', healDice: 3, healCap: 15, target: 'ally', sound: S.cure, desc: 'Heal the most-hurt ally — 3d8 + caster level (max +15). Once per room.' },
     { key: 'dispelmagic',  name: 'Dispel Magic',         icon: '🌀', cost: 'room', uses: 1, slvl: 3, minLevel: 5, effect: 'cleanse', target: 'ally', sound: S.dispel, desc: 'End hostile SPELL effects on an ally (hold, slow, magical blindness) — or strip a buff off a foe. Physical grapple/stun/sickness are beyond it (PF1).' },
+    preparedSpell(SPELL.invisibilitypurge, 5),   // 3rd-level prayer — reveal every invisible foe for the party + lock out re-vanishing
     { ...SPELL.greatermagicweapon, cost: 'room', uses: 1, minLevel: 5 },   // craft priests' team buff: party weapons +1/4 levels (max +5)
     // ── 4th-level prayers ──
     { key: 'curecritical', name: 'Cure Critical Wounds', icon: '💚', cost: 'room', uses: 1, slvl: 4, minLevel: 7, effect: 'heal', heal: 'single', healDice: 4, healCap: 20, target: 'ally', sound: S.cure, desc: 'Heal the most-hurt ally — 4d8 + caster level (max +20). Once per room.' },
@@ -431,6 +458,7 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     preparedSpell(SPELL.darkness,      3),
     preparedSpell(SPELL.invisibility,  3),
     preparedSpell(SPELL.glitterdust,   3),
+    preparedSpell(SPELL.seeinvisibility, 3),
     preparedSpell(SPELL.aciddart,      3),
     preparedSpell(SPELL.scorchingray,  3),
     preparedSpell(SPELL.holdperson,    5),   // arcane Hold Person is a 3RD-level spell (divine casters get it at 2nd) — 3rd-level slots arrive at wizard 5
@@ -499,6 +527,7 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     spontaneousSpell(SPELL.aciddart,     4),
     spontaneousSpell(SPELL.gustofwind,   4),
     spontaneousSpell(SPELL.glitterdust,  4),
+    spontaneousSpell(SPELL.seeinvisibility, 4),
     spontaneousSpell(SPELL.scorchingray, 4),
     spontaneousSpell(SPELL.catsgrace,    4),
     spontaneousSpell(SPELL.dispelmagic,  6),
@@ -586,6 +615,7 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     preparedSpell(SPELL.bladeddash,   4),
     preparedSpell(SPELL.glitterdust,  4),
     preparedSpell(SPELL.mirrorimage,  4),
+    preparedSpell(SPELL.seeinvisibility, 4),
     preparedSpell(SPELL.scorchingray, 4),
     // 3rd level (character level 7)
     preparedSpell(SPELL.displacement, 7),
@@ -634,6 +664,8 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     { key: 'dispelmagic',   name: 'Dispel Magic',         icon: '🌀', cost: 'slot', slvl: 3, minLevel: 7, effect: 'cleanse', target: 'ally', sound: S.dispel, desc: 'End hostile SPELL effects on an ally (hold, slow, magical blindness) — or strip a buff off a foe. Physical grapple/stun/sickness are beyond it (PF1).' },
     { key: 'prayer',        name: 'Prayer',               icon: '📿', cost: 'slot', slvl: 3, minLevel: 7, effect: 'buff', target: 'self', party: true, buff: { toHit: 1, dmg: 1, save: 1 }, enemyPenalty: 1, sticky: true, sound: S.prayer, desc: 'ALL allies +1 to hit, damage & saves; ALL enemies −1, for the rest of the room.' },
     { key: 'searinglight',  name: 'Searing Light',        icon: '🔆', cost: 'slot', slvl: 3, minLevel: 7, effect: 'touch', target: 'enemy', die: 8, dice: 'halflevel', dcap: 5, dtype: 'holy', sound: S.searing, desc: 'A ray of divine light — ranged touch for ½level d8 (extra vs undead).' },
+    spontaneousSpell(SPELL.seeinvisibility, 4),    // 2nd level — the inquisitor's early counter to invisible foes
+    spontaneousSpell(SPELL.invisibilitypurge, 7),  // 3rd level — reveal the whole room + lock out re-vanishing
     // 4th level (slots from L10)
     { key: 'curecritical',  name: 'Cure Critical Wounds', icon: '💚', cost: 'slot', slvl: 4, minLevel: 10, effect: 'heal', heal: 'single', healDice: 4, healCap: 20, target: 'ally', sound: S.cure, desc: 'Heal the most-hurt ally — 4d8 + caster level (max +20).' },
     { key: 'holysmite',     name: 'Holy Smite',           icon: '🌟', cost: 'slot', slvl: 4, minLevel: 10, effect: 'aoe', target: 'aoe', maxTargets: 2, save: 'will', die: 8, dice: 'halflevel', dcap: 5, dtype: 'holy', sound: S.sunstrike, desc: 'Searing light scourges 2 foes — Will for half (½level d8).' },
@@ -674,6 +706,7 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
     { key: 'goodhope',  name: 'Good Hope',       icon: '🌟', cost: 'slot', slvl: 3, minLevel: 7, effect: 'buff', target: 'self', party: true, buff: { toHit: 2, dmg: 2, save: 2 }, sticky: true, sound: S.bardsong, desc: 'Fill the party with hope — all allies get +2 to hit, damage, and saves for the rest of the room.' },
     { key: 'heroism',   name: 'Heroism',         icon: '🦸', cost: 'slot', slvl: 3, minLevel: 7, effect: 'buff', target: 'ally', buff: { toHit: 2, save: 2 }, sticky: true, sound: S.invoke, desc: 'One ally becomes heroic — +2 to hit and +2 to saves for the rest of the room.' },
     { key: 'dispelmagic', name: 'Dispel Magic',  icon: '🌀', cost: 'slot', slvl: 3, minLevel: 7, effect: 'cleanse', target: 'ally', sound: S.dispel, desc: 'End hostile SPELL effects on an ally (hold, slow, magical blindness) — or strip a buff off a foe. Physical grapple/stun/sickness are beyond it (PF1).' },
+    { ...SPELL.seeinvisibility, cost: 'slot', minLevel: 7 },   // bard 3rd — find & strike invisible foes (no mirror-image pierce)
     spontaneousSpell(SPELL.dominateperson, 13),   // Dominate Phase A (2026-07-03): bard 5th, turns a foe against its own
     spontaneousSpell(SPELL.heroismgreater, 13),   // wave-2 expansion (2026-07-03)
     spontaneousSpell(SPELL.masssuggestion, 16),
@@ -914,13 +947,13 @@ for (const _ck of ['swashbuckler', 'rogue']) {
   }
 }
 
-// ── SEE INVISIBILITY + INVISIBILITY PURGE (2026-07-14, poker parity) ───────────────
-// Counters to enemy invisibility. In the SPELL registry + hand-coded fallback above, but
-// NOT in the content DB yet — so inject AFTER the generated-kit override, exactly like the
-// magus/rogue/Olbryn re-attachments. IDEMPOTENT: skips a class that already has the spell,
-// so it no-ops the moment the DB regen carries them. See Invisibility (2nd) beats the
-// invisible concealment miss but NOT mirror image; Invisibility Purge (3rd) reveals the
-// whole room — allies included — and nothing can re-vanish.
+// ── SEE INVISIBILITY + INVISIBILITY PURGE (2026-07-14) ─────────────────────────────
+// Counters to enemy invisibility (Josh/Tobias). They ARE in the SPELL registry + the
+// hand-coded fallback above, but the content DB doesn't carry them yet — so inject AFTER
+// the generated-kit override, exactly like the magus/rogue/Olbryn re-attachments. The
+// guard makes it IDEMPOTENT: it skips a class that already has the spell, so it silently
+// no-ops the moment the DB regen picks them up. See Invisibility (2nd) beats the invisible
+// concealment miss but NOT mirror image; Invisibility Purge (3rd) reveals the whole room.
 // TODO: migrate into kit_abilities on the next DB regen, then delete this block.
 const _injectKitSpell = (cls, entry) => {
   const _k = KITS[cls];
@@ -932,16 +965,77 @@ _injectKitSpell('magus',      preparedSpell(SPELL.seeinvisibility, 4));
 _injectKitSpell('sorcerer',   spontaneousSpell(SPELL.seeinvisibility, 4));
 _injectKitSpell('inquisitor', spontaneousSpell(SPELL.seeinvisibility, 4));
 _injectKitSpell('bard',       spontaneousSpell(SPELL.seeinvisibility, 7));
+// THEURGE AT-WILL = the caster cantrip (v3.37.92 — run dapper-marmot: Celeb, a
+// 64-HP full caster, spent rounds 6-8 WHIFFING melee at an AC-31 boss because his
+// at-will was the cleric's hammer swing. A dual-school archmage throws rays: the
+// wizard's at-will cantrip (ranged TOUCH — hits the witch on a ~3+) replaces it.
+// KITS.theurge doesn't exist (Celeb's ability list is built by theurgeKit() in the
+// dungeon layer; kitFor('theurge') fell back to the DEFAULT weapon kit — hence the
+// hammer). Give the theurge a real kit entry whose at-will is the caster cantrip.
+if (!KITS.theurge) KITS.theurge = { atwill: KITS.wizard.atwill, note: 'Dual-school theurge — spells via his curated arcane+divine book.', abilities: [] };
+else if (KITS.wizard && KITS.wizard.atwill) KITS.theurge.atwill = KITS.wizard.atwill;
 _injectKitSpell('cleric',     preparedSpell(SPELL.invisibilitypurge, 5));
 _injectKitSpell('inquisitor', spontaneousSpell(SPELL.invisibilitypurge, 7));
+// Freedom of Movement (4th-level divine) — Josh 2026-07-22, run lucky-puffin: "I don't
+// even think I've seen freedom of movement anywhere on spell lists." He was right — it
+// existed only as the Liberation domain's auto pool. Now castable: cleric (prepared,
+// 4th-level prayers at L7) + inquisitor (spontaneous, 4th-level at L10). The theurge
+// inherits the cleric list automatically.
+_injectKitSpell('cleric',     preparedSpell(SPELL.freedommove, 7));
+_injectKitSpell('inquisitor', spontaneousSpell(SPELL.freedommove, 10));
+// ── SPELL-ADAPTATION BATCH 1 (v3.37.85) — class lists straight from the content
+//    DB (CRB PZO1110 + UM PZO1117); minLevel = when that class reaches the slot
+//    level (full prepared: 2×slvl−1; sorcerer: 2×slvl; bard/inquisitor 6-level:
+//    1/4/7/10/13). The theurge inherits the cleric list automatically. ──
+_injectKitSpell('cleric',     preparedSpell(SPELL.doom, 1));
+_injectKitSpell('inquisitor', spontaneousSpell(SPELL.doom, 1));
+_injectKitSpell('wizard',     preparedSpell(SPELL.rayenfeeble, 1));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.rayenfeeble, 2));
+_injectKitSpell('wizard',     preparedSpell(SPELL.enlargeperson, 1));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.enlargeperson, 2));
+_injectKitSpell('wizard',     preparedSpell(SPELL.blindness, 3));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.blindness, 4));
+_injectKitSpell('bard',       spontaneousSpell(SPELL.blindness, 4));
+_injectKitSpell('cleric',     preparedSpell({ ...SPELL.blindness, slvl: 3 }, 5));   // cleric gets it a level later (PF1)
+_injectKitSpell('wizard',     preparedSpell(SPELL.dazemonster, 3));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.dazemonster, 4));
+_injectKitSpell('bard',       spontaneousSpell(SPELL.dazemonster, 4));
+_injectKitSpell('wizard',     preparedSpell(SPELL.falselife, 3));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.falselife, 4));
+_injectKitSpell('druid',      preparedSpell(SPELL.flameblade, 3));
+_injectKitSpell('wizard',     preparedSpell(SPELL.stinkingcloud, 5));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.stinkingcloud, 6));
+_injectKitSpell('cleric',     preparedSpell(SPELL.magicvestment, 5));
+_injectKitSpell('inquisitor', spontaneousSpell(SPELL.magicvestment, 7));
+_injectKitSpell('druid',      preparedSpell(SPELL.sleetstorm, 5));
+_injectKitSpell('wizard',     preparedSpell(SPELL.sleetstorm, 5));
+_injectKitSpell('wizard',     preparedSpell(SPELL.forcepunch, 5));
+_injectKitSpell('magus',      preparedSpell(SPELL.forcepunch, 7));   // UM magus 3rd-level
+_injectKitSpell('cleric',     preparedSpell({ ...SPELL.airwalk, slvl: 4 }, 7));
+_injectKitSpell('druid',      preparedSpell({ ...SPELL.airwalk, slvl: 4 }, 7));
+_injectKitSpell('cleric',     preparedSpell({ ...SPELL.divinepower, slvl: 4 }, 7));
+_injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.divinepower, slvl: 4 }, 10));
+_injectKitSpell('druid',      preparedSpell(SPELL.icestorm, 7));
+_injectKitSpell('wizard',     preparedSpell(SPELL.icestorm, 7));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.icestorm, 8));
+_injectKitSpell('bard',       spontaneousSpell(SPELL.shout, 10));
+_injectKitSpell('wizard',     preparedSpell(SPELL.shout, 7));
+_injectKitSpell('sorcerer',   spontaneousSpell(SPELL.shout, 8));
+_injectKitSpell('cleric',     preparedSpell({ ...SPELL.unholyblight, slvl: 4 }, 7));
+_injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.unholyblight, slvl: 4 }, 10));
+_injectKitSpell('druid',      preparedSpell({ ...SPELL.callstorm, slvl: 5 }, 9));
+_injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }, 9));
+_injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.righteousmight, slvl: 5 }, 13));
 
-// ── FLY IS A TOUCH SPELL — kit-copy normalization (2026-07-16, ported from poker v3.37.63) ──
-// SPELL.fly says target:'ally' (the poker v3.37.55 mirror), but kits.generated.js bakes its
-// own copies of every entry and those still said target:'self' — the same override trap as
-// See Invisibility. Josh (poker, playing Draymus): "It gave me no option to apply it to
-// anyone else but myself." Normalize every kit-borne Fly in place, keeping each kit's own
-// cost/uses/minLevel; this also un-blocks the AI fly-an-ally branch (filters on target:'ally').
-// Idempotent — a regen'd DB entry that already says 'ally' passes through unchanged.
+// ── FLY IS A TOUCH SPELL — kit-copy normalization (2026-07-16) ─────────────────────
+// v3.37.55 fixed SPELL.fly to target:'ally' (castable on allies, canHitFlyers), but the
+// generated kits bake their OWN copies of every entry, and those still said
+// target:'self' — so the fix never reached actual play. Same override trap as See
+// Invisibility (v3.37.51). Josh, playing Draymus: "It gave me no option to apply it to
+// anyone else but myself." Normalize every kit-borne Fly in place, keeping each kit's
+// own cost/uses/minLevel; this also un-blocks the AI fly-an-ally branch, which looks
+// for target:'ally' and could never fire. Idempotent: a regen'd DB entry that already
+// says 'ally' passes through unchanged.
 // TODO: fix the entries in kit_abilities on the next DB regen, then delete this block.
 for (const _k of Object.values(KITS)) {
   if (!_k || !Array.isArray(_k.abilities)) continue;
@@ -999,7 +1093,7 @@ if (KITS.wizard && Array.isArray(KITS.wizard.abilities)) {
 if (KITS.cleric && Array.isArray(KITS.cleric.abilities)) {
   KITS.cleric.abilities.push(
     { key: 'forcepush', name: 'Force Push', icon: '🌬️', cost: 'room', uses: 3, effect: 'forcepush', target: 'enemy', sound: S.gust, char: 'Jason',
-      desc: 'Shove a foe with the Force Pike — every melee ally with their weapon OUT (they melee\'d within the last round) gets a FREE attack against it. You forgo your own strike. 3× per room.' },
+      desc: 'Shove a foe with the Force Pike — every melee ally who can act (not held, stunned, or asleep) gets a FREE attack against it. You forgo your own strike. 3× per room.' },
     // JASON'S SUMMON DEVIL line (Cleric of Asmodeus) — the infernal mirror of Draymus's
     // Summon Undead. Char-gated; leveled spells, so the prepared→slot conversion below turns
     // them into proper cleric-slot casts. minLevel = 2N−1 (the char level a cleric first casts

@@ -23,7 +23,7 @@ const { babFor, weaponProficient, NON_PROFICIENT_PENALTY } = require('../../pf1d
 const { crToNum, SIZE_RANK, SIZE_NAME, MONK_SFX } = require('../../pf1data/monsters');
 const RACES = require('../../pf1data/races');
 const { DOMAINS, maxDomainsFor } = require('../../pf1data/domains');
-const { fighterFeats } = require('../../pf1data/feats');
+const { fighterFeats, teamworkGrants, TEAMWORK } = require('../../pf1data/feats');
 const loadouts = require('../../pf1data/loadouts');
 const banter = require('../../bot/banter');
 
@@ -93,11 +93,19 @@ const STUDIED_TARGET = { key: 'studiedtarget', name: 'Studied Target', icon: '�
 // +your cavalier level in DAMAGE this room (applied in _swingVsAC via challengedId/
 // challengeN). A ROOM-cost ability (uses scale: 1 + 1 per 4 levels), so it's a
 // limited, focused kill-order (unlike the slayer's at-will Studied Target).
-const CHALLENGE = { key: 'challenge', name: 'Challenge', icon: '⚔️', cost: 'room', uses: (lvl) => 1 + Math.floor(((lvl || 1) - 1) / 4), effect: 'challenge', target: 'enemy', freeAction: true, sound: '/audio/taunt_predator.mp3', desc: 'SWIFT ACTION — name ONE foe your quarry, then STILL attack (or act) the same turn: every strike you land on it this room deals +your level in bonus damage. PF1: Challenge is a swift action. Uses per room = 1 + 1 per 4 levels.' };
+const CHALLENGE = { key: 'challenge', name: 'Challenge', icon: '⚔️', cost: 'room', uses: (lvl) => ((lvl || 1) >= 4 ? 2 + Math.floor(((lvl || 1) - 4) / 3) : 1), effect: 'challenge', target: 'enemy', freeAction: true, sound: '/audio/taunt_predator.mp3', desc: 'SWIFT ACTION — name ONE foe your quarry, then STILL attack (or act) the same turn: every strike you land on it this room deals +your level in bonus damage. While your challenge stands you take −2 AC against everyone EXCEPT your quarry (PF1). Uses per room: 1, +1 at level 4 and every 3 levels after (RAW).' };
 // ORDER OF THE FLAME (Lord Gweyir) — a FREE, unlimited challenge-and-strike in one. Char-gated;
 // applies his CURRENT glory stack (+2×N damage / −2×N AC), then attacks; a KILL grows the stack
 // for next turn. Chain kills (fodder is fair game!) to pump it, then unleash on a real threat.
-const GLORIOUS_CHALLENGE = { key: 'gloriouschallenge', name: 'Glorious Challenge', icon: '🔥', cost: 'free', effect: 'gloriouschallenge', target: 'enemy', sound: '/audio/draugr_shout03_burning.mp3', char: 'Lord Gweyir', desc: 'ORDER OF THE FLAME: SELECT a foe, then Glorious Challenge to challenge it AND strike at once. Deals +2 damage / takes −2 AC per KILL you\'ve strung together this room (it compounds). Drop the foe and the bonus grows for next turn. Free & unlimited — pick off the weak to build the Flame, then loose it on the mighty.' };
+const GLORIOUS_CHALLENGE = { key: 'gloriouschallenge', name: 'Glorious Challenge', icon: '🔥', cost: 'free', effect: 'gloriouschallenge', target: 'enemy', sound: '/audio/draugr_shout03_burning.mp3', char: 'Lord Gweyir', desc: 'ORDER OF THE FLAME (PF1 RAW): SELECT a foe, then Glorious Challenge to challenge it AND strike at once. Each glorious challenge ISSUED this streak: +2 morale damage and −2 AC, compounding — your third in a row is +6 damage, −6 AC, on top of the base challenge\'s +level damage. Chain kills to keep it burning; the play is to build the Flame on the chaff and spend the damage on the boss. Current streak lives on the L readout; every kill announces your NEXT challenge\'s numbers. Free, unlimited, does not spend your Challenge uses.' };
+// TACTICIAN (all cavaliers — reworked v3.37.92 to PF1 RAW, Tobias: "function like a
+// buff that the cavalier can grant… he chooses which one he shares… lasts the rest
+// of that room"): a standard action that SHARES one of the cavalier's own teamwork
+// feats with the WHOLE party for the room (everyone counts as having it — see
+// _twkActive's share check). Auto-picks his best by priority; an explicit
+// payload.featKey wins (the choose-a-feat picker UI rides on this). Uses 1/2/3 at
+// L1/9/17 (PF1's per-day, per-room here).
+const TACTICIAN = { key: 'tactician', name: 'Tactician: Share a Teamwork Feat', icon: '🚩', cost: 'room', uses: (lvl) => ((lvl || 1) >= 17 ? 3 : (lvl || 1) >= 9 ? 2 : 1), effect: 'tactician', target: 'self', sound: '/audio/spell_buff_invoke.mp3', desc: 'PF1 Tactician — spend a turn drilling the party: ONE of YOUR teamwork feats is shared with every ally for the rest of the room (they count as having it, no partner needed). The share is announced with what the feat does. Your best is picked automatically for now; a chooser is coming.' };
 // ORDER OF THE FLAME order ability — BLAZE OF GLORY (L15). PF1: a standard action for Cha-mod
 // rounds granting +4 to attack (among movement perks that don't apply on the abstract grid);
 // modeled here as a once-per-room self-buff of +4 to hit for the rest of the room. Char-gated +
@@ -268,7 +276,8 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       const grapCMB = (m.grappleCMB != null) ? m.grappleCMB : (m.grappledCL || 0);
       const dc = 10 + grapCMB + slvl;
       const cc = fighterFeats(m.cls, m.level, this._isRanged(m)).combatCasting ? 4 : 0;
-      const bonus = (m.level || 1) + (m.castingMod != null ? m.castingMod : CAST_MOD) + cc;
+      const shielded = this._twkActive(m, 'shieldedcaster') ? 4 : 0;   // SHIELDED CASTER (teamwork, v3.37.91): allies cover the casting
+      const bonus = (m.level || 1) + (m.castingMod != null ? m.castingMod : CAST_MOD) + cc + shielded;
       const roll = dRoll(20), total = roll + bonus;
       if (total < dc) {
         if (ab.cost === 'pool') m.spellPool = Math.max(0, (m.spellPool || 0) - 1);
@@ -326,6 +335,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       forcepush:   () => this._abForcePush(m, ab, payload),
       studytarget: () => this._abStudyTarget(m, ab, payload),
       challenge: () => this._abChallenge(m, ab, payload),
+      tactician: () => this._abTactician(m, ab, payload),
       gloriouschallenge: () => this._abGloriousChallenge(m, ab, payload),
       masscharm:   () => this._abMassCharm(m, ab, payload),
       exhaust:     () => this._abExhaust(m, ab, payload),
@@ -567,7 +577,17 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     const kit = kitFor(m.cls).abilities;
     let list = (m._domPowers && m._domPowers.length) ? kit.concat(m._domPowers) : kit;
     if (m.cls === 'slayer') list = list.concat(STUDIED_TARGET);   // SLAYER: swift Studied Target mark (ACG)
-    if (m.cls === 'cavalier') list = list.concat(CHALLENGE, GLORIOUS_CHALLENGE, BLAZE_OF_GLORY);   // CAVALIER: the Challenge oath (+level damage vs one foe); GLORIOUS_CHALLENGE + BLAZE_OF_GLORY (L15) are char-gated (Lord Gweyir / Order of the Flame) via _charAllows
+    if (m.cls === 'cavalier') {
+      list = list.concat(CHALLENGE, TACTICIAN, GLORIOUS_CHALLENGE, BLAZE_OF_GLORY);
+      // SIGNATURE-FIRST (v3.37.92 — Josh, runs nimble-marmot etc.: "I see only a
+      // challenge button… nothing about glorious challenge"). The blind numpad
+      // reaches NINE entries; the cavalier's class-defining actions sat at slots
+      // 10-12 behind eight generic maneuvers — unreachable by key, unheard. The
+      // signature actions now lead the pad (Attack=1, Challenge=2, Tactician=3,
+      // Glorious=4…); generic trips/disarms follow. Stable sort keeps their order.
+      const SIG = ['challenge', 'tactician', 'gloriouschallenge', 'blazeofglory'];
+      list.sort((a, b) => ((SIG.indexOf(a.key) + 1) || 99) - ((SIG.indexOf(b.key) + 1) || 99));
+    }   // CAVALIER: the Challenge oath (+level damage vs one foe); GLORIOUS_CHALLENGE + BLAZE_OF_GLORY (L15) are char-gated (Lord Gweyir / Order of the Flame) via _charAllows
     // MAGUS: name each Spell Strike by its DELIVERY — a ranged magus (Reese's bow)
     // fires it as an IMBUED SHOT; a melee magus channels it as a SPELL STRIKE. Copy
     // the ability so we never mutate the shared kit. (Same mechanic either way — the
@@ -761,7 +781,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   _srBlocks(m, e, ab, quiet = false) {
     if (!e || !(e.sr > 0) || !ab || ab.slvl == null) return false;
     const pen = fighterFeats(m.cls, m.level, this._isRanged(m)).spellPen || 0;
-    const bonus = (m.level || 1) + pen + (m._synthActive ? 4 : 0);   // Spell Synthesis: +4 caster level vs SR
+    const bonus = (m.level || 1) + pen + (m._synthActive ? 4 : 0) + (this._twkActive(m, 'alliedspell') ? 2 : 0);   // Spell Synthesis: +4 CL vs SR; ALLIED SPELLCASTER (teamwork, v3.37.91): +2 more
     const roll = dRoll(20), total = roll + bonus;
     if (total >= e.sr) return false;   // punched through (PF1: caster-level checks have NO auto 20/1)
     if (!quiet) { this._note(`🛡️ ${e.glyph || ''} ${e.name}'s SPELL RESISTANCE turns ${ab.name} aside! [d20 ${roll}+${bonus} = ${total} vs SR ${e.sr}]`); }
@@ -1181,6 +1201,48 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     }
     return { ok: true, ...this._domainModel(m) };
   },
+  // ── PAD LOADOUT — the numpad manager (v3.37.93, Josh + Tobias) ─────────────
+  // The blind numpad has only 9 slots and ability lists outgrow it (the cavalier
+  // pad overflow, v3.37.92). Players now HIDE abilities they don't use: hidden
+  // keys are filtered out of the serialized pad (serialize.js), so the numbering
+  // compacts immediately — slot indices stay stable because `slot` is the index
+  // into the UNfiltered _abilitiesFor array. Purely presentational: a hidden
+  // ability is still legal if invoked another way, and bots ignore hiding.
+  // Forerunner of the planned feat pick/swap system. 'padpick' action: no
+  // payload → model; { toggle: key } → flip + persist per class (db.hidden_pad).
+  _padHiddenKeys(m) {
+    if (!m._padHidden) {
+      try { m._padHidden = new Set(db.getHiddenPad(m.playerId, m.cls) || []); } catch (_) { m._padHidden = new Set(); }
+    }
+    return m._padHidden;
+  },
+  padPick(playerId, payload = {}) {
+    const m = this.member(playerId);
+    if (!m || m.left) return { ok: false, error: 'not in this run' };
+    if (payload.toggle) {
+      const key = String(payload.toggle);
+      const ab = this._abilitiesFor(m).find(a => a.key === key && this._charAllows(a, m));
+      if (!ab) return { ok: false, error: 'no such ability' };
+      const cur = new Set(db.getHiddenPad(m.playerId, m.cls) || []);
+      if (cur.has(key)) cur.delete(key); else cur.add(key);
+      db.setHiddenPad(m.playerId, m.cls, [...cur]);
+      m._padHidden = null;   // lazy-rebuild from db on next read
+      this._broadcast();     // the pad renumbers NOW (unlike domains, this is pure UI)
+    }
+    return { ok: true, ...this._padModel(m) };
+  },
+  _padModel(m) {
+    const hidden = this._padHiddenKeys(m);
+    const abs = this._abilitiesFor(m).filter(ab => this._charAllows(ab, m) && this._loadoutAllows(ab, m));
+    return {
+      abilities: abs.map(ab => ({
+        key: ab.key, name: ab.name, icon: ab.icon || '✨',
+        desc: ab.desc || '',
+        hidden: hidden.has(ab.key),
+      })),
+      shown: abs.filter(ab => !hidden.has(ab.key)).length,
+    };
+  },
   // ── CLASS-PROGRESSION REFERENCE (Josh: "what does each level give me?") ───
   // A pure lookup: per-level gain summaries for the member's class from their
   // next level up to +9 (capped at 20), built from the same _levelGains the
@@ -1592,10 +1654,17 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   // (Shield / Mage Armor / Shield of Faith / Stoneskin) score 0 — "not worth a
   // turn". Threshold 3. Innate wings (harpy, dragon) are NOT spell-flight.
   _dispelWorthyFoe() {
+    // ADAPTIVE ECONOMICS (v3.37.88 — Josh's pushback on the "don't peel AC wards"
+    // rule: "if your badass fighter with +15 BAB can't hit, what's your spellcaster
+    // with +10 gonna do? At that point does dispelling mage armor become somewhat of
+    // a priority?" He's right: against a NIGH-UNHITTABLE warded foe — the AC-38+
+    // pit-fiend class — stripping ANY pre-cast ward beats whiffing, so wards rate
+    // the turn there. Against ordinary foes the old rule stands: attack, don't peel.
     const worth = (e) => ((e.flyCast || (e.precast && e.precast.includes('fly'))) && e.flying ? 4 : 0)
       + (e.invisible ? 3 : 0) + (e.hasted > 0 ? 3 : 0)
       + ((e.buffs && ((e.buffs.toHit || 0) + (e.buffs.dmg || 0)) >= 3) ? 3 : 0)
-      + (e.images > 0 && e.boss ? 2 : 0);
+      + (e.images > 0 && e.boss ? 2 : 0)
+      + ((e.precast && e.precast.length && (e.ac || 0) >= 38) ? 3 : 0);
     return this._targetableEnemies().filter(e => worth(e) >= 3).sort((a, b) => worth(b) - worth(a))[0] || null;
   },
   _abCleanse(m, ab, payload) {
@@ -2056,13 +2125,32 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   _abGloriousChallenge(m, ab, payload) {
     const e = this._oneEnemy(payload); if (!e) return;
     m.challengedId = e.uid;
-    m.challengeN = (m.level || 1) + 2 * (m.gloriousN || 0);   // base challenge + current glory (morale damage)
-    m.gloriousAC = 2 * (m.gloriousN || 0);                    // recklessness: −AC while the Flame burns (see _acPenalty)
+    m.challengeN = (m.level || 1) + 2 * ((m.gloriousN || 0) + 1);   // RAW (v3.37.90): base challenge + 2 × glorious challenges ISSUED (this one included) — the FIRST glorious already carries +2 morale damage
+    m.gloriousAC = 2 * ((m.gloriousN || 0) + 1);              // RAW (v3.37.90): −2 AC per glorious ISSUED, this one included (stacks with the base challenge's −2-vs-others in _foeTargetAC)
     const stacked = (m.gloriousN || 0) > 0;
-    this._note(`🔥 ${m.nickname} bellows a GLORIOUS CHALLENGE at ${e.name}${stacked ? ` — the Flame ROARS (+${2 * m.gloriousN} damage, −${2 * m.gloriousN} AC)!` : ' — the Order of the Flame awakens!'}`, ab.sound);
+    // v3.37.93: the announce now matches the APPLIED numbers — 2×(streak+1), this
+    // glorious included (silver-mirror showed "next: +4" then a bellow saying +2).
+    const gBonus = 2 * ((m.gloriousN || 0) + 1);
+    this._note(`🔥 ${m.nickname} bellows a GLORIOUS CHALLENGE at ${e.name}${stacked ? ` — the Flame ROARS (+${gBonus} damage, −${gBonus} AC)!` : ` — the Order of the Flame awakens (+${gBonus} damage, −${gBonus} AC)!`}`, ab.sound);
     this._echoToTable(ab.sound);
     this._basicAttack(m, e.uid);   // ...and strike immediately (plays his estoc's attack sound after the shout)
-    if (e.hp <= 0) { m.gloriousN = (m.gloriousN || 0) + 1; this._note(`🔥 ${m.nickname} stands triumphant over ${e.name} — GLORIOUS! The Flame swells to ${m.gloriousN}. (Unleash it again next turn.)`); }
+    if (e.hp <= 0) { m.gloriousN = (m.gloriousN || 0) + 1; this._note(`🔥 ${m.nickname} stands triumphant over ${e.name} — GLORIOUS! Kill streak ${m.gloriousN} — your NEXT glorious challenge: +${2 * (m.gloriousN + 1)} morale damage, −${2 * (m.gloriousN + 1)} AC. (Unleash it again next turn.)`); }
+  },
+  // TACTICIAN (v3.37.92, PF1 RAW): share ONE of the cavalier's teamwork feats with
+  // the whole party for the room. payload.featKey (or .mode) picks explicitly —
+  // the chooser UI plugs in there; otherwise the best available is auto-picked.
+  // The announce TEACHES the feat (Tobias: "help text… teach Pathfinder as we go").
+  _abTactician(m, ab, payload) {
+    const mine = [...teamworkGrants(m.cls, m.level)];
+    if (!mine.length) return { ok: false, error: 'You have no teamwork feats to share yet — they unlock as you level.' };
+    const want = payload && (payload.featKey || payload.mode);
+    const ORDER = ['outflank', 'shakeitoff', 'coordman', 'twkprecise', 'brokenwing', 'lookout', 'shieldedcaster', 'alliedspell'];
+    const pick = (want && mine.includes(want)) ? want : (ORDER.find(k => mine.includes(k)) || mine[0]);
+    this._twkShare = { key: pick, by: m.playerId };
+    const tf = TEAMWORK[pick] || { name: pick, desc: '' };
+    this._note(`${ab.icon} ${m.nickname} drills the party — TACTICIAN shares ${tf.name.toUpperCase()} with every ally for this room: ${tf.desc}.`, ab.sound);
+    this._broadcast();
+    return { ok: true };
   },
   // Charm Person — a living foe, Will save or CHARMED: it stops attacking the
   // party (only tends its own side) until a hero's blow snaps it out. Mindless
@@ -2573,7 +2661,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     else if (ab.target === 'ally') { const t = this._buffTarget(m, ab, payload); apply(t); this._note(`${ab.icon} ${m.nickname} casts ${ab.name} on ${t.nickname}.`, sound); }
     // Elemental Body SPEAKS its protections (v3.37.86 — Josh, run dapper-moose: cast it
     // twice, heard only "uses Elemental Body!" and had no idea what it granted).
-    else if (ab.elemBody) { apply(m); this._note(`${ab.icon} ${m.nickname} becomes a being of raw element — IMMUNE to paralysis and hold, stun, sickening and blinding for the rest of the room!`, sound); }
+    else if (ab.elemBody) { apply(m); this._note(`${ab.icon} ${m.nickname} becomes a being of raw element — IMMUNE to critical hits, paralysis and hold, stun, sickening and blinding for the rest of the room!`, sound); }
     else { apply(m); this._note(`${ab.icon} ${m.nickname} uses ${ab.name}!`, sound); }
     this._echoToTable(sound);
   },
@@ -2604,15 +2692,18 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     this._note(`${ab.icon} ${m.nickname} calls a Smite — righteous fury against evil this room!`, sound);
     this._echoToTable(sound);
   },
-  // Detect Evil (paladin): a standard action that MARKS every living foe as evil
-  // (sets markedEvil), so Smite Evil applies to ALL of them this room — including
-  // the true-neutral ones (animals, constructs). Plays the "into the light" cue.
+  // Detect Evil (paladin) — HONEST since v3.37.89 (Josh, run jumbled-pebble:
+  // "surely not everything I face is evil? cause it all detects as evil"). It used
+  // to mark EVERY foe smite-able, neutral machines and good celestials included —
+  // which both lied as information and contradicted the Heavenly Host's design
+  // ("hero Smite Evil finds no purchase"). Now it marks only foes that ARE evil,
+  // and the readout says how many are NOT — real intel, especially by ear.
   _abDetectEvil(m, ab) {
     const foes = this.livingEnemies();
-    let n = 0;
-    for (const e of foes) { if (!e.markedEvil) { e.markedEvil = true; n++; } }
+    let evil = 0, clean = 0;
+    for (const e of foes) { if (e.evil) { e.markedEvil = true; evil++; } else clean++; }
     const sound = ab.sound || '/audio/into_the_light.mp3';
-    this._note(`${ab.icon || '🎯'} ${m.nickname} calls DETECT EVIL — the room floods with revealing light; ${n || foes.length} foe(s) MARKED for Smite!`, sound);
+    this._note(`${ab.icon || '🎯'} ${m.nickname} calls DETECT EVIL — ${evil} foe${evil === 1 ? '' : 's'} RADIATE${evil === 1 ? 'S' : ''} evil and ${evil === 1 ? 'is' : 'are'} MARKED for Smite${clean ? `; ${clean} do${clean === 1 ? 'es' : ''} NOT (no purchase for your smite there)` : ''}!`, sound);
     this._echoToTable(sound);
   },
   // ── DOMAIN granted powers (DOMAINS-DESIGN.md §2) ───────────────────────────
@@ -2708,8 +2799,38 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     const dex = (m.mods && m.mods.dex != null) ? m.mods.dex : 0;
     return Math.max(str, dex);
   },
+  // ── TEAMWORK FEATS (v3.37.91) — live-check + computed bonuses. Kept in this
+  // mixin so Dungeon.js stays under its line ratchet; everything calls them via
+  // `this`. Pairing rule: a feat is live only while ANOTHER living hero also has
+  // it — except inquisitors (Solo Tactics, PF1 RAW: works alone).
+  _twkActive(m, key) {
+    if (!m) return false;
+    // TACTICIAN SHARE (v3.37.92): while the sharing cavalier stands, the shared
+    // feat is live for EVERYONE — allies count as having it, pairing satisfied.
+    const sh = this._twkShare;
+    if (sh && sh.key === key && this.party && this.livingParty().some(p => p.playerId === sh.by)) return true;
+    // INITIATIVE-TIMING RULE (Tobias 2026-07-27): a feat that matters at the DOOR
+    // (initiative / flat-footed) can't wait for a Tactician cast — the roll already
+    // happened. A cavalier who HAS such a feat counts as sharing it ALWAYS. Today
+    // that's Lookout; add future init-feats here.
+    if (key === 'lookout' && this.party && this.livingParty().some(p => p.cls === 'cavalier' && teamworkGrants('cavalier', p.level).has('lookout'))) return true;
+    if (!teamworkGrants(m.cls, m.level).has(key)) return false;
+    if (m.cls === 'inquisitor') return true;   // Solo Tactics
+    if (!this.party) return false;   // bare test fakes / no roster yet — nobody to pair with
+    return this.livingParty().some(p => p !== m && p.playerId !== m.playerId && teamworkGrants(p.cls, p.level).has(key));
+  },
+  // SHAKE IT OFF: +1 on all saves per OTHER living ally who also has it (cap +3).
+  _shakeItOff(m) {
+    // v3.37.94: route through _twkActive, not raw grants — a Tactician-SHARED
+    // Shake It Off read as "active" everywhere but paid +0 (the sharee never
+    // earns the feat by class). Now the share counts, and so does inquisitor
+    // Solo Tactics; the natural-grant pairing math is unchanged.
+    if (!this._twkActive(m, 'shakeitoff')) return 0;
+    const n = this.livingParty().filter(p => p.playerId !== m.playerId && this._twkActive(p, 'shakeitoff')).length;
+    return Math.min(3, n);
+  },
   _heroCMB(m) {
-    return dRoll(20) + babFor(m.cls || 'fighter', m.level || 1)
+    return dRoll(20) + babFor(m.cls || 'fighter', m.level || 1) + (this._twkActive(m, 'coordman') ? 2 : 0)   // COORDINATED MANEUVERS (teamwork, v3.37.91): grapples, trips, disarms AND breaking free
          + this._mnvMod(m)                            // DEX-or-STR (homerule)
          + ((m.buffs && m.buffs.toHit) || 0) + this._hasteMod(m);
   },
@@ -3069,6 +3190,17 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       if (r.hit) {
         landed = true;
         if (r.crit) this._dauntingSuccess(m);   // Order of the Flame (L8): a confirmed crit daunts the room
+        // OUTFLANK rider (teamwork, v3.37.91): a confirmed crit while flanking lets a
+        // paired flanking ally seize the opening — one free strike at the same foe.
+        if (r.crit && e.hp > 0 && this._twkActive(m, 'outflank')) {
+          const wing = this.livingParty().find(p => p.playerId !== m.playerId && this._twkActive(p, 'outflank') && !this._isRanged(p) && !(p.paralyzed > 0) && !(p.stunned > 0) && !p.asleep);
+          if (wing) {
+            wing.weapon = weaponOf(wing.gear, wing.weaponKey);
+            const wr = this._swingVsAC(wing, this._enemyAC(e), e);
+            if (wr.hit) { this._dmgE(e, wr.damage); this._note(`🗡️ OUTFLANK — ${m.nickname}'s crit opens the line and ${wing.nickname} strikes for ${wr.damage}${wr.drTag || ''}!${this._afterEnemyHit(e)}`, wr.sound); }
+            else this._note(`🗡️ OUTFLANK — ${wing.nickname} lunges into the opening but misses. ${this._atkStr(wr)}`, wr.sound);
+          }
+        }
         // Rogue Offensive Defense (feat tree n8): landing a sneak attack grants +2 AC
         // until they next act — the strike leaves the foe off-balance.
         if (r.sneakDice && fighterFeats(m.cls, m.level, this._isRanged(m)).offDef && !m._offDef) { m._offDef = true; this._note(`🤸 ${m.nickname}'s strike leaves them covered — +2 AC until their next move (Offensive Defense).`); }

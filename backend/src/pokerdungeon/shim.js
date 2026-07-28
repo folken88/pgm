@@ -104,6 +104,7 @@ class DungeonShim {
       + this._hasteMod(m) + RACES.raceSaveBonus(m.race || (m.character && m.character.race), tags)
       - (m.sickened > 0 ? SICKENED_PENALTY : 0) - (m.slowed > 0 && tags && tags.includes('reflex') ? 1 : 0)
       + (m._domWardRounds > 0 ? 2 : 0)
+      + (this._shakeItOff ? this._shakeItOff(m) : 0)   // SHAKE IT OFF (teamwork, poker v3.37.91): +1/paired ally standing, max +3
       + cavOrders.orderSaveBonus(this, m);   // Order of the Star: +saves while challenging
   }
   _acPenalty(m) { return ((m.buffs && m.buffs.acPen) || 0) + (m.grappled ? 2 : 0); }

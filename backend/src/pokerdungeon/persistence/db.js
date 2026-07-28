@@ -8,6 +8,9 @@ module.exports = {
   getPreparedSpells() { return null; },
   getDomains() { return []; },
   setKnownSpells() {}, setPreparedSpells() {}, setDomains() {},
+  // Numpad manager (poker v3.37.93) — PGM has no per-player pad prefs yet, so
+  // nothing is ever hidden; the padPick action exists but doesn't persist here.
+  getHiddenPad() { return []; }, setHiddenPad() {},
   addXp() { return 0; }, setGear() {}, getGear() { return {}; },
   GEAR_SLOT_KEYS: ['weapon', 'armor', 'shield', 'ring', 'cloak'],
 };

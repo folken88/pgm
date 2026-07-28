@@ -7,6 +7,20 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.18.0 2026-07-28 POKER PARITY SYNC v3.37.88→.94 — TEAMWORK FEATS + ENEMY CRITS + the tactics
+//                    brain. Synced mixins carry: 8 teamwork feats (Outflank/Lookout/Shake It Off/…)
+//                    with the pairing rule + inquisitor Solo Tactics; cavalier TACTICIAN shares one
+//                    feat with the whole party for the room (bots open with it); Gweyir's Flame
+//                    doctrine (build glorious streaks on easy kills → hunt the big target, ease off
+//                    Power Attack at 2+ stacks); enemy CRITS (nat-20 + confirm, elemental bodies
+//                    immune); futility ledgers (foes stop spamming resisted holds, allies stop
+//                    burning dispels/CC on proven-immune foes); honest Detect Evil; RAW glorious
+//                    numbers + honest bellow. HOST ports: swing.js outflank +4 flank / teamwork
+//                    precise +1d6; shim _partySaveMod + shakeItOff; partyrun lookout-never-surprised
+//                    + _twkShare room reset; db stub getHiddenPad. pf1core refresh: 18-spell CRB/UM
+//                    batch (Freedom of Movement, See Invisibility…), magus loadout, theurge kit,
+//                    TEAMWORK table. Found + fixed UPSTREAM in poker v3.37.94: shared Shake It Off
+//                    paid +0 (grants-only check). Verified: shim-harness 500/500, 8/8 sim fights.
 //  1.17.0 2026-07-16 THE QUIET ROOM (Tobias: "if there are all stealthed enemies that we fail to
 //                    perceive, the gm should tell us the room is empty. then we can search for
 //                    treasure or open the next door. if we open the next door we may pick a fight w
@@ -478,6 +492,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.17.1';
-const HEADLINE = 'The QUIET ROOM: when every foe hides and nobody spots a thing, the GM says the room seems empty — search it (find the hoard, or flush the ambush), rest, or press on. Unfound stalkers FOLLOW you into the next fight. Plus: summons no longer clutter your target list.';
+const VERSION = '1.18.0';
+const HEADLINE = 'TEAMWORK FEATS arrive from poker: cavaliers drill the party with Tactician to share Outflank, Lookout, Shake It Off and more for the whole room — and enemies can finally land critical hits, so keep your healer close. New spells too, including Freedom of Movement.';
 module.exports = { VERSION, HEADLINE };

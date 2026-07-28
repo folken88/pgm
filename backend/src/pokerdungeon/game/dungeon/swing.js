@@ -127,7 +127,7 @@ module.exports = {
     // first to close gets nothing (moved up alone); every ally who joins the
     // melee on that foe afterward is flanking. Tracked per-room on the foe.
     const flanking = this._flankRegister(attacker, target, weapon);
-    const flankHit = flanking ? 2 : 0;   // PF1 flanking bonus (both flankers, once positioned)
+    const flankHit = flanking ? ((this._twkActive && this._twkActive(attacker, 'outflank')) ? 4 : 2) : 0;   // PF1 flanking +2 — OUTFLANK (teamwork, poker v3.37.91) sharpens it to +4
     // SLAYER Studied Target: the foe this slayer has MARKED takes +N insight to hit
     // AND damage from them (N scales with the slayer's level; set by _abStudyTarget).
     const studied = !!(target && attacker.studiedId != null && attacker.studiedId === target.uid);
@@ -243,6 +243,7 @@ module.exports = {
     // top — NOT multiplied by a crit.
     let sneakDmg = 0;
     if (preciseDmg) dmg += preciseDmg;   // swashbuckler Precise Strike
+    if (flanking && this._twkActive && this._twkActive(attacker, 'twkprecise')) dmg += dRoll(6);   // PRECISE STRIKE (teamwork, poker v3.37.91): +1d6 while flanking with a paired ally
     if (sneakDice) { sneakDmg = dRollN(sneakDice, 6); dmg += sneakDmg; }
     if (buff.bonusDice) dmg += dRollN(buff.bonusDice, 6);   // misc bonus dice
     if (baneOn) dmg += dRollN(BANE_DICE, 6);                // Inquisitor Bane — +2d6 vs the declared type

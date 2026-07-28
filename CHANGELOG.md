@@ -19,6 +19,35 @@ PGM is made by:
 
 ---
 
+## v1.18.0 — 2026-07-28
+
+**Teamwork feats, enemy crits, and the smarter tactics brain — the big poker parity sync.**
+Everything the poker dungeon learned in the last week now runs here too:
+
+- **TEAMWORK FEATS** — eight of them: Outflank, Precise Strike, Lookout, Shake It Off, Broken
+  Wing Gambit, Coordinated Maneuvers, Shielded Caster, and Allied Spellcaster. The Pathfinder
+  pairing rule applies: a teamwork feat only works while another living ally has it too —
+  except inquisitors, whose Solo Tactics lets theirs work alone.
+- **TACTICIAN** — a cavalier drills the party and SHARES one of his teamwork feats with every
+  ally for the rest of the room. Cavalier companions open fights with it on their own.
+- **Lord Gweyir fights by the book** — Order of the Flame doctrine: build glorious-challenge
+  kill streaks on lesser foes, then turn the stacked fury on the hardest target (he even eases
+  off Power Attack when his streak is hot, to land the hit that matters).
+- **Enemies can CRIT now** — a natural 20 followed by a confirmation roll, just like yours.
+  Elemental bodies remain immune. Keep your healer close.
+- **Foes and allies both learned to quit wasting turns** — a monster whose hold keeps getting
+  resisted moves on; your casters stop burning dispels and hold spells on foes that have
+  proven immune.
+- **Detect Evil stopped lying** — only actual evil detects as evil.
+- **New spells from the poker batch** — Freedom of Movement, See Invisibility, and the rest of
+  the Core Rulebook / Ultimate Magic additions, plus the magus spellbook and theurge kit fixes.
+- **Found upstream while testing this sync:** a shared Shake It Off displayed as active but paid
+  +0 on saves. Fixed in poker v3.37.94 and synced here — the share now pays real save bonuses.
+
+Verified end to end: all 500 harness abilities resolve, and 8 of 8 simulated fights finish clean.
+
+---
+
 ## v1.17.0 — 2026-07-16
 
 **The Quiet Room.** Until now, a room full of hidden enemies always warned you that "something
