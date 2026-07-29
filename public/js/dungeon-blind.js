@@ -70,11 +70,13 @@
   var _recruitOpen = false, _bankDollOpen = false, _sbpModel = null, _dmpModel = null;
 
   // ---- keymap sub-mode state (poker's module-scope vars) ----------------------
-  var _blindHelp = false, _dunCancelArm = 0, _dunSbp = null, _dunDmp = false, _dunProg = null,
+  var _blindHelp = false, _dunCancelArm = 0, _dunSbp = null, _dunDmp = false, _dunDmpIdx = -1, _dunProg = null,
       _dunMmMenu = null, _dunSbMode = false, _dunSbLevel = null, _dunSbIdx = -1, _dunImbuedMode = false,
       _dunAllyPick = null, _dunDispelPick = null, _dunModePick = null, _dunSessionMode = false,
       _dunSessionIdx = 0, _dunEnemyMode = false, _dunEnemyIdx = -1, _dunTarget = null,
-      _dunQueuedAttack = null, _spellbookOpen = false, _dungeonSel = [];
+      _dunQueuedAttack = null, _spellbookOpen = false, _dungeonSel = [],
+      _dunPad = false, _dunPadIdx = -1, _dunPadAssign = null, _padMgrModel = null,
+      _sbpModelM = null, _dmpModelM = null;   // K/V picker models — module scope so they survive between keypresses   // N numpad manager (poker PAD MAP v2, v1.19.0)
 
   // ============================ NARRATION ====================================
   // Poker's blindMode.js dungeon section (onDungeonState + helpers), verbatim.
@@ -243,13 +245,197 @@
       var kit = meM.kit || { atwill: { name: 'Attack' }, abilities: [] };
       var myTurn = d.status === 'combat' && d.turn && d.turn.kind === 'party' && d.turn.id === meId;
 
-      // --- Class-progression (X), metamagic (G), prepare (K), domains (V) are
-      //     poker features that need server round-trips PGM lacks; they answer
-      //     gracefully rather than break. (Kept as stubs so the keys are known.)
-      if (k === 'x') { e.preventDefault(); sayU(_blindHelp ? 'X: class progression — not available in this dungeon yet.' : 'Class progression is not available here yet.'); return; }
-      if (k === 'g') { e.preventDefault(); sayU(_blindHelp ? 'G: metamagic — not available in this dungeon yet.' : 'Metamagic toggles are not available here yet.'); return; }
-      if (k === 'k') { e.preventDefault(); sayU(_blindHelp ? 'K: prepare spells — not available in this dungeon yet.' : 'Preparing spells is not available here yet — your spells are ready to cast.'); return; }
-      if (k === 'v') { e.preventDefault(); sayU(_blindHelp ? 'V: domains — not available in this dungeon yet.' : 'Domains are not available here yet.'); return; }
+      // --- Poker-parity ROUND-TRIP PICKERS (v1.19.0): X progression, G metamagic,
+      //     K prepare, V domains — REAL now, served by the same transplanted mixin
+      //     poker runs, through /api/session/action. Spoken flows match poker's.
+      var ord = function (nn) { var s2 = ['th', 'st', 'nd', 'rd'], v2 = nn % 100; return nn + (s2[(v2 - 20) % 10] || s2[v2] || s2[0]); };   // needed by the K menu callbacks — the later  assignment never runs when a picker block returns early
+      var pickSend = function (type, payload, cb) {
+        if (!window.__pgmActionRaw) { sayU('Not available.'); return; }
+        window.__pgmActionRaw(Object.assign({ type: type }, payload || {}), function (r) {
+          if (!r || r.ok === false) { sayU((r && r.error) || 'Unavailable.'); return; }
+          if (cb) cb(r);
+        });
+      };
+      // ----- Class-progression reference — X (poker: "what does each level give me?")
+      if (_dunProg) {
+        if (e.key === 'Escape') { e.preventDefault(); _dunProg = null; sayU('Progression closed.'); return; }
+        if (/^[1-9]$/.test(k)) {
+          e.preventDefault();
+          var pe = (_dunProg.next || [])[parseInt(k, 10) - 1];
+          if (!pe) { sayU('Nothing that far — you cap at level 20.'); return; }
+          sayU('Level ' + pe.level + ': ' + pe.gains + '.');
+          return;
+        }
+      }
+      if (k === 'x') {
+        e.preventDefault();
+        if (_blindHelp) { sayU('X: class progression. Speaks what your next level grants — feats, spells, slots. While open, press 1 through 9 for further levels; Escape closes.'); return; }
+        if (_dunProg) { _dunProg = null; sayU('Progression closed.'); return; }
+        sayU('Looking up your progression.');
+        pickSend('progression', {}, function (resp) {
+          _dunProg = resp;
+          var first = (resp.next || [])[0];
+          sayU('You are level ' + resp.level + ' ' + resp.cls + '. ' + (first ? 'Level ' + first.level + ' grants: ' + first.gains + '. Press 2 through 9 for later levels, Escape to close.' : 'You are at the level cap.'));
+        });
+        return;
+      }
+      // ----- Metamagic — G (spontaneous toggles; prepared casters get the honest report)
+      var _mm = (kit && kit.metamagic) || [];
+      if (_dunMmMenu) {
+        if (e.key === 'Escape') { e.preventDefault(); _dunMmMenu = null; sayU('Metamagic menu closed.'); return; }
+        if (/^[1-9]$/.test(k)) {
+          e.preventDefault();
+          var mm = _dunMmMenu[parseInt(k, 10) - 1];
+          if (!mm) { sayU('No metamagic ' + k + '.'); return; }
+          pickSend('metamagic', { key: mm.key }, function () {});
+          mm.on = !mm.on;
+          sayU(mm.name + ' ' + (mm.on ? 'on' : 'off') + '.');
+          return;
+        }
+      }
+      if (k === 'g') {
+        e.preventDefault();
+        if (_blindHelp) { sayU('G: metamagic. If you have metamagic feats, press G then a number to toggle one on or off before you cast. A prepared caster has no toggles — G tells you which metamagic is baked into your spells.'); return; }
+        if (!meM.kit) { sayU('Metamagic opens on your turn.'); return; }   // PGM's kit rides the turn payload
+        if (!_mm.length) {
+          var owned = kit.metamagicOwned || [];
+          if (kit.metamagicBaked && owned.length) { sayU('You have ' + owned.join(', ') + '. As a prepared caster there is nothing to toggle — your metamagic is already built into your spell list, as the Intensified, Empowered, Maximized and Quickened versions of your spells. Open your spellbook and cast those directly.'); return; }
+          sayU('You have no metamagic feats.'); return;
+        }
+        if (_dunMmMenu) { _dunMmMenu = null; sayU('Metamagic menu closed.'); return; }
+        _dunMmMenu = _mm.map(function (m2) { return { key: m2.key, name: m2.name, adj: m2.adj, on: m2.on }; });
+        sayU('Metamagic: ' + _dunMmMenu.map(function (m2, i) { return (i + 1) + ' ' + m2.name + ', ' + (m2.on ? 'on' : 'off'); }).join('; ') + '. Press a number to toggle, Escape closes.');
+        return;
+      }
+      // ----- Prepare menu — K (poker's spell KIT; level → numbered spells → toggle)
+      var _sbpModel = _sbpModelM || null;
+      var _sbpAt = function (mdl, L) { return (mdl.pool || []).filter(function (s) { return s.slvl === L; }).slice().sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); }); };
+      var _sbpPicked = function (mdl, sp) {
+        if (mdl.spont) return (mdl.known || []).indexOf(sp.key) >= 0;
+        var prep = mdl.prepared || {};
+        return Object.keys(prep).some(function (L) { return (prep[L] || []).indexOf(sp.key) >= 0; });
+      };
+      var _sbpLevels = function (mdl) { return Array.from(new Set((mdl.pool || []).map(function (s) { return s.slvl; }))).sort(function (a, b) { return a - b; }); };
+      var _sbpSpeakLevels = function () {
+        var mdl = _sbpModelM; if (!mdl) { sayU('Still loading your spell list.'); return; }
+        var Ls = _sbpLevels(mdl);
+        sayU('Prepare spells — levels: ' + Ls.map(ord).join(', ') + '. Press a level number, then a number toggles a spell; Tab steps the level one spell at a time and Enter toggles; 0 goes back; Escape closes. Changes land at the next door.');
+      };
+      var _sbpSpeakLevel = function (L) {
+        var mdl = _sbpModelM; if (!mdl) { sayU('Still loading your spell list.'); return; }
+        var at = _sbpAt(mdl, L);
+        var cap = mdl.caps ? mdl.caps[L] : null;
+        var cnt = mdl.spont ? null : ((mdl.prepared || {})[L] || []).length;
+        sayU(ord(L) + ' level' + (cap != null ? ', ' + cnt + ' of ' + cap + ' prepared' : '') + ': ' + at.map(function (s, i) { return (i + 1) + ' ' + s.name + (_sbpPicked(mdl, s) ? (mdl.spont ? ', known' : ', prepared') : ''); }).join('; ') + '.');
+      };
+      var _sbpToggle = function (sp, L) {
+        pickSend('loadout', { toggle: sp.key }, function (m2) {
+          _sbpModelM = m2;
+          var now = _sbpPicked(m2, sp);
+          sayU(sp.name + ' ' + (now ? (m2.spont ? 'learned' : 'prepared') : 'removed') + '. Takes effect at the next door.');
+        });
+      };
+      if (_dunSbp) {
+        if (e.key === 'Escape') { e.preventDefault(); _dunSbp = null; sayU('Prepare menu closed.'); return; }
+        if (k === '0') { e.preventDefault(); _dunSbp.lvl = null; _dunSbp.idx = -1; _sbpSpeakLevels(); return; }
+        if (e.key === 'Tab' && _dunSbp.lvl != null) {
+          e.preventDefault();
+          var mdlT = _sbpModelM;
+          var atT2 = mdlT ? _sbpAt(mdlT, _dunSbp.lvl) : [];
+          if (!atT2.length) { sayU('Still loading your spell list.'); return; }
+          var nT = atT2.length;
+          _dunSbp.idx = (((_dunSbp.idx == null ? -1 : _dunSbp.idx) + (e.shiftKey ? -1 : 1)) % nT + nT) % nT;
+          var spT2 = atT2[_dunSbp.idx];
+          var pk = _sbpPicked(mdlT, spT2);
+          sayU((_dunSbp.idx + 1) + ', ' + spT2.name + ', ' + (pk ? (mdlT.spont ? 'known' : 'prepared') : 'available') + '. Enter to ' + (pk ? 'remove' : (mdlT.spont ? 'learn' : 'prepare')) + '.');
+          return;
+        }
+        if (e.key === 'Enter' && _dunSbp.lvl != null && _dunSbp.idx != null && _dunSbp.idx >= 0) {
+          e.preventDefault();
+          var mdlE = _sbpModelM;
+          var spE = mdlE && _sbpAt(mdlE, _dunSbp.lvl)[_dunSbp.idx];
+          if (!spE) { sayU('Still loading your spell list.'); return; }
+          _sbpToggle(spE, _dunSbp.lvl);
+          return;
+        }
+        if (/^[1-9]$/.test(k)) {
+          e.preventDefault();
+          var mdlK = _sbpModelM;
+          if (!mdlK) { sayU('Still loading your spell list.'); return; }
+          if (_dunSbp.lvl == null) {
+            var LK = parseInt(k, 10);
+            if (!(mdlK.pool || []).some(function (s) { return s.slvl === LK; })) { sayU('No level ' + LK + ' spells.'); return; }
+            _dunSbp.lvl = LK; _dunSbp.idx = -1; _sbpSpeakLevel(LK);
+            return;
+          }
+          var spK = _sbpAt(mdlK, _dunSbp.lvl)[parseInt(k, 10) - 1];
+          if (!spK) { sayU('No spell ' + k + ' at this level. Tab steps through them all.'); return; }
+          _sbpToggle(spK, _dunSbp.lvl);
+          return;
+        }
+      }
+      if (k === 'k') {
+        e.preventDefault();
+        if (_blindHelp) { sayU('K: prepare spells, your spell kit. Press a level number, then a number toggles a spell — or Tab steps through the level one spell at a time and Enter toggles the one you are on. Changes land at the next door.'); return; }
+        if (_dunSbp) { _dunSbp = null; sayU('Prepare menu closed.'); return; }
+        _dunSbp = { lvl: null, idx: -1 };
+        sayU('Opening your spell kit.');
+        pickSend('loadout', {}, function (m2) { _sbpModelM = m2; if (_dunSbp) _sbpSpeakLevels(); });
+        return;
+      }
+      // ----- Domain menu — V (poker Domains Phase C, verbatim flow)
+      var _dmpSpeak = function () {
+        var mdl = _dmpModelM; if (!mdl) { sayU('Still loading your domains.'); return; }
+        var list = (mdl.domains || []).map(function (d2, i) { return (i + 1) + ' ' + d2.name + (d2.picked ? ', picked' : ''); }).join('; ');
+        sayU('Domains — choose ' + mdl.max + ', ' + (mdl.picks || []).length + ' picked: ' + list + '. Numbers 1 through 9 toggle; Tab steps through them all, Enter toggles the one you are on; Escape closes. Changes take effect next room.');
+      };
+      var _dmpToggle = function (d2) {
+        pickSend('domains', { toggle: d2.key }, function (m2) {
+          _dmpModelM = m2;
+          var now = (m2.picks || []).indexOf(d2.key) >= 0;
+          sayU(d2.name + ' ' + (now ? 'picked' : 'dropped') + '. ' + (m2.picks || []).length + ' of ' + m2.max + ' picked. Takes effect next room.');
+        });
+      };
+      if (_dunDmp) {
+        if (e.key === 'Escape') { e.preventDefault(); _dunDmp = false; _dunDmpIdx = -1; sayU('Domain menu closed.'); return; }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          var mdlD = _dmpModelM;
+          if (!mdlD || !(mdlD.domains || []).length) { sayU('Still loading your domains.'); return; }
+          var nD = mdlD.domains.length;
+          _dunDmpIdx = ((_dunDmpIdx + (e.shiftKey ? -1 : 1)) % nD + nD) % nD;
+          var dD = mdlD.domains[_dunDmpIdx];
+          sayU((_dunDmpIdx + 1) + ', ' + dD.name + (dD.picked ? ', picked' : '') + '. Enter to ' + (dD.picked ? 'drop' : 'pick') + '.');
+          return;
+        }
+        if (e.key === 'Enter' && _dunDmpIdx >= 0) {
+          e.preventDefault();
+          var mdlD2 = _dmpModelM;
+          var dE = mdlD2 && (mdlD2.domains || [])[_dunDmpIdx];
+          if (!dE) { sayU('Still loading your domains.'); return; }
+          _dmpToggle(dE);
+          return;
+        }
+        if (/^[1-9]$/.test(k)) {
+          e.preventDefault();
+          var mdlD3 = _dmpModelM;
+          if (!mdlD3) { sayU('Still loading your domains.'); return; }
+          var dN = (mdlD3.domains || [])[parseInt(k, 10) - 1];
+          if (!dN) { sayU('No domain ' + k + '.'); return; }
+          _dmpToggle(dN);
+          return;
+        }
+      }
+      if (k === 'v') {
+        e.preventDefault();
+        if (_blindHelp) { sayU('V: domains. Clerics choose two domains, inquisitors one. Press V, then a number 1 through 9 toggles a domain; Tab steps through the full list and Enter toggles the one you are on. Changes land at the next room.'); return; }
+        if (meM.kit && !(kit.domainsMax || 0)) { sayU('Your class has no domains.'); return; }
+        if (_dunDmp) { _dunDmp = false; _dunDmpIdx = -1; sayU('Domain menu closed.'); return; }
+        _dunDmp = true; _dunDmpIdx = -1;
+        sayU('Opening your domains.');
+        pickSend('domains', {}, function (m2) { _dmpModelM = m2; if (_dunDmp) _dmpSpeak(); });
+        return;
+      }
 
       // --- Blind action list: 1 = Attack, 2..N = features, then Spellbook ---
       var ord = function (nn) { var s = ['th', 'st', 'nd', 'rd'], v = nn % 100; return nn + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -264,6 +450,93 @@
         blindActions.push({ kind: 'ability', ab: ab, slot: (ab.slot != null ? ab.slot : ab.key), label: ab.name });
       });
       if (hasSpellbook) blindActions.push({ kind: 'spellbook', label: 'Spellbook' });
+      // ── PAD MAP (poker v3.37.95, Josh's own design): explicit numpad-slot
+      // assignments override the natural order; unplaced actions auto-fill the
+      // remaining keys in order (never accidental gaps, only deliberate 'none'
+      // dead keys). Same resolution as poker's client.
+      var _padIdOf = function (it) { return it.kind === 'ability' ? (it.ab.key || it.slot) : it.kind; };
+      var naturalActions = blindActions;
+      var _padMapK = (kit && kit.padMap) || {};
+      if (Object.keys(_padMapK).length) {
+        var byId = {}; naturalActions.forEach(function (it) { byId[_padIdOf(it)] = it; });
+        var slots = new Array(9); var used = {};
+        for (var s9 = 1; s9 <= 9; s9++) {
+          var k9 = _padMapK[s9] != null ? _padMapK[s9] : _padMapK[String(s9)];
+          if (!k9) continue;
+          if (k9 === 'none') { slots[s9 - 1] = null; continue; }
+          var it9 = byId[k9];
+          if (it9 && !used[k9]) { slots[s9 - 1] = it9; used[k9] = true; }
+        }
+        var rest = naturalActions.filter(function (it) { return !used[_padIdOf(it)]; });
+        for (var s8 = 0; s8 < 9; s8++) if (slots[s8] === undefined) slots[s8] = rest.shift() || null;
+        blindActions = slots;
+      }
+      // ----- Numpad manager — N (poker PAD MAP v2, v1.19.0). Slot view: Tab reads
+      // keys 1-9 + what's mapped; a digit/Enter opens that key's assignment menu
+      // (server pad model + Attack/Spellbook + Nothing); digit/Enter assigns.
+      var _padChoices = function () {
+        var ch = [{ id: 'attack', label: (kit.atwill && kit.atwill.name) || 'Attack', desc: '' }];
+        (((_padMgrModel || {}).abilities) || []).forEach(function (a) { ch.push({ id: a.key, label: a.name, desc: a.desc || '' }); });
+        if (hasSpellbook || !meM.kit) ch.push({ id: 'spellbook', label: 'Spellbook', desc: 'Opens your leveled spell list.' });
+        ch.push({ id: 'none', label: 'Nothing — disable this key', desc: 'The key does nothing, so a stray press can never waste your turn.' });
+        return ch;
+      };
+      var _padSlotLabel = function (s2) { var it = blindActions[s2 - 1]; return it ? it.label : 'unassigned'; };
+      var _padSpeakSlots = function () {
+        var list = []; for (var i2 = 1; i2 <= 9; i2++) list.push(i2 + ', ' + _padSlotLabel(i2));
+        sayU('Pad manager — your numpad: ' + list.join('; ') + '. Press a number to choose what lives on that key; Tab steps through the keys, Enter re-maps the one you are on; Escape closes.');
+      };
+      var _padOpenAssign = function (s2) {
+        _dunPadAssign = { slot: s2, idx: -1 };
+        var list = _padChoices().map(function (c2, i2) { return (i2 + 1) + ' ' + c2.label; }).join('; ');
+        sayU('Key ' + s2 + ' is ' + _padSlotLabel(s2) + '. Choose its new action: ' + list + '. Numbers pick; Tab steps through with descriptions and Enter picks; Escape backs out.');
+      };
+      var _padAssign = function (s2, c2) {
+        _dunPadAssign = null; _dunPadIdx = s2 - 1;
+        pickSend('padpick', { assign: { slot: s2, key: c2.id } }, function (m2) {
+          _padMgrModel = m2;
+          sayU('Key ' + s2 + ' is now ' + c2.label + '.' + (c2.id === 'none' ? '' : ' Anything it displaced shifts to the next open key.'));
+        });
+      };
+      if (_dunPadAssign) {
+        if (e.key === 'Escape') { e.preventDefault(); var sA = _dunPadAssign.slot; _dunPadAssign = null; sayU('Key ' + sA + ' unchanged.'); return; }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          var chT = _padChoices(); var nP = chT.length;
+          _dunPadAssign.idx = ((_dunPadAssign.idx + (e.shiftKey ? -1 : 1)) % nP + nP) % nP;
+          var cT = chT[_dunPadAssign.idx];
+          sayU((_dunPadAssign.idx + 1) + ', ' + cT.label + '. ' + (cT.desc ? cT.desc + ' ' : '') + 'Enter to put it on key ' + _dunPadAssign.slot + '.');
+          return;
+        }
+        if (e.key === 'Enter' && _dunPadAssign.idx >= 0) { e.preventDefault(); var cE = _padChoices()[_dunPadAssign.idx]; if (cE) _padAssign(_dunPadAssign.slot, cE); return; }
+        if (/^[1-9]$/.test(k)) {
+          e.preventDefault();
+          var cN = _padChoices()[parseInt(k, 10) - 1];
+          if (!cN) { sayU('No choice ' + k + '.'); return; }
+          _padAssign(_dunPadAssign.slot, cN);
+          return;
+        }
+        return;   // swallow anything else while the assignment menu is open
+      }
+      if (_dunPad) {
+        if (e.key === 'Escape') { e.preventDefault(); _dunPad = false; _dunPadIdx = -1; sayU('Pad manager closed.'); return; }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          _dunPadIdx = ((_dunPadIdx + (e.shiftKey ? -1 : 1)) % 9 + 9) % 9;
+          sayU('Key ' + (_dunPadIdx + 1) + ': ' + _padSlotLabel(_dunPadIdx + 1) + '. Enter to re-map it.');
+          return;
+        }
+        if (e.key === 'Enter' && _dunPadIdx >= 0) { e.preventDefault(); _padOpenAssign(_dunPadIdx + 1); return; }
+        if (/^[1-9]$/.test(k)) { e.preventDefault(); _padOpenAssign(parseInt(k, 10)); return; }
+      }
+      if (k === 'n') {
+        e.preventDefault();
+        if (_blindHelp) { sayU('N: pad manager. Press N, then Tab through your nine numpad keys to hear what each does; press a key\'s number to choose what lives on it — any of your actions, or Nothing to disable the key. Your layout is saved for this class and every key you leave alone fills in automatically.'); return; }
+        if (_dunPad) { _dunPad = false; _dunPadIdx = -1; _dunPadAssign = null; sayU('Pad manager closed.'); return; }
+        _dunPad = true; _dunPadIdx = -1; _dunPadAssign = null;
+        pickSend('padpick', {}, function (m2) { _padMgrModel = m2; if (_dunPad) _padSpeakSlots(); });
+        return;
+      }
 
       var castSpell = function (ab) {
         if (!myTurn) { BM.speak('Not your turn.', 'ambient'); return; }

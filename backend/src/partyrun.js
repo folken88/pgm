@@ -29,8 +29,20 @@ function createPartyRun(party, roll = Math.random) {
     inventory: [], seq: 0, log: [] };
   run.heroes.forEach((h, i) => applyPersistedNegLevels(h, party[i].negLevels || 0));
   run.shim = new DungeonShim(run);
+  // RUN CODENAME (poker parity v1.19.0 — poker v3.37.70's grep-the-ground-truth
+  // workflow): every run gets a spoken two-word name; session.js stamps it on
+  // every jsonl log line, so a reported run is `grep '"runName":"x"'`-able.
+  run.runName = genRunName();
+  logEvent(run, `🏷️ This run is ${run.runName} — quote that name when you report it.`, 'event');
   spawnRoom(run, roll);
   return run;
+}
+
+// Two-word run codenames (adj-noun) — poker Dungeon.js `_genRunName` word lists.
+const RUN_ADJ = ['nimble', 'dapper', 'silent', 'golden', 'clever', 'lucky', 'proud', 'brave', 'shiny', 'jumbled', 'mellow', 'silver', 'crimson', 'dusty', 'velvet', 'jolly', 'grim', 'swift', 'quiet', 'wild'];
+const RUN_NOUN = ['wombat', 'marmot', 'pickle', 'puffin', 'ferret', 'panda', 'waffle', 'biscuit', 'penguin', 'walnut', 'lantern', 'mirror', 'pebble', 'otter', 'badger', 'kettle', 'anvil', 'raven', 'turnip', 'moose'];
+function genRunName() {
+  return RUN_ADJ[Math.floor(Math.random() * RUN_ADJ.length)] + '-' + RUN_NOUN[Math.floor(Math.random() * RUN_NOUN.length)];
 }
 
 function addItem(run, key, qty) {
@@ -723,6 +735,24 @@ function applyAction(run, clientId, action, roll = Math.random) {
     return { ok: true };
   }
 
+  // ── Poker-parity PICKERS (v1.19.0) — browsable ANY time, never turn-gated,
+  // delegated to the transplanted mixin on the shim (the same code poker runs):
+  //   loadout = the K Prepare menu · domains = V · metamagic = G toggles ·
+  //   progression = X lookup · padpick = the N numpad manager.
+  // Persistence lands in pokerdungeon/persistence/db.js (the JSON prefs store).
+  if (['loadout', 'domains', 'metamagic', 'progression', 'padpick'].includes(type)) {
+    const hero = run.heroes.find(h => h.ownerClientId === clientId);
+    if (!hero) return { ok: false, error: 'not a party member' };
+    const pid = hero.playerId || hero.id;
+    try {
+      if (type === 'progression') return run.shim.progression(pid);
+      if (type === 'metamagic') return run.shim.setMetamagic(pid, action.key);
+      if (type === 'loadout') return run.shim.loadout(pid, action);
+      if (type === 'domains') return run.shim.domains(pid, action);
+      return run.shim.padPick(pid, action);
+    } catch (e) { return { ok: false, error: e.message }; }
+  }
+
   if (type === 'retreat' && (run.phase === 'combat' || run.phase === 'cleared' || run.phase === 'initiative')) {
     if (!run.heroes.some(h => h.ownerClientId === clientId)) return { ok: false, error: 'not a party member' };
     run.phase = 'retreated';
@@ -1373,8 +1403,29 @@ function publicRun(run) {
       const sel = cantripState.choices.find(c2 => c2.key === cantripState.current);
       if (sel) { atwillOut.name = sel.name; atwillOut.icon = sel.icon || atwillOut.icon; }
     }
+    // Poker-parity kit extras (v1.19.0): the pad map (N manager), the domain-picker
+    // gate (V), and the metamagic toggles (G) — same fields poker's serialize ships.
+    let padMapOut = {};
+    try { padMapOut = run.shim._padMapOf ? (run.shim._padMapOf(cb) || {}) : {}; } catch (e) {}
+    let domainsMaxOut = 0;
+    try { domainsMaxOut = require('./pokerdungeon/pf1data/domains').maxDomainsFor(cb.cls) || 0; } catch (e) {}
+    let mmOut = null, kitOutExtras = null;
+    try {
+      const F2 = require('./pf1core/pf1data/feats');
+      const ff2 = F2.fighterFeats(cb.cls, lvl, !!(cb.weapon && cb.weapon.ranged));
+      const spont = pf1.abilities.isSpontaneous && pf1.abilities.isSpontaneous(cb.cls);
+      const act2 = (run.shim._spontMM ? (run.shim._spontMM(cb) || {}) : {});
+      const all2 = [['intensify', 'Intensify', '+1'], ['empower', 'Empower', '+2'], ['maximize', 'Maximize', '+3'], ['quicken', 'Quicken', '+4']].filter(([kk]) => ff2[kk]);
+      mmOut = spont ? all2.map(([key, name, adj]) => ({ key, name, adj, on: !!act2[key] })) : null;
+      kitOutExtras = { metamagicOwned: all2.map(([, name]) => name), metamagicBaked: !spont && all2.length > 0 };
+    } catch (e) { mmOut = null; }
     const kitOut = {
       caster: kitAll.some(a => a.isSpell),
+      padMap: padMapOut,
+      domainsMax: domainsMaxOut,
+      metamagic: (mmOut && mmOut.length) ? mmOut : null,
+      metamagicOwned: kitOutExtras ? kitOutExtras.metamagicOwned : [],
+      metamagicBaked: kitOutExtras ? kitOutExtras.metamagicBaked : false,
       atwill: atwillOut,
       cantrip: cantripState ? { current: cantripState.current, choices: cantripState.choices.map(c2 => c2.name) } : null,
       slots: Object.fromEntries(Object.entries(cb.slots || {}).map(([L, v]) => [L, { remaining: v, max: (cb.slotsMax || {})[L] != null ? cb.slotsMax[L] : v }])),

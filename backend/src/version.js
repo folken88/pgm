@@ -7,6 +7,20 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.19.0 2026-07-28 THE DUNGEON-PARITY BATCH (Tobias: "compare the dungeon's features, battle
+//                    interface, buttons, and blind-play to pgm and update pgm to function more like
+//                    the dungeon"). Poker's four ROUND-TRIP PICKERS are REAL here now — K prepare /
+//                    V domains / G metamagic / X progression — plus the N NUMPAD MANAGER (pad-map
+//                    v2 slot assignment, Josh's design). Server: picker action types in applyAction
+//                    (never turn-gated) delegate to the transplanted mixin; the persistence stub is
+//                    now a real JSON prefs store (data/pokerprefs.json) so prepared/known spells,
+//                    domains and pad layouts PERSIST per character+class; shim gains poker's real
+//                    _levelGains (X was answering "steady growth" for everything). RUN CODENAMES:
+//                    every run speaks a two-word name and every log line lands in
+//                    data/logs/dungeon.jsonl stamped runName — poker's grep-the-ground-truth
+//                    workflow works here now. Client: dungeon-blind.js menus match poker's spoken
+//                    flows key-for-key; kit ships padMap/domainsMax/metamagic; /api/session/action
+//                    accepts object actions (arbitrary picker payloads).
 //  1.18.2 2026-07-28 MANEUVERS = FIGHTER-TYPE ONLY (Tobias ruling, poker v3.37.96 pf1core refresh):
 //                    combat maneuvers belong to FULL-BAB classes; RANGER gains its missing Trip/
 //                    Disarm/Bull Rush/Grapple/Fight Defensively; casters/skirmishers never see them.
@@ -502,6 +516,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.18.2';
-const HEADLINE = 'Rangers finally get their Trip, Disarm, Bull Rush and Grapple — maneuvers now follow the Pathfinder full-BAB rule. Plus: theurge companions remember their whole spellbook again (they had been quietly stuck on cantrips), crossbow strikes at flyers now say so, and Power Attack stops sneaking onto ranged shots — Pathfinder says melee only.';
+const VERSION = '1.19.0';
+const HEADLINE = 'PGM now plays like the poker dungeon: press K to prepare spells, V for domains, G for metamagic, X for your class progression, and N to lay out your numpad exactly how you want it — all spoken, all saved. Every run gets a codename; quote it when you report a bug.';
 module.exports = { VERSION, HEADLINE };

@@ -19,6 +19,29 @@ PGM is made by:
 
 ---
 
+## v1.19.0 — 2026-07-28
+
+**PGM now plays like the poker dungeon.** The four spoken menus poker's blind players live by
+are real here, plus the brand-new numpad manager — all backed by the same engine code poker runs:
+
+- **K — Prepare spells.** Press a level number, then a number toggles a spell (Tab browses one
+  at a time, Enter toggles). Your prepared and known lists now SAVE per character and class.
+- **V — Domains.** Clerics pick two, inquisitors one; numbers toggle, changes land next room.
+- **G — Metamagic.** Spontaneous casters toggle Intensify/Empower/Maximize/Quicken; prepared
+  casters get the honest answer — theirs is baked into their spell lists.
+- **X — Class progression.** "What does my next level give me?" — feats, spells, slots, HP,
+  saves, spoken for your next nine levels.
+- **N — The numpad manager** (same-day port of Josh's design from poker): Tab through your nine
+  numpad keys hearing what each does; press a key's number and choose what lives on it — any
+  action, or Nothing to disable the key. Layouts save per class; untouched keys auto-fill.
+- **Run codenames.** Every run announces a two-word name ("this run is nimble-otter") and every
+  log line is recorded under it — so when you report a run, we can read exactly what happened.
+
+Also: retreat/initiative/attack flows unchanged — these menus browse any time without costing
+your turn, exactly like poker.
+
+---
+
 ## v1.18.0 — 2026-07-28
 
 **Teamwork feats, enemy crits, and the smarter tactics brain — the big poker parity sync.**

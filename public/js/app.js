@@ -114,6 +114,15 @@
     // Bridges dungeon-blind.js (poker's transplanted blind layer) uses to act:
     // its dungeonAction() shim funnels every dungeon key here.
     window.__pgmAction = function (a) { doGameAction({ id: a.type, target: a.target, spell: a.spell, item: a.item }); };
+    // RAW action sender (v1.19.0, poker-parity pickers): posts the action AS-IS
+    // (arbitrary fields — toggle/assign/lvl/key ride through) and hands the raw
+    // response to the callback. dungeon-blind.js's K/V/G/X/N menus round-trip
+    // their models through this, exactly like poker's socket acks.
+    window.__pgmActionRaw = function (act, cb) {
+      api('/api/session/action', { clientId: state.clientId, action: act || {} }).then(function (r) {
+        if (cb) cb(r || { ok: false, error: 'no response' });
+      }).catch(function () { if (cb) cb({ ok: false, error: 'connection hiccup' }); });
+    };
     window.__pgmLeave = leaveToMenu;
     document.body.classList.add('on-landing');   // landing is the initial screen (CSS shows the left delve list)
     fetch('/api/meta').then(function (r) { return r.json(); }).then(function (meta) {
@@ -805,13 +814,21 @@
     if (!kit) return null;
     return {
       caster: !!kit.caster,
+      // Poker-parity picker gates + models (v1.19.0): the pad map (N), the domain
+      // gate (V), the metamagic toggles (G) — straight pass-throughs of the same
+      // fields poker's serialize ships, so the transplanted menus read them as-is.
+      padMap: kit.padMap || {},
+      domainsMax: kit.domainsMax || 0,
+      metamagic: kit.metamagic || null,
+      metamagicOwned: kit.metamagicOwned || [],
+      metamagicBaked: !!kit.metamagicBaked,
       atwill: kit.atwill ? { key: kit.atwill.key, name: kit.atwill.name } : { name: 'Attack' },
       // slot = the ability KEY; dungeon-blind.js's dungeonAction shim turns a
       // poker `ability` emit into PGM's { type:'cast', spell:<key> }.
       abilities: (kit.abilities || []).map(function (a) {
         // `cost:'free'` marks a TOGGLE (Power Attack, Deadly Aim, Rage, a stance) —
         // dungeon-blind.js confirms those with a SOUND, not a spoken line (Tobias).
-        return { key: a.key, name: a.name, slvl: a.slvl, slot: a.key, available: a.available, effect: a.effect, target: a.target, cost: a.cost };
+        return { key: a.key, name: a.name, slvl: a.slvl, slot: a.key, available: a.available, effect: a.effect, target: a.target, cost: a.cost, desc: a.desc || '', icon: a.icon || '' };
       }),
       _cantrip: kit.cantrip ? { current: kit.cantrip.current, choices: (kit.cantrip.choices || []).map(function (nm, i) { return { key: 'c' + i, name: typeof nm === 'string' ? nm : (nm && nm.name) }; }) } : null,
     };

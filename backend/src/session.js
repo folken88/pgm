@@ -53,6 +53,14 @@ function flushRunLog(s) {
   const stamp = new Date().toISOString();
   const lines = newer.map(e => `${stamp} [room ${s.run.roomsCleared + 1} rd ${s.run.round}] ${e.text}`).join('\n') + '\n';
   try { fs.appendFileSync(delveFile(s), lines); } catch (e) {}
+  // Poker's grep-the-ground-truth workflow (v1.19.0): the same lines also land in
+  // ONE central jsonl stamped with the run's codename, so a reported run is
+  // `grep '"runName":"nimble-otter"' data/logs/dungeon.jsonl` — exactly like poker.
+  try {
+    fs.mkdirSync(path.join(DATA_DIR, 'logs'), { recursive: true });
+    const jl = newer.map(e => JSON.stringify({ ts: stamp, type: 'note', runName: s.run.runName || null, delve: s.name || s.id || null, room: s.run.roomsCleared + 1, round: s.run.round, text: e.text })).join('\n') + '\n';
+    fs.appendFileSync(path.join(DATA_DIR, 'logs', 'dungeon.jsonl'), jl);
+  } catch (e) {}
 }
 
 const MAX_PARTY = 8;        // humans + AI companions per delve

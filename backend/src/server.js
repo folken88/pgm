@@ -271,7 +271,12 @@ const server = http.createServer(async (req, res) => {
 
   if (url === '/api/session/action' && req.method === 'POST') {
     const body = await readBody(req);
-    const act = { type: body.action, target: body.target, item: body.item, spell: body.spell };
+    // v1.19.0: `action` may be an OBJECT ({type, toggle, assign, lvl, key…}) —
+    // the poker-parity pickers (loadout/domains/metamagic/progression/padpick)
+    // carry arbitrary payload fields the old string+siblings shape dropped.
+    const act = (body.action && typeof body.action === 'object')
+      ? body.action
+      : { type: body.action, target: body.target, item: body.item, spell: body.spell };
     const r = session.action(body.clientId, act);
     if (r.ok) broadcast();
     return sendJSON(res, r.ok ? 200 : 400, sessionResult(r, body.clientId));

@@ -301,7 +301,42 @@ Object.assign(DungeonShim.prototype, {
   },
   // PGM stubs: leveling/death/recruiting are PGM-owned systems.
   _applyDeathPenalty() {},
-  _levelGains() { return ''; },
+  // _levelGains — poker Dungeon.js verbatim-adapted port (v1.19.0): per-level
+  // gain summaries (BAB/HP/saves/feats/spells/slots) for the blind X key and
+  // level-up announcements. Was a ''-stub, which made poker's `progression`
+  // action answer "steady growth" for every level.
+  _levelGains(m, from, to) {
+    const C = require('../pf1core/pf1data/classes');
+    const F = require('../pf1core/pf1data/feats');
+    const cls = m.cls;
+    const parts = [];
+    const babD = C.babFor(cls, to) - C.babFor(cls, from);
+    if (babD > 0) parts.push(`BAB +${babD}`);
+    // maxHpFor is a poker Dungeon.js local (hd × level + Toughness HP) — derive
+    // the same delta from the class HD table + the feat-tree HP difference.
+    const hd = (C.CLASSES[cls] && C.CLASSES[cls].hd) || 8;
+    parts.push(`+${hd * (to - from) + ((F.fighterFeats(cls, to).hp || 0) - (F.fighterFeats(cls, from).hp || 0))} HP`);
+    const sv = ['fort', 'ref', 'will'].reduce((a, w) => a + (C.saveFor(cls, w, to) - C.saveFor(cls, w, from)), 0);
+    if (sv > 0) parts.push(`saves +${sv}`);
+    const feats = [];
+    const featNames = (F.RANGED_FEAT_CLASSES && F.RANGED_FEAT_CLASSES.has(cls) && this._isRanged(m)) ? F.RANGED_FEAT_AT
+                    : (cls === 'paladin' || cls === 'antipaladin') ? F.PALADIN_FEAT_AT : cls === 'druid' ? F.DRUID_FEAT_AT
+                    : (cls === 'wizard' || cls === 'sorcerer' || cls === 'witch') ? F.CASTER_FEAT_AT
+                    : (F.CLASS_FEAT_AT && F.CLASS_FEAT_AT[cls]) || F.FEAT_AT;
+    if (featNames && F.gatingLevel) {
+      for (let g = F.gatingLevel(cls, from) + 1; g <= F.gatingLevel(cls, to); g++) if (featNames[g]) feats.push(featNames[g]);
+    }
+    if (feats.length) parts.push(`feat: ${feats.join(', ')}`);
+    const kit = pf1.abilities.kitFor(cls), spells = [], strikes = [];
+    if (kit && kit.abilities) for (const ab of kit.abilities) if (ab.minLevel && ab.minLevel > from && ab.minLevel <= to) (cls === 'magus' && ab.effect === 'spellstrike' ? strikes : spells).push(ab.name);
+    const slotsForFn = pf1.abilities.slotsFor;
+    const s0 = (slotsForFn && slotsForFn(cls, from, m.castingMod)) || {}, s1 = (slotsForFn && slotsForFn(cls, to, m.castingMod)) || {};
+    const newSlot = Object.keys(s1).filter(L => !s0[L]).map(L => `${L}${({ 1: 'st', 2: 'nd', 3: 'rd' })[L] || 'th'}-level`);
+    if (newSlot.length) parts.push(`new ${newSlot.join(' & ')} spell slots`);
+    if (strikes.length) parts.push(`new ${this._isRanged(m) ? 'IMBUED SHOTS' : 'SPELL STRIKES'} on your action pad: ${strikes.slice(0, 4).join(', ')}`);
+    if (spells.length) parts.push(cls === 'magus' ? `new spells in your SPELLBOOK: ${spells.slice(0, 4).join(', ')}` : `spells: ${spells.slice(0, 4).join(', ')}`);
+    return parts;
+  },
   _recruitableFn() { return []; },
   addMember() { return { ok: false, error: 'PGM parties are fixed at the lobby' }; },
   roomName() { return 'pgm:' + (this.run && this.run.roomsCleared + 1 || 0); },
