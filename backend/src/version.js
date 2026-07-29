@@ -7,6 +7,13 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.19.1 2026-07-28 THE VOICE HAND-OFF RULE (Tobias, after testing 1.19.0): blind-TTS and the
+//                    11labs voices must WAIT ON EACH OTHER — never overlap, never cut each other.
+//                    rawSpeak's urgent branch was PAUSING+DISCARDING a playing GM/companion clip on
+//                    every urgent line (every blind keypress chopped the narrator mid-sentence).
+//                    Now an urgent line queues FIRST and fires the instant the clip ends; urgent
+//                    still interrupts plain browser-TTS (same voice, poker behavior); the S key
+//                    remains the explicit clip-skip. Sighted players accept the momentary pauses.
 //  1.19.0 2026-07-28 THE DUNGEON-PARITY BATCH (Tobias: "compare the dungeon's features, battle
 //                    interface, buttons, and blind-play to pgm and update pgm to function more like
 //                    the dungeon"). Poker's four ROUND-TRIP PICKERS are REAL here now — K prepare /
@@ -516,6 +523,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.19.0';
-const HEADLINE = 'PGM now plays like the poker dungeon: press K to prepare spells, V for domains, G for metamagic, X for your class progression, and N to lay out your numpad exactly how you want it — all spoken, all saved. Every run gets a codename; quote it when you report a bug.';
+const VERSION = '1.19.1';
+const HEADLINE = 'The narrator and the screen reader now take turns properly — no more cutting each other off mid-sentence. When the GM is speaking, everything else politely waits its turn.';
 module.exports = { VERSION, HEADLINE };

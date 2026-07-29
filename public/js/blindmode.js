@@ -195,9 +195,19 @@
     var weight = PRIO[prio] != null ? PRIO[prio] : 1;
     if (weight >= PRIO.urgent) {
       queue = queue.filter(function (q) { return PRIO[q.prio] >= PRIO.urgent; });
+      // THE HAND-OFF RULE (Tobias 2026-07-28): blind-TTS and the 11labs voices
+      // must WAIT ON EACH OTHER — never overlap, never cut each other mid-line.
+      // If an 11labs clip is speaking right now, the urgent line queues FIRST
+      // and fires the instant the clip ends (the clip's onended pumps it).
+      // Urgent may still interrupt plain browser-TTS (poker's designed behavior)
+      // — that's the same voice interrupting itself, not two voices colliding.
+      // The S key (stopSpeaking) remains the user's explicit clip-skip.
+      if (cur && cur.isAudio && speaking) {
+        queue.unshift({ text: text, prio: prio });
+        return;
+      }
       pumpGen++;                                     // an in-flight GM fetch must not resurrect
       try { TTS.cancel(); } catch (e) {}
-      if (gmAudio) { try { gmAudio.pause(); } catch (e) {} gmAudio = null; }   // never talk over: the access tier wins
       cur = null; speaking = false;
       queue.unshift({ text: text, prio: prio });
     } else if (weight === PRIO.ambient && queue.length) return;
