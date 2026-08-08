@@ -7,6 +7,22 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.0 2026-08-06 THE BIG BRAIN SYNC (poker v3.37.94 -> v3.37.108, via sync-from-poker.sh):
+//                    the four shared combat mixins (enemyAI/abilities/heroAI/summons) + bestiary
+//                    brought current. PGM's helpers and foes now carry: the PROVEN-SAVER rule +
+//                    room-wide hold cap (no more save-or-lose spam on targets that keep shrugging) ·
+//                    hopeless-cantrip escalation + "when you can't hurt it, help someone" ·
+//                    mind-control sanity · SAVE YOURSELF (a dying pure caster heals ITSELF, shields
+//                    itself, or gives ground on TOTAL DEFENSE +4 AC instead of plinking to death) ·
+//                    bot shooters EMPTY THE MAGAZINE (skip single-shot deeds once iteratives exist —
+//                    poker's bot Duristan was doing 35/round vs 140 piloted) · Detect Evil scan
+//                    memory (one sweep per batch of foes, not one per round) · GLORIOUS CHALLENGE
+//                    by Tobias's law (swift mark, own-kill banks the escalating charge) · Tactician
+//                    as a MOVE action · Blaze of Glory as a SWIFT · challenge/studied damage tags ·
+//                    pad catalog stance-filter + setMap pin-on-assign (server side). NOT yet ported
+//                    (UI-side, tracked): condition-strip chips (Challenged/Studied), kick two-tap,
+//                    silent overflow cap, /api/transcript. Verified: sync auto-revert pipeline
+//                    (module load + boot 200) + shim harness + npm test.
 //  1.19.1 2026-07-28 THE VOICE HAND-OFF RULE (Tobias, after testing 1.19.0): blind-TTS and the
 //                    11labs voices must WAIT ON EACH OTHER — never overlap, never cut each other.
 //                    rawSpeak's urgent branch was PAUSING+DISCARDING a playing GM/companion clip on
@@ -523,6 +539,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.19.1';
-const HEADLINE = 'The narrator and the screen reader now take turns properly — no more cutting each other off mid-sentence. When the GM is speaking, everything else politely waits its turn.';
+const VERSION = '1.20.0';
+const HEADLINE = 'Your helpers got a whole brain transplant from the poker dungeon: casters save themselves when dying, shooters fire full volleys instead of single shots, foes stop spamming spells you keep shrugging off, and paladins trust their own Detect Evil.';
 module.exports = { VERSION, HEADLINE };

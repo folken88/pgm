@@ -461,7 +461,9 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     // against opponents other than the target"). Stacks with the glorious −2/issue
     // (which lives in _acPenalty via gloriousAC).
     const challengePen = (target.challengedId != null && e && e.uid !== target.challengedId) ? 2 : 0;
-    return this._acOf(target).ac + this._acBonus(target)
+    // v3.37.107 TOTAL DEFENSE: a dying, slot-dry bot caster that GUARDS instead
+    // of plinking gets PF1's +4 dodge until it next acts (heroAI sets/clears).
+    return this._acOf(target).ac + this._acBonus(target) + (target._totalDefense ? 4 : 0)
       - (target.paralyzed > 0 ? 4 : 0) - (target.prone ? 4 : 0)
       - (target.stunned > 0 ? 2 : 0) - (target.slowed > 0 ? 1 : 0)
       - challengePen - this._acPenalty(target);
@@ -807,7 +809,19 @@ module.exports = ({ SICKENED_PENALTY, SICKENED_ROUNDS, HIGH_GROUND_HIT, ABILITY_
     // round for 61 ROUNDS, and because this branch fires FIRST, the fiend never reached
     // its fireball/cone/chain-lightning artillery below. e is rebuilt each room, so the
     // memory self-resets. When every bruiser is a proven bad bet, it BLASTS instead.
-    const _futileHold = (m) => ((e._holdResists && e._holdResists[m.playerId]) || 0) >= 2;
+    // v3.37.97 (Josh, scrambled-lynx d10): per-hero futility alone let a boss
+    // waste ~2×party-size turns holding DOWN THE LINE before escalating. Now a
+    // ROOM-WIDE cap too: 3 failed holds total and the tactic is abandoned — the
+    // caster moves to its real spells ("he should've brought out the big boy
+    // spells quicker — he'd probably have killed us").
+    const _holdFailTotal = Object.values(e._holdResists || {}).reduce((a, n) => a + Math.min(2, n), 0);
+    // STANDING RULE (Tobias 2026-07-30): neither side retries a SAVE-OR-LOSE on a
+    // target that has PROVEN a better-than-50% save. First try is always fair (you
+    // haven't seen the roll yet); once this hero has shrugged ONE hold, the caster
+    // has seen their resolve — retry only if they still fail on an 11+.
+    const _futileHold = (m) => _holdFailTotal >= 3
+      || ((e._holdResists && e._holdResists[m.playerId]) || 0) >= 2
+      || (((e._holdResists && e._holdResists[m.playerId]) || 0) >= 1 && this._partySaveMod(m, ['will']) >= dc(5) - 10);
     const bruiser = heroes.find(m => !(m.paralyzed > 0) && !m.undead && MART.has(m.cls) && m.hp > m.maxHp * 0.4 && !_futileHold(m));   // undead heroes have no mind to hold
     if (cl >= 9 && bruiser && !heroes.some(m => m.paralyzed > 0)) return this._enemyHoldHero(e, bruiser, dc(5), 'Hold Monster');
     // 2) Finish a badly-wounded hero with auto-hitting Magic Missile (1st).

@@ -97,7 +97,7 @@ const CHALLENGE = { key: 'challenge', name: 'Challenge', icon: '⚔️', cost: '
 // ORDER OF THE FLAME (Lord Gweyir) — a FREE, unlimited challenge-and-strike in one. Char-gated;
 // applies his CURRENT glory stack (+2×N damage / −2×N AC), then attacks; a KILL grows the stack
 // for next turn. Chain kills (fodder is fair game!) to pump it, then unleash on a real threat.
-const GLORIOUS_CHALLENGE = { key: 'gloriouschallenge', name: 'Glorious Challenge', icon: '🔥', cost: 'free', effect: 'gloriouschallenge', target: 'enemy', sound: '/audio/draugr_shout03_burning.mp3', char: 'Lord Gweyir', desc: 'ORDER OF THE FLAME (PF1 RAW): SELECT a foe, then Glorious Challenge to challenge it AND strike at once. Each glorious challenge ISSUED this streak: +2 morale damage and −2 AC, compounding — your third in a row is +6 damage, −6 AC, on top of the base challenge\'s +level damage. Chain kills to keep it burning; the play is to build the Flame on the chaff and spend the damage on the boss. Current streak lives on the L readout; every kill announces your NEXT challenge\'s numbers. Free, unlimited, does not spend your Challenge uses.' };
+const GLORIOUS_CHALLENGE = { key: 'gloriouschallenge', name: 'Glorious Challenge', icon: '🔥', cost: 'free', freeAction: true, effect: 'gloriouschallenge', target: 'enemy', sound: '/audio/draugr_shout03_burning.mp3', char: 'Lord Gweyir', desc: 'ORDER OF THE FLAME — SWIFT ACTION: mark ONE foe with a glorious challenge, then attack or Cleave as usual THE SAME TURN — every blow you land on the mark carries the bonus (spoken as +N challenge). THE LAW: down your marked foe WITH YOUR OWN BLOW to bank a CHARGE, then you may glorious challenge the next — each banked charge escalates the next mark by +2 morale damage and −2 to your AC, compounding. While your mark still stands you cannot bellow at another. An ally stealing the kill frees the mark but banks nothing. Streak resets each room. Free, unlimited, does not spend your Challenge uses.' };
 // TACTICIAN (all cavaliers — reworked v3.37.92 to PF1 RAW, Tobias: "function like a
 // buff that the cavalier can grant… he chooses which one he shares… lasts the rest
 // of that room"): a standard action that SHARES one of the cavalier's own teamwork
@@ -105,13 +105,13 @@ const GLORIOUS_CHALLENGE = { key: 'gloriouschallenge', name: 'Glorious Challenge
 // _twkActive's share check). Auto-picks his best by priority; an explicit
 // payload.featKey wins (the choose-a-feat picker UI rides on this). Uses 1/2/3 at
 // L1/9/17 (PF1's per-day, per-room here).
-const TACTICIAN = { key: 'tactician', name: 'Tactician: Share a Teamwork Feat', icon: '🚩', cost: 'room', uses: (lvl) => ((lvl || 1) >= 17 ? 3 : (lvl || 1) >= 9 ? 2 : 1), effect: 'tactician', target: 'self', sound: '/audio/spell_buff_invoke.mp3', desc: 'PF1 Tactician — spend a turn drilling the party: ONE of YOUR teamwork feats is shared with every ally for the rest of the room (they count as having it, no partner needed). The share is announced with what the feat does. Your best is picked automatically for now; a chooser is coming.' };
+const TACTICIAN = { key: 'tactician', name: 'Tactician: Share a Teamwork Feat', icon: '🚩', cost: 'room', uses: (lvl) => ((lvl || 1) >= 17 ? 3 : (lvl || 1) >= 9 ? 2 : 1), effect: 'tactician', target: 'self', freeAction: true, sound: '/audio/spell_buff_invoke.mp3', desc: 'MOVE ACTION (house rule — PF1 says standard): drill the party and STILL attack this same turn. ONE of YOUR teamwork feats is shared with every ally for the REST OF THIS ROOM ONLY — re-drill each room. The share is announced with what the feat does. Your best is picked automatically for now; a chooser is coming. Your OWN feats always work alongside a partner regardless — the L readout shows what is live.' };
 // ORDER OF THE FLAME order ability — BLAZE OF GLORY (L15). PF1: a standard action for Cha-mod
 // rounds granting +4 to attack (among movement perks that don't apply on the abstract grid);
 // modeled here as a once-per-room self-buff of +4 to hit for the rest of the room. Char-gated +
 // minLevel 15 like the other Flame deeds. (Foolhardy Rush L2 & Daunting Success L8 are passives
 // wired in Dungeon.js: _isFlameCavalier / openDoor / _rollInitiative / _dauntingSuccess.)
-const BLAZE_OF_GLORY = { key: 'blazeofglory', name: 'Blaze of Glory', icon: '☄️', cost: 'room', uses: 1, minLevel: 15, effect: 'buff', target: 'self', buff: { toHit: 4 }, sticky: true, char: 'Lord Gweyir', sound: '/audio/draugr_shout03_burning.mp3', desc: 'ORDER OF THE FLAME (L15): blaze up in a final surge of glory — +4 to ALL your attacks for the rest of the room. Once per room.' };
+const BLAZE_OF_GLORY = { key: 'blazeofglory', name: 'Blaze of Glory', icon: '☄️', cost: 'room', uses: 1, minLevel: 15, effect: 'buff', target: 'self', buff: { toHit: 4 }, sticky: true, freeAction: true, char: 'Lord Gweyir', sound: '/audio/draugr_shout03_burning.mp3', desc: 'ORDER OF THE FLAME (L15) — SWIFT ACTION (house rule; PF1 says standard): blaze up in a final surge of glory — +4 to ALL your attacks for the rest of the room, and you STILL act this turn. It is a buff on you, not an attack: after lighting it, aim your own strikes as usual. Once per room.' };
 
 // Signature Spell Strike sounds per magus (keyed by dungeon nickname). Human
 // magi (and any unlisted magus) fall back to the spell's default electric zap.
@@ -669,7 +669,8 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     this._splitTheurgeSlots(m);   // Celeb (theurge): fork each level's pool into HALF arcane / HALF divine
     if (m.cls === 'theurge') { const L = m.level || 1; m.synthUses = L >= 17 ? 3 : L >= 11 ? 2 : L >= 5 ? 1 : 0; }   // SPELL SYNTHESIS (Kobold Press): usable 1/2/3 times per room at L5/11/17
     if (m.cls === 'slayer') { m.studiedId = null; m.studiedN = 0; }   // SLAYER: Studied Target mark clears each room (fresh foes)
-    if (m.cls === 'cavalier') { m.challengedId = null; m.challengeN = 0; m.gloriousN = 0; m.gloriousAC = 0; m._dauntedRoom = false; }   // CAVALIER: Challenge oath (and Order of the Flame's glorious-challenge stack + once-per-room Daunting Success) clear each room
+    m._totalDefense = false;   // v3.37.107: a guard stance never survives the door
+    if (m.cls === 'cavalier') { m.challengedId = null; m.challengeN = 0; m.gloriousN = 0; m.gloriousAC = 0; m._gcTargetUid = null; m._dauntedRoom = false; }   // CAVALIER: Challenge oath (and Order of the Flame's glorious-challenge stack + once-per-room Daunting Success) clear each room
     m.abilityUses = {};
     for (const ab of this._abilitiesFor(m)) if (ab.cost === 'room') m.abilityUses[ab.key] = roomUses(ab, m.level || 1, m);
     // Hero's Defiance — a paladin's once-per-room clutch self-rescue (auto-fired
@@ -1231,10 +1232,35 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     // stored raw; the CLIENT resolves it against the live action list, so a key
     // that stops existing (level reset, loadout change) just auto-fills — no
     // validation trap here beyond sanity.
+    // v3.37.104 (Josh's ruling, silver-rabbit): { setMap: {1..9: key} } replaces
+    // the WHOLE layout in one write — the client pins the current board first,
+    // so an assignment changes exactly one key and NOTHING reflows. Hidden
+    // abilities being pinned are un-hidden, same as single assigns.
+    if (payload.setMap && typeof payload.setMap === 'object') {
+      const map = {};
+      for (const [k, v] of Object.entries(payload.setMap)) {
+        const slot = parseInt(k, 10);
+        if (!(slot >= 1 && slot <= 9)) continue;
+        const key = String(v == null ? '' : v).slice(0, 40);
+        if (key) map[slot] = key;
+      }
+      const hid2 = this._padHiddenKeys(m); let unhid = false;
+      for (const v of Object.values(map)) if (hid2.has(v)) { hid2.delete(v); unhid = true; }
+      if (unhid) db.setHiddenPad(m.playerId, m.cls, [...hid2]);
+      db.setPadMap(m.playerId, m.cls, map);
+      m._padMap = null;
+      this._broadcast();
+      return { ok: true, ...this._padModel(m) };
+    }
     if (payload.assign) {
       const slot = parseInt(payload.assign.slot, 10);
       const key = String(payload.assign.key == null ? '' : payload.assign.key).slice(0, 40);
       if (!(slot >= 1 && slot <= 9)) return { ok: false, error: 'slot must be 1 to 9' };
+      // Assigning a HIDDEN ability UN-HIDES it (v3.37.97 — Josh, scrambled-lynx:
+      // his v1 hide/show hides emptied the v2 assignment catalog, with no blind
+      // way to restore; picking something for a key must always just work).
+      const hid = this._padHiddenKeys(m);   // cache-aware: the live set, loaded from db
+      if (hid.has(key)) { hid.delete(key); db.setHiddenPad(m.playerId, m.cls, [...hid]); }
       const map = { ...this._padMapOf(m) };
       if (!key) delete map[slot]; else map[slot] = key;
       db.setPadMap(m.playerId, m.cls, map);
@@ -1256,11 +1282,18 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   },
   _padModel(m) {
     const hidden = this._padHiddenKeys(m);
-    const abs = this._abilitiesFor(m).filter(ab => this._charAllows(ab, m) && this._loadoutAllows(ab, m));
+    // v3.37.104 (Josh, silver-rabbit: "it wouldn't let me assign Deadly Aim no
+    // matter what" — his slayer is melee): the catalog now applies the same
+    // stance rule the pad itself uses — no Deadly Aim for a melee wielder, no
+    // Power Attack for a ranged one. Never offer what the pad can't show.
+    const rangedNow = this._isRanged(m);
+    const abs = this._abilitiesFor(m).filter(ab => this._charAllows(ab, m) && this._loadoutAllows(ab, m)
+      && !(ab.powerattack && rangedNow) && !(ab.deadlyaim && !rangedNow));
     return {
       abilities: abs.map(ab => ({
         key: ab.key, name: ab.name, icon: ab.icon || '✨',
         desc: ab.desc || '',
+        slvl: ab.slvl != null ? ab.slvl : null,   // v3.37.97: lets the N catalog exclude spells (they live in the Spellbook, not on pad keys)
         hidden: hidden.has(ab.key),
       })),
       shown: abs.filter(ab => !hidden.has(ab.key)).length,
@@ -2126,7 +2159,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
     const e = this._oneEnemy(payload); if (!e) return;
     m.studiedId = e.uid;
     m.studiedN = 1 + Math.floor((m.level || 1) / 5);
-    this._note(`${ab.icon} ${m.nickname} STUDIES ${e.name} — reading its guard for the kill: +${m.studiedN} to hit and damage against it.`, ab.sound);
+    this._note(`${ab.icon} ${m.nickname} STUDIES ${e.name} — reading its guard for the kill: +${m.studiedN} to hit and damage against it. The mark holds until you study another or the room ends.`, ab.sound);
     this._echoToTable(ab.sound);
   },
   // CAVALIER — Challenge: swear an oath against ONE foe. Every strike the cavalier
@@ -2146,19 +2179,35 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   // grows by one for next turn. FREE and unlimited — chain kills (fodder counts!) to pump it, then
   // loose the accumulated bonus on a real threat. Works identically for a human (the button) and
   // the bot (which targets the weakest foe to keep the streak rolling — see _allyAct).
+  // TOBIAS'S LAW (v3.37.105): "he GC a target, he downs that target, he gains a
+  // charge and can GC someone else. Repeat." The bellow is now a SWIFT MARK —
+  // no built-in strike; the cavalier then attacks or Cleaves freely and every
+  // blow on the quarry carries the bonus (tagged "(+N challenge)"). While the
+  // marked foe STANDS, no new glorious challenge may be issued. Downing it
+  // WITH YOUR OWN BLOW banks the charge (_gcBank, wired into the weapon-kill
+  // and cleave-kill sites). An ally stealing the kill frees the mark but banks
+  // NOTHING — glory unclaimed (sorry, Kai).
   _abGloriousChallenge(m, ab, payload) {
     const e = this._oneEnemy(payload); if (!e) return;
+    if (m._gcTargetUid) {
+      const cur = this.enemies.find(x => x.uid === m._gcTargetUid && x.hp > 0);
+      if (cur) return { ok: false, error: `Your glorious challenge stands — down ${cur.name} yourself first, then bellow anew.` };
+    }
     m.challengedId = e.uid;
-    m.challengeN = (m.level || 1) + 2 * ((m.gloriousN || 0) + 1);   // RAW (v3.37.90): base challenge + 2 × glorious challenges ISSUED (this one included) — the FIRST glorious already carries +2 morale damage
-    m.gloriousAC = 2 * ((m.gloriousN || 0) + 1);              // RAW (v3.37.90): −2 AC per glorious ISSUED, this one included (stacks with the base challenge's −2-vs-others in _foeTargetAC)
+    m.challengeN = (m.level || 1) + 2 * ((m.gloriousN || 0) + 1);   // RAW: base challenge + 2 × glorious challenges ISSUED (this one included)
+    m.gloriousAC = 2 * ((m.gloriousN || 0) + 1);              // RAW: −2 AC per glorious ISSUED, this one included
+    m._gcTargetUid = e.uid;
     const stacked = (m.gloriousN || 0) > 0;
-    // v3.37.93: the announce now matches the APPLIED numbers — 2×(streak+1), this
-    // glorious included (silver-mirror showed "next: +4" then a bellow saying +2).
     const gBonus = 2 * ((m.gloriousN || 0) + 1);
-    this._note(`🔥 ${m.nickname} bellows a GLORIOUS CHALLENGE at ${e.name}${stacked ? ` — the Flame ROARS (+${gBonus} damage, −${gBonus} AC)!` : ` — the Order of the Flame awakens (+${gBonus} damage, −${gBonus} AC)!`}`, ab.sound);
+    this._note(`🔥 ${m.nickname} bellows a GLORIOUS CHALLENGE at ${e.name}${stacked ? ` — the Flame ROARS (+${gBonus} damage, −${gBonus} AC)!` : ` — the Order of the Flame awakens (+${gBonus} damage, −${gBonus} AC)!`} Down them yourself to bank the charge.`, ab.sound);
     this._echoToTable(ab.sound);
-    this._basicAttack(m, e.uid);   // ...and strike immediately (plays his estoc's attack sound after the shout)
-    if (e.hp <= 0) { m.gloriousN = (m.gloriousN || 0) + 1; this._note(`🔥 ${m.nickname} stands triumphant over ${e.name} — GLORIOUS! Kill streak ${m.gloriousN} — your NEXT glorious challenge: +${2 * (m.gloriousN + 1)} morale damage, −${2 * (m.gloriousN + 1)} AC. (Unleash it again next turn.)`); }
+  },
+  /** Bank a glorious charge — the cavalier PERSONALLY downed their marked foe. */
+  _gcBank(m, tgt) {
+    if (!m || !tgt || m._gcTargetUid !== tgt.uid || tgt.hp > 0) return;
+    m._gcTargetUid = null;
+    m.gloriousN = (m.gloriousN || 0) + 1;
+    this._note(`🔥 ${m.nickname} stands triumphant over ${tgt.name} — GLORIOUS! Charge banked (streak ${m.gloriousN}). Your next glorious challenge: +${2 * (m.gloriousN + 1)} morale damage, −${2 * (m.gloriousN + 1)} AC.`);
   },
   // TACTICIAN (v3.37.92, PF1 RAW): share ONE of the cavalier's teamwork feats with
   // the whole party for the room. payload.featKey (or .mode) picks explicitly —
@@ -2725,7 +2774,10 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
   _abDetectEvil(m, ab) {
     const foes = this.livingEnemies();
     let evil = 0, clean = 0;
-    for (const e of foes) { if (e.evil) { e.markedEvil = true; evil++; } else clean++; }
+    // Every foe gets stamped SCANNED — evil or not (v3.37.106, run clever-mirror:
+    // bot Gabriel re-cast this every round of a clean room because non-evil foes
+    // never recorded that they'd already been read). New arrivals scan fresh.
+    for (const e of foes) { e._devScanned = true; if (e.evil) { e.markedEvil = true; evil++; } else clean++; }
     const sound = ab.sound || '/audio/into_the_light.mp3';
     this._note(`${ab.icon || '🎯'} ${m.nickname} calls DETECT EVIL — ${evil} foe${evil === 1 ? '' : 's'} RADIATE${evil === 1 ? 'S' : ''} evil and ${evil === 1 ? 'is' : 'are'} MARKED for Smite${clean ? `; ${clean} do${clean === 1 ? 'es' : ''} NOT (no purchase for your smite there)` : ''}!`, sound);
     this._echoToTable(sound);
@@ -3026,7 +3078,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       } else if (r.hit) {
         this._dmgE(target, r.damage); downed = target.hp <= 0;
         bits.push(`${target.name} ${r.damage}${r.drTag || ''}${this._afterEnemyHit(target)}`);   // _afterEnemyHit already adds ☠️ or (hp/max) — don't print the total twice (Josh: "66 of 95 66 of 95")
-        if (downed) { kills++; this._tryBanter(m, 'down', { enemy: target.name }); }
+        if (downed) { kills++; this._gcBank(m, target); this._tryBanter(m, 'down', { enemy: target.name }); }   // a Cleave kill of the glorious mark banks the charge too (v3.37.105)
       } else {
         bits.push(`${target.name} miss`);
       }
@@ -3199,7 +3251,13 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
       // Rogue Sneak Attack with a light blade (dagger/kukri/shortsword) → Riki.
       if (r.sneakDice && isSneakClass(m.cls) && ['dagger', 'kukri', 'shortsword'].includes(m.weaponKey) && i === 0) r.sound = '/audio/sneak_riki.mp3';
       if (i === 0) flurrySound = r.sound;
-      const tag = (r.smite ? ' ⚔️Smite!' : '') + (r.sneakDice ? ` (+${r.sneakDmg} sneak)` : '');
+      // v3.37.104 (Josh, lucky-moose: "it did not say it was applying my
+      // challenge bonus"): hits on YOUR challenged quarry now carry the bonus
+      // tag, same as sneak/teamwork — the number was always in the damage;
+      // now the line says so.
+      const tag = (r.smite ? ' ⚔️Smite!' : '') + (r.sneakDice ? ` (+${r.sneakDmg} sneak)` : '')
+        + ((r.hit && tgt.uid === m.challengedId && (m.challengeN || 0) > 0) ? ` (+${m.challengeN} challenge)` : '')
+        + ((r.hit && tgt.uid === m.studiedId && (m.studiedN || 0) > 0) ? ` (+${m.studiedN} studied)` : '');
       // Name the improvised weapon on the strike line (v3.37.95, Josh): the HASTE
       // bonus strike is `quiet`, so its crossbow swap was silent — he heard a bare
       // "Gabriel hits [flying foe]" and reasonably concluded a greatsword was
@@ -3235,6 +3293,7 @@ module.exports = ({ ABILITY_MOD, CAST_MOD, SICKENED_PENALTY, SICKENED_ROUNDS, BL
         if (r.sneakDice && fighterFeats(m.cls, m.level, this._isRanged(m)).offDef && !m._offDef) { m._offDef = true; this._note(`🤸 ${m.nickname}'s strike leaves them covered — +2 AC until their next move (Offensive Defense).`); }
         // Promethean tentacles GRAB on a hit — the foe is grappled & helpless until it breaks free.
         if (m.weapon.grapple && tgt.hp > 0 && !tgt.grappled) { tgt.grappled = true; tgt.grappledBy = m.playerId; tgt.grappleRounds = 2; this._note(`🐙 ${tgt.name} is SEIZED in ${m.nickname}'s tentacles — grappled and helpless!`); }
+        if (tgt.hp <= 0) this._gcBank(m, tgt);   // his own blow downed his glorious mark → the charge banks (v3.37.105)
         if (tgt.hp <= 0) this._tryBanter(m, 'down', { enemy: tgt.name });
         if (tgt.hp <= 0 && tgt.type === 'undead') this._radianceQuip(m, 'radiance_undead_down', { enemy: tgt.name });   // Radiance HATES undead — she erupts
         // TON BOKIRI: the demon spear drinks a kill and floods its wielder with a barbarian rage.

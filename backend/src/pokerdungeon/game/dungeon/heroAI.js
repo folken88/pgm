@@ -20,6 +20,12 @@ const { attackProfile } = require('../character');
 const { crToNum } = require('../../pf1data/monsters');
 const { fighterFeats } = require('../../pf1data/feats');
 
+// v3.37.107: the classes whose basic attack is a CANTRIP, not a weapon — the
+// population the self-preservation guard (total defense at <35% HP) applies to.
+// Martials and hybrid sword-casters are excluded on purpose: their basic attack
+// is real damage, and standing to swing IS their self-preservation.
+const PURE_CASTERS = new Set(['wizard', 'sorcerer', 'cleric', 'oracle', 'druid', 'witch', 'theurge', 'necromancer', 'arcanist']);
+
 module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd }) => ({
   // A living foe this member is compelled (taunted) to attack, or null.
   _forcedFoe(m) {
@@ -30,6 +36,7 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     const foes = this._targetableEnemies();   // can't target Darkness-shrouded foes
     if (!foes.length) return;
     m._unseenStrike = false;   // reset the unseen-opening-strike flag each turn (set only when a hidden hero breaks cover to attack)
+    m._totalDefense = false;   // v3.37.107: last turn's TOTAL DEFENSE guard ends the moment they act again (PF1)
     // Taunted by a goblin barbarian → drop the clever play and just go hit it.
     if (m.tauntedBy && foes.some(e => e.uid === m.tauntedBy)) {
       const tgt = this._preferredFoe(m, foes);   // returns + consumes the taunter
@@ -71,7 +78,7 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
         // stab a motherfucker, not hide in the corner "for the right moment" that never
         // comes.) The breaking strike catches the foe unseen, so it denies its Dex.
         const c = this._botAbility(m);
-        if (c) {
+        if (c && !c.guard) {   // guard sentinel is meaningless while unseen — fall through
           const ab = this._abilitiesFor(m)[c.slot];
           if (ab && ab.target !== 'enemy' && ab.target !== 'aoe' && ab.effect !== 'attack') {
             const r = this._useAbility(m, c.slot, c.payload);
@@ -114,7 +121,11 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
         const weakest = pool.slice().sort((a, b) => a.hp - b.hp)[0];
         const biggest = pool.find(e => e.boss) || pool.slice().sort((a, b) => (b.maxHp || b.hp) - (a.maxHp || a.hp))[0];
         const prey = ((m.gloriousN || 0) >= 2) ? biggest : weakest;
-        if (prey) { const r = this._useAbility(m, gcSlot, { targetUid: prey.uid }); if (r && r.ok) { this._hasteBonus(m); return; } }
+        // v3.37.105 (Tobias's law): the bellow is a SWIFT MARK now — issue it only
+        // when no live mark stands, then FALL THROUGH and fight (the kill of the
+        // mark by his own blow banks the charge via _gcBank).
+        const markAlive = m._gcTargetUid && live.some(e => e.uid === m._gcTargetUid);
+        if (prey && !markAlive) this._useAbility(m, gcSlot, { targetUid: prey.uid });
       }
     }
     // SLAYER auto-STUDIES its prey (Studied Target is a swift/free action): mark the
@@ -126,11 +137,13 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     }
     // BOT TACTICIAN (v3.37.92): a cavalier opens the fight by drilling the party —
     // share the best teamwork feat once per room, while the room is young and
-    // there's a party to drill. (Standard action — it IS the turn.)
+    // there's a party to drill. (v3.37.101, Tobias: Tactician is a MOVE action
+    // now — the drill happens and the cavalier STILL fights this same turn, so
+    // the bot falls through to its normal attack instead of returning.)
     if (m.cls === 'cavalier' && !this._twkShare && this.round <= 2 && this.livingParty().length >= 3
         && ((m.abilityUses && m.abilityUses.tactician) || 0) > 0 && teamworkGrants(m.cls, m.level).size) {
       const tSlot = this._abilitiesFor(m).findIndex(ab => ab.effect === 'tactician');
-      if (tSlot >= 0) { const r = this._useAbility(m, tSlot, {}); if (r && r.ok) { this._hasteBonus(m); return; } }
+      if (tSlot >= 0) this._useAbility(m, tSlot, {});   // free-action plumbing keeps the turn — keep acting below
     }
     // CAVALIER auto-CHALLENGES its prey when it has a Challenge use left (room-cost, limited):
     // swear the +level-damage oath on the foe it's about to fight, re-swear when the old quarry
@@ -150,15 +163,15 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     // worthwhile cast — otherwise he saves it for a normal single spell.
     if (m.playerId === 'celeb' && (m.synthUses || 0) > 0) {
       m._synthSchool = 'arcane'; const cA = this._botAbility(m); m._synthSchool = null;
-      if (cA) {
+      if (cA && !cA.guard) {
         m._synthSchool = 'divine'; const cDp = this._botAbility(m); m._synthSchool = null;
-        if (cDp) {
+        if (cDp && !cDp.guard) {
           m.synthUses--; m._synthActive = true;
           this._note(`✨🌓 ${m.nickname} weaves the arcane and the divine as ONE — SPELL SYNTHESIS! (${m.synthUses} left this room)`, '/audio/spell_buff_invoke.mp3');
           this._echoToTable('/audio/spell_buff_invoke.mp3');
           this._useAbility(m, cA.slot, cA.payload);
           m._synthSchool = 'divine'; const cD = this._botAbility(m); m._synthSchool = null;   // recompute after the arcane cast changed the board
-          if (cD) this._useAbility(m, cD.slot, cD.payload);
+          if (cD && !cD.guard) this._useAbility(m, cD.slot, cD.payload);
           m._synthActive = false;
           this._hasteBonus(m); return;
         }
@@ -167,6 +180,14 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     // Then see if a class ability is the smart play this turn (heal, buff,
     // blast, spell). If so, use it; otherwise fall back to a basic attack.
     const choice = this._botAbility(m);
+    // v3.37.107 TOTAL DEFENSE (the guard sentinel): a dying, slot-dry caster
+    // gives ground instead of feeding its turn to chip damage — +4 AC until
+    // they act again (_foeTargetAC reads m._totalDefense). Consumes the turn.
+    if (choice && choice.guard) {
+      m._totalDefense = true;
+      this._note(`🛡️ ${m.nickname} gives ground and GUARDS — total defense, +4 AC until they act again. Nothing left in the tank worth standing still for.`);
+      return;
+    }
     if (choice) {
       const ab = this._abilitiesFor(m)[choice.slot];
       m._botMM = this._botPickMetamagic(m, ab);   // spontaneous bot may empower/maximize a damage spell when flush on high slots
@@ -260,6 +281,12 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     // Taunted → compelled to go straight for the taunter (cleared at turn's end).
     const forced = this._forcedFoe(m);
     if (forced) return forced;
+    // GLORIOUS MARK (v3.37.105, Tobias's law): a cavalier with a live glorious
+    // challenge finishes THAT foe — the charge only banks on his own killing blow.
+    if (m._gcTargetUid) {
+      const gcT = foes.find(e => e.uid === m._gcTargetUid && e.hp > 0);
+      if (gcT && this._canReach(m, gcT)) return gcT;
+    }
     // Melee fighters can't reach flyers — prefer grounded foes (fall back to flyers
     // only if that's all that's left, so the wasted-swing message still fires).
     const _w = m.weapon || weaponOf(m.gear, m.weaponKey);
@@ -349,7 +376,20 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     }
     const slot = (ab) => allAbs.indexOf(ab);
     const avail = allAbs.filter(usable);
-    if (!avail.length) return null;
+    if (!avail.length) {
+      // v3.37.107 SAVE YOURSELF, the DRY case (sneaky-dumpling d4: this very
+      // early-out is where slot-dry Celeb's brain gave up every round while a
+      // Movanic Deva beat him from 91 HP to SLAIN — the self-preservation
+      // block at the bottom of this function sat unreachable behind it).
+      // Nothing castable means heal/buff are off the table; the one tool left
+      // is TOTAL DEFENSE: a dying pure caster whose cantrip is a long shot
+      // (10+ vs the softest touch AC) gives ground instead of plinking.
+      if (PURE_CASTERS.has(m.cls) && m.hp > 0 && m.hp < m.maxHp * 0.35 && targets.length) {
+        const _soft0 = Math.min.apply(null, targets.map(t => { try { return this._enemyAC(t, { touch: true }); } catch (_) { return 99; } }));
+        if (_soft0 - ((m.castingMod || 0) + Math.floor(lvl / 2)) >= 10) return { guard: true };
+      }
+      return null;
+    }
     const allies = this.livingParty();
     const someoneHurt = allies.some(a => !a.undead && a.hp < a.maxHp * 0.55);   // the undead don't count — positive energy can't help them anyway
     const weakestFoe = targets.slice().sort((a, b) => a.hp - b.hp)[0];
@@ -598,6 +638,19 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
         if (haste && !this.livingParty().some(p => p.hasted > 0)) return { slot: slot(haste), payload: {} };
         const b = bestBlast();
         if (b) return b;
+        // v3.37.97 HOPELESS-CANTRIP ESCALATION (Josh, scrambled-lynx d10: Celeb
+        // zapped Jolt at touch AC 32 for NINE rounds — needing an 18 — while
+        // holding Slay Living, which later landed for 125). If the at-will ray
+        // needs a 17+ vs the deadliest standing foe, a leveled SAVE spell (no
+        // attack roll — it ignores AC and mirror images) beats hoping, SR risk
+        // and all. Highest slot level first: the kill spell before the slap.
+        const big2 = targets[0];
+        const atwillHit = (m.castingMod || 0) + Math.floor(lvl / 2);
+        if (big2 && this._enemyAC(big2, { touch: true }) - atwillHit >= 17) {
+          const saver = avail.filter(a => (a.slvl >= 1) && (a.effect === 'savedie' || a.effect === 'save_debuff' || (a.effect === 'aoe' && a.save)))
+                             .sort((x, y) => (y.slvl || 0) - (x.slvl || 0))[0];
+          if (saver) return { slot: slot(saver), payload: saver.effect === 'aoe' ? { targetUid: big2.uid, targetUids: targets.slice(0, 6).map(e => e.uid) } : { targetUid: big2.uid } };
+        }
         return null;   // damage spells spent → cantrip / weapon swing
       }
     }
@@ -645,7 +698,9 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
     // Paladin: Detect Evil reveals NON-evil foes (animals/constructs) so Smite
     // bites them — a standard action, worth it when not every foe is already evil.
     const detectEvil = avail.find(a => a.effect === 'detectevil');
-    if (detectEvil && this.livingEnemies().some(e => !e.evil && !e.markedEvil)) return { slot: slot(detectEvil), payload: {} };
+    // …but only foes never yet SCANNED justify the standard action (v3.37.106):
+    // one clean sweep answers the question for everyone it touched.
+    if (detectEvil && this.livingEnemies().some(e => !e.evil && !e.markedEvil && !e._devScanned)) return { slot: slot(detectEvil), payload: {} };
     // Mage Armor — a free, run-long +4 AC; put it up once if not already on.
     const mageArmor = avail.find(a => a.effect === 'magearmor');
     if (mageArmor && !m.mageArmor) return { slot: slot(mageArmor), payload: {} };
@@ -890,7 +945,29 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
         // shrugged this effect twice this room (golden-panda: the charm/dominate
         // loop at the Pit Fiend — huge Will + SR, attempt after attempt).
         const _ccFx = a.effect === 'save_debuff' || a.effect === 'savedie' || a.effect === 'charm' || a.effect === 'dominate';
-        const el = targets.filter(t => this._spellWorksOn(a, t) && !((a.effect === 'charm' || a.effect === 'dominate') && (ccd(t) || t.dominated > 0)) && !(_ccFx && (this._ccLedger(m)[a.effect + ':' + t.uid] || 0) >= 2));
+        // v3.37.99 MIND-CONTROL SANITY (Josh, plucky-gecko d5: Femmik charmed the
+        // boss — Will +17 vs DC 20 — with almost nobody left to turn it on):
+        // (1) never charm/dominate the LAST standing foe — its whole value is
+        // attacking its allies; (2) don't even ATTEMPT mind control on a target
+        // that saves on a 4 or better — that's not a gamble, it's a wasted turn.
+        // (Hold/Laughter keep their try-twice ledger — those are worth gambles.)
+        const _lastFoe = this.livingEnemies().filter(x => !x.summoned).length <= 1;
+        const _mcDC = 10 + Math.floor((m.level || 1) / 2) + (m.castingMod || 4);
+        const _mcHopeless = (t) => { try { return this._enemySave(t, 'will') + 4 >= _mcDC; } catch (_) { return false; } };
+        // STANDING RULE (Tobias 2026-07-30, both AIs): don't retry a SAVE-OR-LOSE
+        // on a target that has PROVEN a better-than-50% save. The first attempt is
+        // always fair; after ONE observed save, retry only if the target still
+        // fails on an 11 or better (the caster has seen the roll — engine save
+        // bonus vs this caster's DC). The hard 2-attempt cap stays as the floor.
+        const _svKind = a.save || 'will';
+        const _svDC = 10 + Math.floor((m.level || 1) / 2) + (m.castingMod || 4);
+        const _provenSaver = (t) => {
+          const n = (this._ccLedger(m)[a.effect + ':' + t.uid] || 0);
+          if (n >= 2) return true;
+          if (!n) return false;
+          try { return this._enemySave(t, _svKind) >= _svDC - 10; } catch (_) { return false; }
+        };
+        const el = targets.filter(t => this._spellWorksOn(a, t) && !((a.effect === 'charm' || a.effect === 'dominate') && (ccd(t) || t.dominated > 0 || _lastFoe || _mcHopeless(t))) && !(_ccFx && _provenSaver(t)));
         if (!el.length) continue;
         const pick = (a.effect === 'savedie' || a.effect === 'charm' || a.effect === 'dominate')
           ? el.slice().sort((x, y) => y.maxHp - x.maxHp)[0]
@@ -906,6 +983,16 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
       const boltAction = !!weaponOf(m.gear, m.weaponKey).boltAction;   // can't Rapid Shot a bolt-action rifle
       for (const a of avail) if (['rapidshot', 'bullseye', 'cleave', 'trip', 'reckless', 'feint', 'disarm', 'stunfist', 'grapple', 'bullrush'].includes(a.effect)) {
         if (a.needsRepeating && boltAction) continue;
+        // v3.37.108 (Josh: bot Duristan averaged 35/round while he averaged 140
+        // piloting the SAME character — silent-salmon vs proud-otter). The
+        // single-shot ranged deeds predate the real full-attack engine: Bullseye
+        // is ONE shot at +4, the Rapid Shot deed is TWO at −2 — but a shooter
+        // with iteratives (BAB 6+) full-attacks 4-5 times on the BASIC attack,
+        // Rapid Shot FEAT included (_attackOffsets). The bot was picking the
+        // deed every round and throwing away the volley. Bots now skip both
+        // deeds once iteratives exist; the buttons remain for humans and for
+        // low-level shooters, where they still out-shoot a single basic attack.
+        if ((a.effect === 'rapidshot' || a.effect === 'bullseye') && (m.iteratives || []).length > 1) continue;
         // GRAPPLE — lock down a DANGEROUS foe (caster/boss) the bot can reach; never
         // an incorporeal or already-grappled one (those refuse + waste the turn).
         if (a.effect === 'grapple') {
@@ -960,6 +1047,43 @@ module.exports = ({ ABILITY_MOD, mindImmune, fightsNatural, isSneakClass, ccd })
         led[k] = (led[k] || 0) + 1;
       }
       return { slot: slot(choice.ab), payload: choice.payload };
+    }
+    // v3.37.99 WHEN YOU CAN'T HURT IT, HELP SOMEONE (Josh, plucky-gecko d5: a
+    // dry-of-save-spells Celeb Jolt-spammed the boss's touch AC 30, needing a
+    // 20, round after round — "why weren't they helping?!"). If this is a caster
+    // whose at-will is hopeless (17+ to hit) against EVERY standing foe and no
+    // offensive pick fit above, spend the turn usefully instead: top up the
+    // most-hurt ally (even chip damage counts when you're useless otherwise),
+    // else raise a defensive buff that isn't already running. If the cantrip can
+    // still hit SOMETHING, the basic attack remains the right call.
+    const _isCasterM = !!(m.slots || m.spellPool || m.castingMod != null);
+    const _atwillHit2 = (m.castingMod || 0) + Math.floor(lvl / 2);
+    const _allHopeless = _isCasterM && targets.length && targets.every(t => { try { return this._enemyAC(t, { touch: true }) - _atwillHit2 >= 17; } catch (_) { return false; } });
+    if (_allHopeless) {
+      const hurt = allies.filter(a2 => !a2.undead && a2.hp < a2.maxHp * 0.8).sort((x, y) => (x.hp / x.maxHp) - (y.hp / y.maxHp))[0];
+      const healAb = hurt && avail.find(a2 => a2.effect === 'heal');
+      if (healAb) return { slot: slot(healAb), payload: { allyUid: hurt.playerId } };
+      const defBuff = avail.find(a2 => a2.effect === 'buff' && a2.sticky && a2.target !== 'enemy' && !(m.buffApplied && m.buffApplied[a2.key]));
+      if (defBuff) return { slot: slot(defBuff), payload: {} };
+    }
+    // v3.37.107 SELF-PRESERVATION — SAVE YOURSELF (Josh, sneaky-dumpling d4: a
+    // slot-dry Celeb stood in a Movanic Deva's melee reach and plinked resisted
+    // 5-point rays from 91 HP all the way down to SLAIN — 12 rounds — because
+    // nothing in this brain ever read the bot's OWN life bar; the branch above
+    // only fires when the cantrip can't hit ANYTHING). Below 35% HP a PURE
+    // CASTER stops feeding its turn to chip damage: heal YOURSELF if any heal
+    // is still castable, raise an unused sticky defensive buff, and — dry of
+    // both, with only a long-shot cantrip left (10+ to touch) — give ground on
+    // TOTAL DEFENSE (the {guard:true} sentinel; +4 AC until they next act).
+    // (The fully-DRY twin of this check lives up at the `!avail.length`
+    // early-out — a slot-dry caster never reaches this far.)
+    if (PURE_CASTERS.has(m.cls) && m.hp > 0 && m.hp < m.maxHp * 0.35 && targets.length) {
+      const healSelf = avail.find(a2 => a2.effect === 'heal');
+      if (healSelf) return { slot: slot(healSelf), payload: { allyUid: m.playerId } };
+      const defSelf = avail.find(a2 => a2.effect === 'buff' && a2.sticky && a2.target !== 'enemy' && !(m.buffApplied && m.buffApplied[a2.key]));
+      if (defSelf) return { slot: slot(defSelf), payload: {} };
+      const _soft = Math.min.apply(null, targets.map(t => { try { return this._enemyAC(t, { touch: true }); } catch (_) { return 99; } }));
+      if (_soft - _atwillHit2 >= 10) return { guard: true };
     }
     return null;   // nothing fit → basic attack
   },

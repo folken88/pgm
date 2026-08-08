@@ -19,6 +19,29 @@ PGM is made by:
 
 ---
 
+## v1.20.0 — 2026-08-06
+
+**Your party got smarter.** PGM's helpers and foes run the same combat brains as the poker
+dungeon, and this release brings over everything poker learned in the last two weeks of
+playtesting:
+
+- **Casters save themselves.** A helper caster near death now heals themselves, shields
+  themselves, or falls back on total defense — no more standing in a monster's face casting
+  cantrips until they die.
+- **Shooters fire full volleys.** Gun and bow helpers were quietly firing one aimed shot a
+  round; now they empty the magazine like a real full attack. Expect roughly triple the damage
+  from your ranged companions.
+- **No more stubborn spell-spam.** Enemy and ally casters both stop re-casting save-or-lose
+  spells on targets that have already proven they shrug them off, and they find something
+  useful to do instead — healing a friend, raising a defense, or switching tactics.
+- **Paladins trust their senses.** One Detect Evil sweep answers the question for the whole
+  room; only fresh reinforcements earn another look.
+- **Cavalier fixes.** Glorious Challenge follows the mark-then-kill-it-yourself loop, the
+  Tactician drill is a move action, and Blaze of Glory is a swift — your turn stays yours.
+- **Damage tags.** Hits on a challenged or studied foe now say so right in the line, like
+  sneak-attack damage always has.
+- Plus the newest bestiary and combat sound effects from poker.
+
 ## v1.19.0 — 2026-07-28
 
 **PGM now plays like the poker dungeon.** The four spoken menus poker's blind players live by
