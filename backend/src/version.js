@@ -7,6 +7,14 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.1 2026-08-08 THE LOST-NOTES SYNC (poker v3.37.109 mixins): (1) the 1.20.0 shooter fix
+//                    never engaged for HIRED bots (its gate keyed on derived iteratives, which
+//                    recruited helpers don't carry) — level 6+ now opens the volley too; (2) a
+//                    caster ferries each melee ally at a flyer ONCE per room (Dimension Door),
+//                    then goes back to casting — no more all-fight taxi duty; (3) ranged and
+//                    flyer-reaching helpers now PREFER airborne foes — they're the only ones who
+//                    can bite them. (Poker's between-rooms Raise Dead door-gate fix is host-side;
+//                    PGM's own out-of-combat routing reviewed separately — task list.)
 //  1.20.0 2026-08-06 THE BIG BRAIN SYNC (poker v3.37.94 -> v3.37.108, via sync-from-poker.sh):
 //                    the four shared combat mixins (enemyAI/abilities/heroAI/summons) + bestiary
 //                    brought current. PGM's helpers and foes now carry: the PROVEN-SAVER rule +
@@ -539,6 +547,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.0';
-const HEADLINE = 'Your helpers got a whole brain transplant from the poker dungeon: casters save themselves when dying, shooters fire full volleys instead of single shots, foes stop spamming spells you keep shrugging off, and paladins trust their own Detect Evil.';
+const VERSION = '1.20.1';
+const HEADLINE = 'Sharper helpers: hired shooters truly empty the magazine now, casters stop spending whole fights taxiing allies at flyers, and your ranged companions make the airborne their business.';
 module.exports = { VERSION, HEADLINE };

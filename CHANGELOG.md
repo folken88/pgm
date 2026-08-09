@@ -19,6 +19,18 @@ PGM is made by:
 
 ---
 
+## v1.20.1 — 2026-08-08
+
+**Follow-up to the brain transplant.** Three sharpenings from poker's latest playtests:
+
+- **Hired shooters really do empty the magazine now.** The v1.20.0 volley fix quietly missed
+  helpers you recruit (a bookkeeping gap); every shooter of level 6 or higher now full-attacks.
+- **Casters stop playing taxi.** A caster would spend round after round teleporting melee allies
+  up at a flying enemy. Now each ally gets one lift per room — then the caster goes back to
+  casting.
+- **Ranged helpers hunt the airborne.** If something is flying, your bow- and gun-wielding
+  companions make it their priority — they're the only ones who can reach it.
+
 ## v1.20.0 — 2026-08-06
 
 **Your party got smarter.** PGM's helpers and foes run the same combat brains as the poker
