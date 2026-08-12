@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.2 — 2026-08-12
+
+- **Trick shots aim smarter.** A low-level shooter's aimed shot (Bullseye, Rapid Shot) now picks
+  its target the same way a plain attack does — prioritizing flying enemies nobody else can
+  reach — instead of always shooting the weakest thing on the field.
+
 ## v1.20.1 — 2026-08-08
 
 **Follow-up to the brain transplant.** Three sharpenings from poker's latest playtests:

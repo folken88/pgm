@@ -7,6 +7,9 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.2 2026-08-12 DEED AIM SYNC (poker v3.37.110 heroAI): a low-level shooter's trick shots
+//                    (Bullseye / Rapid Shot) now aim through the same target brain as the basic
+//                    attack — flyer preference included — instead of blind weakest-first.
 //  1.20.1 2026-08-08 THE LOST-NOTES SYNC (poker v3.37.109 mixins): (1) the 1.20.0 shooter fix
 //                    never engaged for HIRED bots (its gate keyed on derived iteratives, which
 //                    recruited helpers don't carry) — level 6+ now opens the volley too; (2) a
@@ -547,6 +550,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.1';
-const HEADLINE = 'Sharper helpers: hired shooters truly empty the magazine now, casters stop spending whole fights taxiing allies at flyers, and your ranged companions make the airborne their business.';
+const VERSION = '1.20.2';
+const HEADLINE = 'Low-level shooters aim their trick shots at the foe nobody else can reach — the flying one.';
 module.exports = { VERSION, HEADLINE };
