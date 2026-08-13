@@ -772,7 +772,9 @@ let KITS = {   // 'let' so the DB-generated kits can override it below (Phase 3)
 // Blessing of Fervor from the cleric list (its haste-choice extra attack) AND get
 // the full Haste spell below — two distinct options.
 KITS.oracle.abilities = [
-  ...KITS.cleric.abilities.map(a => ({ ...a })),
+  // v1.20.3 (poker v3.37.112 parity): oracle is a SPONTANEOUS caster — leveled
+  // cleric prayers convert to slot costs (the as-is clone kept 1/room caps).
+  ...KITS.cleric.abilities.map(a => (a.cost === 'room' && a.slvl >= 1) ? { ...a, cost: 'slot', uses: undefined } : { ...a }),
   // ── FLAME mystery — Elfrip ONLY (most oracles never see fire spells; the
   //    char tag is enforced by Dungeon._charAllows in the UI, bot AI and casts).
   { ...spontaneousSpell(SPELL.burninghands, 1), char: 'Elfrip' },
@@ -1046,6 +1048,15 @@ _injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.unholyblight, slvl: 4 
 _injectKitSpell('druid',      preparedSpell({ ...SPELL.callstorm, slvl: 5 }, 9));
 _injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }, 9));
 _injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.righteousmight, slvl: 5 }, 13));
+
+// ── ORACLE SPONTANEITY — kit-copy normalization (v1.20.3, poker v3.37.112 parity) ──
+// The generated oracle kit bakes the cleric prayer list with prepared-style
+// 1/room caps (same override trap as Fly). An oracle is a full spontaneous
+// caster: every leveled prayer converts to cost:'slot' AFTER the override.
+if (KITS.oracle && Array.isArray(KITS.oracle.abilities)) {
+  KITS.oracle.abilities = KITS.oracle.abilities.map(a =>
+    (a && a.cost === 'room' && (a.slvl || 0) >= 1) ? { ...a, cost: 'slot', uses: undefined } : a);
+}
 
 // ── FLY IS A TOUCH SPELL — kit-copy normalization (2026-07-16) ─────────────────────
 // v3.37.55 fixed SPELL.fly to target:'ally' (castable on allies, canHitFlyers), but the

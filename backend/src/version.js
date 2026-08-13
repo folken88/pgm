@@ -7,6 +7,14 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.3 2026-08-13 ORACLE SPONTANEITY + THE 50/50 BLINK (poker v3.37.112 parity): (1) oracle
+//                    kits cloned the cleric prayer list with its prepared-style 1/room caps —
+//                    "Hold person is spent for this room?????" (Josh). Every leveled prayer now
+//                    casts from spell slots, both in the hand-coded clone and normalized after
+//                    the kits.generated override. (2) A Dimension-Doored melee hero's sword now
+//                    ALWAYS works on the flyer they were delivered to (the blink window guarded
+//                    the bot path but not the human crossbow-draw branch), and the ferry announce
+//                    names the airborne prey.
 //  1.20.2 2026-08-12 DEED AIM SYNC (poker v3.37.110 heroAI): a low-level shooter's trick shots
 //                    (Bullseye / Rapid Shot) now aim through the same target brain as the basic
 //                    attack — flyer preference included — instead of blind weakest-first.
@@ -550,6 +558,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.2';
-const HEADLINE = 'Low-level shooters aim their trick shots at the foe nobody else can reach — the flying one.';
+const VERSION = '1.20.3';
+const HEADLINE = 'Oracles are truly spontaneous now — Hold Person and every leveled prayer cast from spell slots, not a once-per-room ration. And a teleport-delivered hero\'s blade always works on the flyer they were sent to.';
 module.exports = { VERSION, HEADLINE };

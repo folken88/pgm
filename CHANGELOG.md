@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.3 — 2026-08-13
+
+- **Oracles are truly spontaneous.** Hold Person — and every leveled prayer on an oracle's
+  list — now casts from spell slots, as often as slots remain, instead of a once-per-room
+  ration accidentally inherited from the cleric's prepared-style list.
+- **Teleport-delivered heroes keep their promise.** When a caster Dimension-Doors a melee ally
+  at a flying enemy, their next strike now always works with their real weapon — and the
+  announcement names the airborne target they were sent to reach.
+
 ## v1.20.2 — 2026-08-12
 
 - **Trick shots aim smarter.** A low-level shooter's aimed shot (Bullseye, Rapid Shot) now picks
