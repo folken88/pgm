@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.4 — 2026-08-16
+
+- **Vampires are properly undead.** One bestiary vampire was missing its undead typing (making
+  it inconsistently charm-able); all thirteen now match. And when a mind-affecting spell fails,
+  the refusal names the real reason — "it is UNDEAD, the mind behind those eyes is dead" —
+  instead of a one-size line that could teach the wrong monster category by ear.
+
 ## v1.20.3 — 2026-08-13
 
 - **Oracles are truly spontaneous.** Hold Person — and every leveled prayer on an oracle's

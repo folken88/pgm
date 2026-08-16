@@ -7,6 +7,13 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.4 2026-08-16 VAMPIRES ARE UNDEAD (Tobias's ruling, poker v3.37.113 parity, via sync):
+//                    the base 'Vampire' was the only one of 13 missing type:'undead' (it was
+//                    also inconsistently mind-controllable — fixed), and the mind-immune refusal
+//                    now names the foe's ACTUAL nature ("it is UNDEAD — the mind behind those
+//                    eyes is dead") instead of the one-size "undead and constructs" line that
+//                    taught a blind player the wrong category. RAW unchanged: undead are immune
+//                    to mind-affecting effects.
 //  1.20.3 2026-08-13 ORACLE SPONTANEITY + THE 50/50 BLINK (poker v3.37.112 parity): (1) oracle
 //                    kits cloned the cleric prayer list with its prepared-style 1/room caps —
 //                    "Hold person is spent for this room?????" (Josh). Every leveled prayer now
@@ -558,6 +565,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.3';
+const VERSION = '1.20.4';
 const HEADLINE = 'Oracles are truly spontaneous now — Hold Person and every leveled prayer cast from spell slots, not a once-per-room ration. And a teleport-delivered hero\'s blade always works on the flyer they were sent to.';
 module.exports = { VERSION, HEADLINE };
