@@ -566,5 +566,5 @@
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
 const VERSION = '1.20.4';
-const HEADLINE = 'Oracles are truly spontaneous now — Hold Person and every leveled prayer cast from spell slots, not a once-per-room ration. And a teleport-delivered hero\'s blade always works on the flyer they were sent to.';
+const HEADLINE = 'Vampires are properly UNDEAD everywhere - and when a charm fails, the game tells you the real reason: a dead mind, not a machine.';
 module.exports = { VERSION, HEADLINE };
