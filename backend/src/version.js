@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.6 2026-08-20 THE BOALI CURSED CREW (poker v3.37.117, via bestiary sync): six undead
+//                    pirates imported from Tobias's Shackles Foundry world — Boali Reaper (CR2),
+//                    Cursed Able (CR3), Boali Sworn Soldier (CR4), Boali Stormcaller (CR6 arcane),
+//                    Cursed Bos'n (CR6 grappler), Cursed Captain (CR7 swashbuckler). All undead,
+//                    all in the undead gang. (Poker-side token art isn't synced — they render by
+//                    glyph here, PGM's normal fallback.)
 //  1.20.5 2026-08-20 THE PROUD-MIRROR PARITY BATCH (poker v3.37.116): grounded summons stop
 //                    punching the sky (a flightless summon claws at the air when only flyers
 //                    remain); the druid finally sounds like a druid — tiger ROARS, bear GROWLS
@@ -571,6 +577,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.5';
-const HEADLINE = 'The druid finally sounds like a druid - tigers roar, bears growl, and a hawk fights with talons. Grounded summons stop punching the sky, and the glaive remembers it has reach.';
+const VERSION = '1.20.6';
+const HEADLINE = 'The Boali cursed crew sails in from Toby\'s own campaign table: six drowned pirates walking again, from a scythe-swinging reaper to their swashbuckling captain. Undead rooms just got a navy.';
 module.exports = { VERSION, HEADLINE };

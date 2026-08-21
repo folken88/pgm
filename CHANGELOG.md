@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.6 — 2026-08-20
+
+- **The Boali cursed crew joins the bestiary.** Six undead pirates imported straight from
+  Toby's own Skull & Shackles campaign: a scythe-swinging reaper, a raging sworn soldier, a
+  storm-calling sorcerer, and the cursed ship's crew from able seaman to swashbuckling captain.
+  They sail with the other restless dead — expect themed drowned-crew rooms.
+
 ## v1.20.5 — 2026-08-20
 
 - **The druid sounds like a druid.** Tiger form roars, bear form growls — the goat-bleat
