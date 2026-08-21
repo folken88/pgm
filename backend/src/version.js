@@ -7,6 +7,12 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.5 2026-08-20 THE PROUD-MIRROR PARITY BATCH (poker v3.37.116): grounded summons stop
+//                    punching the sky (a flightless summon claws at the air when only flyers
+//                    remain); the druid finally sounds like a druid — tiger ROARS, bear GROWLS
+//                    (the yak placeholder is out of wild shape); Hawk Form gets real TALONS
+//                    (2x1d6) plus airborne melee reach, so a flying druid never draws a
+//                    crossbow; glaive & longspear carry reach (reachFly) per PF1 RAW.
 //  1.20.4 2026-08-16 VAMPIRES ARE UNDEAD (Tobias's ruling, poker v3.37.113 parity, via sync):
 //                    the base 'Vampire' was the only one of 13 missing type:'undead' (it was
 //                    also inconsistently mind-controllable — fixed), and the mind-immune refusal
@@ -565,6 +571,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.4';
-const HEADLINE = 'Vampires are properly UNDEAD everywhere - and when a charm fails, the game tells you the real reason: a dead mind, not a machine.';
+const VERSION = '1.20.5';
+const HEADLINE = 'The druid finally sounds like a druid - tigers roar, bears growl, and a hawk fights with talons. Grounded summons stop punching the sky, and the glaive remembers it has reach.';
 module.exports = { VERSION, HEADLINE };

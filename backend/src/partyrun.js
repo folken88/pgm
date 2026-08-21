@@ -644,7 +644,9 @@ function dominatedTurn(run, e, roll) {
 
 function summonTurn(run, minion, roll) {
   const glyph = minion.summonFlavor === 'devil' ? '😈' : '☠️';
-  const foes = livingRevealedEnemies(run);
+  const foes0 = livingRevealedEnemies(run);
+  // v1.20.5 (poker v3.37.116 parity): a flightless summon obeys the same law as everyone — no melee at the sky.
+  const foes = minion.flying ? foes0 : foes0.filter(x => !x.flying);
   if (foes.length) {
     const prey = foes.slice().sort((a, b) => a.hp - b.hp)[0];
     const r = run.shim._monsterSwing(minion, pf1.spellmath.enemyAC(prey));
@@ -653,7 +655,8 @@ function summonTurn(run, minion, roll) {
       logEvent(run, `${glyph} ${minion.name} (your ${minion.summonFlavor}) rends ${prey.name} for ${d.dealt}!${prey.hp <= 0 ? ' ☠️ Slain!' : ''}`, 'event', SFX.pick(SFX.SND.flesh, roll));
       if (prey.hp <= 0) prey.down = true;
     } else logEvent(run, `${glyph} ${minion.name} (your ${minion.summonFlavor}) claws at ${prey.name} — and misses.`, 'event');
-  } else logEvent(run, `${glyph} ${minion.name} stands ready — no foe in reach.`, 'event');
+  } else if (foes0.length) logEvent(run, `${glyph} ${minion.name} claws at the air — the survivors are airborne, out of its reach.`, 'event');
+  else logEvent(run, `${glyph} ${minion.name} stands ready — no foe in reach.`, 'event');
   minion.summonExpiry = (minion.summonExpiry || 1) - 1;
   if (minion.summonExpiry <= 0) { minion.hp = 0; minion.down = true; logEvent(run, `${glyph} ${minion.name} crumbles back to dust — the summoning ends.`, 'event'); }
 }

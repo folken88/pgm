@@ -1049,6 +1049,17 @@ _injectKitSpell('druid',      preparedSpell({ ...SPELL.callstorm, slvl: 5 }, 9))
 _injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }, 9));
 _injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.righteousmight, slvl: 5 }, 13));
 
+// ── DRUID FORM SHIFT SOUNDS — kit-copy normalization (v1.20.5, poker v3.37.116
+// parity; PGM has no form WEAPONS, so only the shift sound applies here) ──
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    const _f = _a && _a.form; if (!_f) continue;
+    if (_f.key === 'tiger') _f.sound = '/audio/tyrannosaur_low_roar_reverb.mp3';
+    if (_f.key === 'bear')  _f.sound = '/audio/bear_growl_hit.mp3';
+  }
+}
+
 // ── ORACLE SPONTANEITY — kit-copy normalization (v1.20.3, poker v3.37.112 parity) ──
 // The generated oracle kit bakes the cleric prayer list with prepared-style
 // 1/room caps (same override trap as Fly). An oracle is a full spontaneous

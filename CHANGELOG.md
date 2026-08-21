@@ -19,6 +19,17 @@ PGM is made by:
 
 ---
 
+## v1.20.5 — 2026-08-20
+
+- **The druid sounds like a druid.** Tiger form roars, bear form growls — the goat-bleat
+  placeholder is gone from wild shape, both when you shift and when you strike.
+- **Hawks fight with talons.** Hawk form now has real talon attacks (two strikes) and can melee
+  airborne enemies — no more impossibly winding a crossbow mid-flight.
+- **Summons obey the sky.** A summoned creature that can't fly no longer melees flying enemies;
+  it tells you the survivors are airborne and out of reach, same as everyone else.
+- **Polearms reach.** The glaive and longspear can strike low-flying enemies, like the fauchard
+  always could.
+
 ## v1.20.4 — 2026-08-16
 
 - **Vampires are properly undead.** One bestiary vampire was missing its undead typing (making
