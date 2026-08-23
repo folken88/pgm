@@ -1047,6 +1047,18 @@ _injectKitSpell('cleric',     preparedSpell({ ...SPELL.unholyblight, slvl: 4 }, 
 _injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.unholyblight, slvl: 4 }, 10));
 _injectKitSpell('druid',      preparedSpell({ ...SPELL.callstorm, slvl: 5 }, 9));
 _injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }, 9));
+// TRUE SEEING for the divine casters (v1.20.7, poker v3.37.119 parity):
+// cleric prepared + oracle spontaneous, 5th level / char 9 - the Mirror
+// Image counter. ab.trueSeeing already pierces images/displacement/invis.
+_injectKitSpell('cleric', preparedSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
+_injectKitSpell('oracle', spontaneousSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
+// SPIRITUAL WEAPON desc normalization (v1.20.7): 1 round per caster level (RAW).
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a && typeof _a.desc === 'string' && _a.desc.includes('1 round per 2 caster levels')) _a.desc = _a.desc.replace('1 round per 2 caster levels', '1 round per caster level (PF1)');
+  }
+}
 _injectKitSpell('inquisitor', spontaneousSpell({ ...SPELL.righteousmight, slvl: 5 }, 13));
 
 // ── DRUID FORM SHIFT SOUNDS — kit-copy normalization (v1.20.5, poker v3.37.116

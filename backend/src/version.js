@@ -7,6 +7,13 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.7 2026-08-23 THE SUNDAY FOUR-PACK (poker v3.37.119 parity): Spiritual Weapon lasts 1
+//                    round per CASTER LEVEL (PF1 RAW - was a half-level nerf; via the synced
+//                    abilities mixin); the Tactician drills the party exactly once per room
+//                    (enforced in the shared handler); TRUE SEEING joins the cleric (prepared)
+//                    and oracle (spontaneous) lists at 5th level - the Mirror Image counter.
+//                    (Poker's tiered rage buff-chip is serialize-side and PGM renders buffs its
+//                    own way - parity tracked with the other UI items.)
 //  1.20.6 2026-08-20 THE BOALI CURSED CREW (poker v3.37.117, via bestiary sync): six undead
 //                    pirates imported from Tobias's Shackles Foundry world — Boali Reaper (CR2),
 //                    Cursed Able (CR3), Boali Sworn Soldier (CR4), Boali Stormcaller (CR6 arcane),
@@ -577,6 +584,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.6';
-const HEADLINE = 'The Boali cursed crew sails in from Toby\'s own campaign table: six drowned pirates walking again, from a scythe-swinging reaper to their swashbuckling captain. Undead rooms just got a navy.';
+const VERSION = '1.20.7';
+const HEADLINE = 'Spiritual Weapon now fights for a full round per caster level, the Tactician drills the party exactly once per room, and clerics can prepare TRUE SEEING - the answer to mirror images.';
 module.exports = { VERSION, HEADLINE };

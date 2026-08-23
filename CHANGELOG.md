@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.7 — 2026-08-23
+
+- **Spiritual Weapon fights longer.** It now lasts one round per caster level, as the spell is
+  written — it had been quietly running at half that.
+- **The Tactician drills once.** A cavalier's teamwork-feat share happens exactly once per room;
+  no more repeated drilling announcements wasting turns.
+- **True Seeing for divine casters.** Clerics can prepare it and oracles can learn it at 5th
+  level — the clean answer to enemy Mirror Image, Displacement, and invisibility.
+
 ## v1.20.6 — 2026-08-20
 
 - **The Boali cursed crew joins the bestiary.** Six undead pirates imported straight from
