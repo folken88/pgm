@@ -259,7 +259,7 @@ const SPELL = {
   dimensionalblade: { key: 'dimensionalblade', name: 'Dimensional Blade', icon: '🗡️', effect: 'dimensionalblade', target: 'self', freeAction: true, slvl: 5, sound: S.anchor, desc: 'Fold your weapon a half-step out of phase — a FREE action: your strikes resolve as TOUCH attacks (ignoring armor & natural armor) for 1 round.' },
   chainlightning:{ key: 'chainlightning',name: 'Chain Lightning', icon: '⚡', effect: 'aoe', target: 'aoe', maxTargets: 10, randBase: 4, randDie: 6, save: 'reflex', die: 6, dice: 'level', dcap: 15, dtype: 'electricity', slvl: 6, sound: null, desc: 'A bolt forks from foe to foe — 4 + 1d6 enemies (5–10), Reflex for half (level d6, cap 15d6).' },   // no fixed sound → rotates through the SND.lightning playlist like Lightning Bolt (Tobias 2026-07-03; the Hetfield one-off stays on Storm of Vengeance)
   dispelmagicgreater: { key: 'dispelmagicgreater', name: 'Dispel Magic, Greater', icon: '🌀', effect: 'cleanse', greater: true, target: 'ally', slvl: 6, sound: S.dispel, desc: 'A sweeping unweaving — end ALL hostile SPELL effects on an ally (hold, slow, magical blindness), or tear every buff off a foe. Physical conditions stay (PF1).' },
-  trueseeing:    { key: 'trueseeing',    name: 'True Seeing',     icon: '👁️', effect: 'buff', target: 'self', trueSeeing: true, sticky: true, slvl: 6, sound: S.invoke, desc: 'Your eyes pierce all deception — see through darkness, ignore illusions, and strike the invisible. Lasts the room.' },
+  trueseeing:    { key: 'trueseeing',    name: 'True Seeing',     icon: '👁️', effect: 'buff', target: 'ally', trueSeeing: true, sticky: true, slvl: 6, sound: S.invoke, desc: 'Range TOUCH — cast it on yourself or ANY ally. The target\'s eyes pierce all deception: see through darkness, ignore illusions and mirror images, and strike the invisible. Put it on the fighter with the most swings. Lasts the room.' },
   seeinvisibility: { key: 'seeinvisibility', name: 'See Invisibility', icon: '🔎', effect: 'buff', target: 'self', seeInvis: true, sticky: true, slvl: 2, sound: S.invoke, desc: 'Your eyes catch the unseen — you can find, target and strike INVISIBLE foes with no concealment miss. (It does NOT pierce mirror images or a displaced blur — that needs True Seeing.) Lasts the room.' },
   invisibilitypurge: { key: 'invisibilitypurge', name: 'Invisibility Purge', icon: '🔦', effect: 'invispurge', target: 'self', slvl: 3, sound: S.dispel, desc: 'A blaze of revealing light that does NOT DISCRIMINATE — EVERY invisible creature in the room is dragged into view, YOUR OWN ALLIES INCLUDED, and nothing on either side can turn invisible again this room. Purge while your rogue lies in wait and you burn him too. (It does not touch mirror image or displacement — that needs True Seeing.)' },
   // ── HIGH ARCANE (7th–9th) — without these, a sorcerer past L13 had the SLOTS
@@ -1052,6 +1052,10 @@ _injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }
 // Image counter. ab.trueSeeing already pierces images/displacement/invis.
 _injectKitSpell('cleric', preparedSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
 _injectKitSpell('oracle', spontaneousSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
+// v1.20.10 (poker v3.37.122): the ARCANE book had True Seeing only on paper —
+// the baked kit predates it, so wizards/sorcerers had none (magus alone did).
+_injectKitSpell('wizard',   preparedSpell(SPELL.trueseeing, 11));
+_injectKitSpell('sorcerer', spontaneousSpell(SPELL.trueseeing, 12));
 // MAGIC VESTMENT is HOUR/LEVEL (v1.20.8, poker v3.37.120 parity): persist +
 // run-long desc on the baked kit copies, door-castable like Mage Armor.
 for (const _k of Object.values(KITS)) {
@@ -1061,6 +1065,16 @@ for (const _k of Object.values(KITS)) {
   }
 }
 
+// TRUE SEEING is RANGE TOUCH (v1.20.10, poker v3.37.122 — Josh: 'True seeing
+// is range touch... I should be able to put it on any of my allies I wish.'):
+// every baked or injected copy becomes ally-targetable. See Invisibility
+// stays SELF — genuinely range personal in PF1.
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a && _a.key === 'trueseeing') { _a.target = 'ally'; _a.desc = SPELL.trueseeing.desc; }
+  }
+}
 // RIGHTEOUS MIGHT is a SIZE spell (v1.20.9, poker v3.37.121 — Josh: 'If I am
 // now large. That means my CMD would be higher.'): Large size +4 Str nets +2
 // CMD per PF1, which the flat +2/+4/+2 payload never carried. Every baked or

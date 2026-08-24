@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.10 — 2026-08-24
+
+- **True Seeing works on any ally.** It's a touch-range spell, so you can now cast it on
+  yourself or on the fighter who actually needs to see through mirror images and invisibility.
+  Wizards and sorcerers also finally get it on their lists (it had been missing entirely).
+- **Casters cast, rogues stab.** Enemy shamans and other spellcasters no longer grapple or
+  bull rush, and sneak-attacking rogues stick to their knives — only actual beasts like
+  spiders and centipedes keep their grabs.
+
 ## v1.20.9 — 2026-08-24
 
 - **Enemy casters cast at their own power.** A minor enemy spellcaster no longer throws

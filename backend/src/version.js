@@ -595,8 +595,16 @@
 //                    mixin. Righteous Might gains its size payload: buff.cmd +2 through _heroCMD
 //                    (abilities mixin) + the pf1data payload/desc ported here.
 //
+//  1.20.10 2026-08-24 TRUE SEEING GOES ALLY-TARGETABLE + CASTERS/ROGUES DON'T WRESTLE (poker
+//                    v3.37.122, Josh: 'True seeing is range touch... the fighter who can swing
+//                    at it five times cannot [see through mirror images]' + salty-harpy shamans
+//                    grappling). True Seeing target:'ally' everywhere + wizard/sorcerer finally
+//                    get it (baked kit never had it); enemy caster/arcane statblocks and sneak-
+//                    attackers never pick wrestle maneuvers (enemyAI mixin sync) — animals keep
+//                    their grabs.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.9';
-const HEADLINE = 'Enemy casters now cast at their own power — no more archmage chain lightning from a small-fry deckhand — and Righteous Might\'s giant size finally hardens your CMD against grapples and trips.';
+const VERSION = '1.20.10';
+const HEADLINE = 'True Seeing is range TOUCH like the book says — cast it on yourself or the fighter who needs it — and enemy shamans and rogues stop wrestling: casters cast, knife-artists stab, only actual beasts keep their grabs.';
 module.exports = { VERSION, HEADLINE };
