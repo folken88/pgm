@@ -1057,7 +1057,7 @@ _injectKitSpell('oracle', spontaneousSpell({ ...SPELL.trueseeing, slvl: 5 }, 9))
 for (const _k of Object.values(KITS)) {
   if (!_k || !Array.isArray(_k.abilities)) continue;
   for (const _a of _k.abilities) {
-    if (_a && _a.key === 'magicvestment') { _a.persist = true; _a.desc = 'An ally's armor drinks in enchantment — +3 AC for the rest of the DUNGEON (an hour-per-level blessing, castable at the door like Mage Armor).'; }
+    if (_a && _a.key === 'magicvestment') { _a.persist = true; _a.desc = "An ally's armor drinks in enchantment — +3 AC for the rest of the DUNGEON (an hour-per-level blessing, castable at the door like Mage Armor)."; }
   }
 }
 
