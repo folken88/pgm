@@ -7,6 +7,11 @@
 //     e.g. "PGM v1.0.0 — patch notes"  (never a bare "Re:")
 //   · the player-facing notes go in CHANGELOG.md; this block is the dev log
 //
+//  1.20.8 2026-08-24 THE HELD BLOW (poker v3.37.120 parity): an invisible hero HOLDS the Haste
+//                    bonus strike (no forced attack burning the spell; Greater Invis swings
+//                    freely) and archer bots stop wrestling - ranged wielders never pick melee
+//                    maneuvers (both via the synced mixins); MAGIC VESTMENT is hour/level -
+//                    run-long + door-castable like Mage Armor (kit copies normalized).
 //  1.20.7 2026-08-23 THE SUNDAY FOUR-PACK (poker v3.37.119 parity): Spiritual Weapon lasts 1
 //                    round per CASTER LEVEL (PF1 RAW - was a half-level nerf; via the synced
 //                    abilities mixin); the Tactician drills the party exactly once per room
@@ -584,6 +589,6 @@
 //
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.7';
-const HEADLINE = 'Spiritual Weapon now fights for a full round per caster level, the Tactician drills the party exactly once per room, and clerics can prepare TRUE SEEING - the answer to mirror images.';
+const VERSION = '1.20.8';
+const HEADLINE = 'Invisible heroes hold their hasted strike instead of blowing their cover; archer companions stop wrestling and just shoot; and Magic Vestment becomes a dungeon-long blessing castable at the door.';
 module.exports = { VERSION, HEADLINE };

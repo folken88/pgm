@@ -1052,6 +1052,15 @@ _injectKitSpell('cleric',     preparedSpell({ ...SPELL.righteousmight, slvl: 5 }
 // Image counter. ab.trueSeeing already pierces images/displacement/invis.
 _injectKitSpell('cleric', preparedSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
 _injectKitSpell('oracle', spontaneousSpell({ ...SPELL.trueseeing, slvl: 5 }, 9));
+// MAGIC VESTMENT is HOUR/LEVEL (v1.20.8, poker v3.37.120 parity): persist +
+// run-long desc on the baked kit copies, door-castable like Mage Armor.
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a && _a.key === 'magicvestment') { _a.persist = true; _a.desc = 'An ally's armor drinks in enchantment — +3 AC for the rest of the DUNGEON (an hour-per-level blessing, castable at the door like Mage Armor).'; }
+  }
+}
+
 // SPIRITUAL WEAPON desc normalization (v1.20.7): 1 round per caster level (RAW).
 for (const _k of Object.values(KITS)) {
   if (!_k || !Array.isArray(_k.abilities)) continue;

@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.8 — 2026-08-24
+
+- **Invisible heroes keep their cover.** The automatic Haste bonus strike no longer fires while
+  you're hidden under normal Invisibility — no more blowing the spell without your say-so.
+- **Archers shoot, they don't wrestle.** A bow- or gun-wielding companion never picks a melee
+  maneuver like trip or bull rush anymore.
+- **Magic Vestment lasts the dungeon.** It's an hour-per-level blessing like Mage Armor, and now
+  behaves like one — castable at the door, lasting the whole run.
+
 ## v1.20.7 — 2026-08-23
 
 - **Spiritual Weapon fights longer.** It now lasts one round per caster level, as the spell is
