@@ -587,8 +587,16 @@
 //  0.1–0.6 ≤2026-07-10 the unversioned bring-up (see git history): the poker-dungeon rules engine
 //                    transplanted behind a shim, the blind-first frontend, SSE, and the first delves.
 //
+//  1.20.9 2026-08-24 CR-CAPPED ENEMY CASTERS + RIGHTEOUS MIGHT CMD (poker v3.37.121, Josh:
+//                    eager-marmot d12 — a CR-5 Elite Sea-Caster loosed MAXIMIZED 16d6 CHAIN
+//                    LIGHTNING, DC 24, 96 damage, at a party of LEVEL TWOS; caster level was
+//                    depth-floored at 12 + elite advancement = CL 16). Enemy caster level is now
+//                    capped by the foe's own CR (~wizard of CR+2) — synced in via the enemyAI
+//                    mixin. Righteous Might gains its size payload: buff.cmd +2 through _heroCMD
+//                    (abilities mixin) + the pf1data payload/desc ported here.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.8';
-const HEADLINE = 'Invisible heroes hold their hasted strike instead of blowing their cover; archer companions stop wrestling and just shoot; and Magic Vestment becomes a dungeon-long blessing castable at the door.';
+const VERSION = '1.20.9';
+const HEADLINE = 'Enemy casters now cast at their own power — no more archmage chain lightning from a small-fry deckhand — and Righteous Might\'s giant size finally hardens your CMD against grapples and trips.';
 module.exports = { VERSION, HEADLINE };

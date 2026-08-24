@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.9 — 2026-08-24
+
+- **Enemy casters cast at their own power.** A minor enemy spellcaster no longer throws
+  archmage-grade artillery just because the dungeon is deep — its spells now scale with the
+  creature itself. No more maximized chain lightning from a deckhand against a level-two party.
+- **Righteous Might makes you hard to tackle.** Growing to Large size now raises your combat
+  maneuver defense — grapples, trips and bull rushes find you anchored like the giant you are.
+
 ## v1.20.8 — 2026-08-24
 
 - **Invisible heroes keep their cover.** The automatic Haste bonus strike no longer fires while
