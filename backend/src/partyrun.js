@@ -662,6 +662,14 @@ function summonTurn(run, minion, roll) {
 }
 
 function aiHeroTurn(run, hero, roll) {
+  // v1.20.11 (poker v3.37.123 parity): the caster's turn arrived — their blinked
+  // allies become targetable again (Teleport: _blinkHold spends one extra turn of
+  // safe harbor first). Poker clears this in _advanceToActor; PGM's loop never did,
+  // so a Dimension-Doored ally stayed untargetable until the room reset.
+  for (const x of run.combatants.filter(c => c.side === 'hero')) {
+    if (x.blinkedBy === hero.playerId || x.blinkedBy === hero.id) { if ((x._blinkHold || 0) > 0) x._blinkHold--; else x.blinkedBy = null; }
+  }
+
   // Take-at-will (Tobias): an AI companion low on blood helps itself to a
   // party-property healing potion before acting.
   if (hero.hp > 0 && hero.hp <= hero.maxHp * 0.45) {

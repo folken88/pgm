@@ -41,7 +41,9 @@ module.exports = {
     // the levels bring EVERYTHING — hp, to-hit, saves, DCs. A boss ALWAYS
     // advances (2-4 levels; the old 1d4 could roll a wet +1); a regular spawn
     // advances only when the spawner flags it ELITE to fill a thin CR band.
-    const extra = boss ? 1 + dRoll(3) : (elite || 0);
+    // v1.20.11 (Toby via poker v3.37.123): advancement can't push a spawn past maxHeroLevel+2 CR.
+    const _lvls = (this.livingParty ? this.livingParty() : []).map(a => a.level || 1);
+    const extra = Math.min(boss ? 1 + dRoll(3) : (elite || 0), Math.max(0, Math.round(((_lvls.length ? Math.max(..._lvls) : 16) + 2 - (base.crNum || 0)) * 2)));
     const half = Math.floor(extra / 2);
     // BOSS PRE-CAST WARDS — a caster boss "cheats": every long-duration buff
     // (anything NOT measured in rounds/level — Mage Armor, Shield, Stoneskin,

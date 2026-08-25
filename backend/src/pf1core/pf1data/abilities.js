@@ -184,8 +184,8 @@ const SPELL = {
   fireball:      { key: 'fireball',      name: 'Fireball',       icon: '💥', cost: 'pool', effect: 'aoe', target: 'aoe', maxTargets: 6, randFoes: 6, save: 'reflex', die: 6, dice: 'level', dcap: 10, minLevel: 7, dtype: 'fire', slvl: 3, sounds: FIREBALL_SFX, desc: 'A roaring blast that engulfs a RANDOM 1d6 enemies — Reflex for half (level d6).' },
   aciddart:      { key: 'aciddart',      name: 'Acid Arrow',     icon: '🟢', cost: 'pool', effect: 'touch', target: 'enemy', die: 6, dice: 'halflevel', dcap: 5, minLevel: 3, dtype: 'acid', slvl: 2, dot: true, sound: S.acid, desc: 'A bolt of acid — ranged touch for ½level d6, and it KEEPS BURNING for ½level d6 more each of the foe\'s turns (1 round per 3 caster levels).' },
   dispelmagic:   { key: 'dispelmagic',   name: 'Dispel Magic',   icon: '🌀', cost: 'pool', effect: 'cleanse', target: 'ally', minLevel: 5, slvl: 3, sound: S.dispel, desc: 'End hostile SPELL effects on an ally (hold, slow, magical blindness) — or strip a buff off a foe. Physical grapple/stun/sickness are beyond it (PF1).' },
-  dimensiondoor: { key: 'dimensiondoor', name: 'Dimension Door', icon: '🌀', cost: 'pool', effect: 'tpstrike', target: 'ally', minLevel: 7, slvl: 4, sound: S.invoke, desc: 'Fold space around a melee ally: UNTOUCHABLE until your next turn, and their next strike reaches ANY foe (even flyers) with a FULL attack.' },
-  teleport:      { key: 'teleport',      name: 'Teleport',       icon: '✨', cost: 'pool', effect: 'tpstrike', target: 'ally', minLevel: 9, slvl: 5, sound: S.invoke, desc: 'Blink a melee ally across the battlefield: UNTOUCHABLE until your next turn, and their next strike reaches ANY foe with a FULL attack.' },
+  dimensiondoor: { key: 'dimensiondoor', name: 'Dimension Door', icon: '🌀', cost: 'pool', effect: 'tpstrike', target: 'ally', minLevel: 7, slvl: 4, sound: S.invoke, desc: 'Fold space around an ally (or yourself): a GRAPPLED ally is torn free of the hold, they\'re UNTOUCHABLE until your next turn, and their next strike reaches ANY foe (even flyers) with a FULL attack.' },
+  teleport:      { key: 'teleport',      name: 'Teleport',       icon: '✨', cost: 'pool', effect: 'tpstrike', target: 'ally', minLevel: 9, slvl: 5, sound: S.invoke, desc: 'Blink an ally (or yourself) across the battlefield: a GRAPPLED ally is torn free, they\'re UNTOUCHABLE for TWO full rounds of safe harbor, and their next strike reaches ANY foe with a FULL attack.' },
   holdperson:    { key: 'holdperson',    name: 'Hold Person',    icon: '🖐️', cost: 'pool', effect: 'save_debuff', target: 'enemy', save: 'will', debuff: 'paralyzed', onlyHumanoids: true, slvl: 3, sound: S.anchor, desc: 'A HUMANOID foe must save or be HELD (helpless). Each of its turns it may re-save to break free — but the attempt costs its turn either way. Humanoids only (PF1).' },
   grease:        { key: 'grease',        name: 'Grease',         icon: '🛢️', cost: 'pool', effect: 'grease', target: 'aoe', maxTargets: 2, save: 'reflex', minLevel: 1, slvl: 1, sound: S.grease, desc: 'Slick the floor — 2 foes Reflex or fall prone (splat!).' },
   sleep:         { key: 'sleep',         name: 'Sleep',          icon: '💤', cost: 'pool', effect: 'sleep',  target: 'aoe', maxTargets: 3, save: 'will',   minLevel: 1, slvl: 1, sound: S.sleep, desc: 'Up to 3 weaker foes must save or fall asleep — helpless, losing turns until struck.' },
@@ -1065,6 +1065,20 @@ for (const _k of Object.values(KITS)) {
   }
 }
 
+// THE 10-MINUTE-PER-LEVEL TIER IS RUN-LONG (v1.20.11, Toby via poker v3.37.123:
+// '10 minute per level buffs should last the whole dungeon once cast... we will
+// only expire minute per level or round per level type buffs at the end of a
+// room'). The synced abilities mixin re-applies each buff's snapshot every room.
+const _RUNLONG_KEYS = ['airwalk', 'stoneskin', 'stoneskincomm', 'greatermagicweapon', 'falselife', 'seeinvisibility', 'darkvisioncomm', 'protectfire', 'heroism', 'barkskin'];
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a && _RUNLONG_KEYS.includes(_a.key)) {
+      _a.persist = true;
+      if (typeof _a.desc === 'string') _a.desc = _a.desc.replace(/for the rest of the room/g, 'for the rest of the DUNGEON').replace(/Lasts the room\./g, 'Lasts the whole DUNGEON.').replace(/until spent\./g, 'until spent (and it lasts the whole DUNGEON).');
+    }
+  }
+}
 // TRUE SEEING is RANGE TOUCH (v1.20.10, poker v3.37.122 — Josh: 'True seeing
 // is range touch... I should be able to put it on any of my allies I wish.'):
 // every baked or injected copy becomes ally-targetable. See Invisibility

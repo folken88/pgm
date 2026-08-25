@@ -603,8 +603,17 @@
 //                    attackers never pick wrestle maneuvers (enemyAI mixin sync) — animals keep
 //                    their grabs.
 //
+//  1.20.11 2026-08-24 TOBY'S RULINGS, SYNCED FROM POKER v3.37.123: the +2 CR ceiling now also
+//                    clamps elite/boss ADVANCEMENT (room CR was already APL+1 via roomgen);
+//                    the 10-min/level buff tier (Stoneskin, Heroism, Air Walk, wards...) is
+//                    run-long with per-room snapshot re-apply (also fixes Magic Vestment's +3
+//                    AC never landing); DD/Teleport tear grappled allies free (Teleport = two
+//                    turns of safe harbor); a grappled shooter draws backup steel; and the
+//                    turn loop finally CLEARS blinked allies (they used to stay untargetable
+//                    all room). Human-cast blinks still clear only at room end - noted gap.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.10';
-const HEADLINE = 'True Seeing is range TOUCH like the book says — cast it on yourself or the fighter who needs it — and enemy shamans and rogues stop wrestling: casters cast, knife-artists stab, only actual beasts keep their grabs.';
+const VERSION = '1.20.11';
+const HEADLINE = 'Enemies never spawn more than 2 CR above your best hero; long buffs like Stoneskin and Heroism now last the whole dungeon; and Dimension Door tears grappled allies free — Teleport shelters them for two full rounds.';
 module.exports = { VERSION, HEADLINE };

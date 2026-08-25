@@ -19,6 +19,20 @@ PGM is made by:
 
 ---
 
+## v1.20.11 — 2026-08-24
+
+- **Enemies stay in your league.** No spawn — elite and boss advancement included — ever
+  exceeds your best hero's level plus two. Deeper rooms bring more enemies, not gods.
+- **Long blessings last the delve.** Ten-minute-per-level-and-longer buffs — Stoneskin,
+  Heroism, Barkskin, Air Walk, See Invisibility, fire wards, Greater Magic Weapon and kin —
+  now persist for the whole dungeon once cast. (This also fixes Magic Vestment's +3 armor,
+  which was being announced but never actually applied.)
+- **Dimension Door is a rescue line.** It tears a grappled ally straight out of the hold,
+  and Teleport shelters its passenger for two full rounds. Companions now use it to free
+  pinned allies. Blinked allies also properly return to the fight on their caster's turn.
+- **Grappled shooters fight smart.** A bow-user caught in a grapple draws a boot dagger and
+  fights the grappler in close instead of firing from inside the scrum.
+
 ## v1.20.10 — 2026-08-24
 
 - **True Seeing works on any ally.** It's a touch-range spell, so you can now cast it on
