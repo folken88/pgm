@@ -612,8 +612,15 @@
 //                    turn loop finally CLEARS blinked allies (they used to stay untargetable
 //                    all room). Human-cast blinks still clear only at room end - noted gap.
 //
+//  1.20.12 2026-08-24 THE 21-SPELL HIGH-LEVEL EXPANSION (poker v3.37.124, transplanted verbatim
+//                    from poker's pf1data): Power Word Blind/Stun/Kill, Maze, Mass Holds, Mind
+//                    Blank, Foresight, Flesh to Stone, Undeath to Death, Destruction, Chains of
+//                    Light, the Mass Cure line, Firebrand, Plague Storm, Sunbeam, Irresistible
+//                    Dance, druid Finger of Death. Engine handlers ride the synced mixins;
+//                    mazed foes filtered from hero targeting in partyrun.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.11';
-const HEADLINE = 'Enemies never spawn more than 2 CR above your best hero; long buffs like Stoneskin and Heroism now last the whole dungeon; and Dimension Door tears grappled allies free — Teleport shelters them for two full rounds.';
+const VERSION = '1.20.12';
+const HEADLINE = 'Twenty-one new high-level spells from the Core Rulebook and Ultimate Magic — Power Word Kill, Maze, Mass Hold Monster, Mind Blank, Foresight, the Mass Cure line and more, with PF1 numbers kept.';
 module.exports = { VERSION, HEADLINE };

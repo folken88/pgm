@@ -378,7 +378,7 @@ function groupProse(list) {
 }
 
 function living(run, side) { return run.combatants.filter(c => c.side === side && !c.down && !c.summoned); }
-function livingRevealedEnemies(run) { return run.combatants.filter(c => c.side === 'enemy' && !c.down && c.revealed && !c.summoned); }
+function livingRevealedEnemies(run) { return run.combatants.filter(c => c.side === 'enemy' && !c.down && c.revealed && !c.summoned && !(c.mazed > 0)); }   // mazed (v1.20.12): banished to the labyrinth — not a valid target
 function current(run) { return run.combatants[run.turnIndex]; }
 function nextTurn(run) {
   run.turnIndex = (run.turnIndex + 1) % run.combatants.length;

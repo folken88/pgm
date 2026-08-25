@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.12 — 2026-08-24
+
+- **Twenty-one new high-level spells** from the Pathfinder Core Rulebook and Ultimate Magic,
+  with the book's numbers kept: Power Word Blind/Stun/Kill (no save, HP-capped), Maze, Hold
+  Monster and both Mass Holds, Mind Blank, Foresight, Flesh to Stone, Undeath to Death,
+  Destruction, Chains of Light, the whole Mass Cure line, Firebrand, Plague Storm, Sunbeam,
+  Irresistible Dance, and the druid's 8th-level Finger of Death.
+
 ## v1.20.11 — 2026-08-24
 
 - **Enemies stay in your league.** No spawn — elite and boss advancement included — ever
