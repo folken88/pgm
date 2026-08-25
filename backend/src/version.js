@@ -626,8 +626,15 @@
 //                    mixin), four new druid forms (Lion/Dire Ape/Dire Boar/Crocodile — form
 //                    weapons fall back to the default here; the staples armory stays unported).
 //
+//  1.20.14 2026-08-25 THE CAPSTONE FIELD-REPORT FIXES (poker v3.37.126, all via the synced
+//                    mixins): death effects refuse undead/construct targets pre-cast (slot
+//                    kept, rule taught); Stoneskin and Stoneskin (Communal) count as ONE ward
+//                    in the bot picker and ally auto-target; Fight Defensively is stance-
+//                    managed only (no more -6 rapid-shot tug-of-war); enemy CL5+ casters
+//                    haste their crews (+1 hit, extra swing, 3 rounds).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.13';
-const HEADLINE = 'The capstones arrive: Time Stop layers free castings into a frozen moment, Wish and Miracle read your need, the summon ladders call real beasts to your side — and druids gain Lion, Dire Ape, Dire Boar and Crocodile forms.';
+const VERSION = '1.20.14';
+const HEADLINE = 'Death effects now refuse an undead target and keep your slot; the two Stoneskins count as one ward; archer companions stop flip-flopping Fight Defensively; and enemy casters cast Haste on their own crews.';
 module.exports = { VERSION, HEADLINE };

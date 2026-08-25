@@ -19,6 +19,17 @@ PGM is made by:
 
 ---
 
+## v1.20.14 — 2026-08-25
+
+- **Death effects teach their rule.** Casting Destruction or another death effect at an
+  undead or construct now refuses up front and keeps your spell slot, explaining why.
+- **One Stoneskin ward.** Stoneskin and Stoneskin (Communal) no longer double-cast on the
+  same target — the protection never stacked, so the second slot was pure waste.
+- **Steadier archers.** A ranged companion no longer flips Fight Defensively on and off
+  every round — the stance only rises when they're genuinely badly hurt.
+- **Enemy casters cast Haste.** A capable enemy caster with a crew now speeds its whole
+  side up once a fight — faster, more dangerous, exactly as it should be.
+
 ## v1.20.13 — 2026-08-24
 
 - **Time Stop.** The 9th-level capstone: the cast costs no action and grants 1d4+1 free
