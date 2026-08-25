@@ -619,8 +619,15 @@
 //                    Dance, druid Finger of Death. Engine handlers ride the synced mixins;
 //                    mazed foes filtered from hero targeting in partyrun.
 //
+//  1.20.13 2026-08-24 THE CAPSTONES (poker v3.37.125): Time Stop (1d4+1 free castings, hostile
+//                    magic crashes time back), Wish/Miracle (raise the fallen / mend the party /
+//                    unmake a chosen foe on a failed Will), the Summon Monster + Nature's Ally
+//                    ladders (the bestiary's own beasts, non-evil flavors via the synced summons
+//                    mixin), four new druid forms (Lion/Dire Ape/Dire Boar/Crocodile — form
+//                    weapons fall back to the default here; the staples armory stays unported).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.12';
-const HEADLINE = 'Twenty-one new high-level spells from the Core Rulebook and Ultimate Magic — Power Word Kill, Maze, Mass Hold Monster, Mind Blank, Foresight, the Mass Cure line and more, with PF1 numbers kept.';
+const VERSION = '1.20.13';
+const HEADLINE = 'The capstones arrive: Time Stop layers free castings into a frozen moment, Wish and Miracle read your need, the summon ladders call real beasts to your side — and druids gain Lion, Dire Ape, Dire Boar and Crocodile forms.';
 module.exports = { VERSION, HEADLINE };

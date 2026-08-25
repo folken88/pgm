@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.13 — 2026-08-24
+
+- **Time Stop.** The 9th-level capstone: the cast costs no action and grants 1d4+1 free
+  castings this turn — buffs, healing, summons. Aiming at a foe crashes time back.
+- **Wish and Miracle.** The magic reads your need: raises every fallen ally, or mends a
+  battered party, or unmakes a chosen foe unless it saves.
+- **Summon Monster and Summon Nature's Ally (IV/VI/VIII).** Call the bestiary's own beasts —
+  dire apes, boars, blood caimans, lionesses, dire bears, winter wolves — to your side.
+- **Four new druid forms.** Lion, Dire Ape, Dire Boar and Crocodile join Tiger, Bear and Hawk.
+
 ## v1.20.12 — 2026-08-24
 
 - **Twenty-one new high-level spells** from the Pathfinder Core Rulebook and Ultimate Magic,
