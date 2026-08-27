@@ -633,8 +633,14 @@
 //                    managed only (no more -6 rapid-shot tug-of-war); enemy CL5+ casters
 //                    haste their crews (+1 hit, extra swing, 3 rounds).
 //
+//  1.20.15 2026-08-26 THE AFTERNOON-THREAD FIXES (poker v3.37.127): clerics need a REAL dent
+//                    before channeling (someone under 75% or party missing HP >= 6x level —
+//                    synced heroAI); the INVESTIGATOR becomes a real class (Studied Combat +
+//                    six alchemical extracts, transplanted). Poker-only for now: the buff-chip
+//                    labels and the I-key inventory readout (PGM UI parity backlog #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.14';
-const HEADLINE = 'Death effects now refuse an undead target and keep your slot; the two Stoneskins count as one ward; archer companions stop flip-flopping Fight Defensively; and enemy casters cast Haste on their own crews.';
+const VERSION = '1.20.15';
+const HEADLINE = 'Clerics stop wasting channels on a healthy party, and the investigator becomes a real class — Studied Combat plus six alchemical extracts.';
 module.exports = { VERSION, HEADLINE };

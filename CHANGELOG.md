@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.15 — 2026-08-26
+
+- **Channels wait for real wounds.** A cleric companion no longer burns channels topping off
+  a nearly-full party — healing now waits for someone under three-quarters health or a real
+  party-wide dent (proactive topping under heavy fire still happens).
+- **The investigator is a real class.** Studied Combat (a swift-action mark for bonus hit and
+  damage) plus six alchemical extracts — healing, shield, see invisibility, heroism,
+  displacement and stoneskin brews on the alchemist's spell track.
+
 ## v1.20.14 — 2026-08-25
 
 - **Death effects teach their rule.** Casting Destruction or another death effect at an
