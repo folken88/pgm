@@ -645,8 +645,14 @@
 //                    swing.js from L4, bots auto-study (synced heroAI), fighter feats trimmed
 //                    from the kit (transplanted).
 //
+//  1.20.17 2026-08-26 CRB PARITY BATCH 1 (poker v3.37.129): Obscuring Mist, Silence (a muted
+//                    enemy caster falls back on steel — synced enemyAI), Ray of Exhaustion,
+//                    Bestow Curse (-4 attacks, synced swing math), Command. The parity ledger
+//                    lives in poker's docs/CRB-SPELL-PARITY.md. PGM chip labels for
+//                    Silenced/Cursed pending UI parity (#64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.16';
-const HEADLINE = 'The investigator is now PF1-true — Studied Combat grants half your level to hit and damage, and every hit on the studied foe carries Studied Strike dice from level 4.';
+const VERSION = '1.20.17';
+const HEADLINE = 'Core Rulebook parity begins: Silence mutes enemy casters, Bestow Curse rots their aim, Command drops them prone, and Obscuring Mist and Ray of Exhaustion round out the first batch of five.';
 module.exports = { VERSION, HEADLINE };

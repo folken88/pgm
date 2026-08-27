@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.17 — 2026-08-26
+
+- **Five more Core Rulebook spells** — the first batch on the road to full CRB parity:
+  Silence (mute an enemy caster and it falls back on its weapons), Bestow Curse (−4 on all
+  its attacks), Command ("Fall!" — prone and a lost turn), Ray of Exhaustion, and Obscuring
+  Mist (a blinding fog over the enemy line).
+
 ## v1.20.16 — 2026-08-26
 
 - **The investigator follows the book.** Studied Combat now grants half your level to hit and
