@@ -639,8 +639,14 @@
 //                    six alchemical extracts, transplanted). Poker-only for now: the buff-chip
 //                    labels and the I-key inventory readout (PGM UI parity backlog #64).
 //
+//  1.20.16 2026-08-26 THE INVESTIGATOR, PF1-TRUE (poker v3.37.128, Toby: 'follow pf1' — half
+//                    rogue, half alchemist): Studied Combat is +HALF LEVEL (class-aware via the
+//                    synced abilities mixin), Studied Strike dice ride the sneak channel in
+//                    swing.js from L4, bots auto-study (synced heroAI), fighter feats trimmed
+//                    from the kit (transplanted).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.15';
-const HEADLINE = 'Clerics stop wasting channels on a healthy party, and the investigator becomes a real class — Studied Combat plus six alchemical extracts.';
+const VERSION = '1.20.16';
+const HEADLINE = 'The investigator is now PF1-true — Studied Combat grants half your level to hit and damage, and every hit on the studied foe carries Studied Strike dice from level 4.';
 module.exports = { VERSION, HEADLINE };

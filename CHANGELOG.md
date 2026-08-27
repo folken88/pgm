@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.16 — 2026-08-26
+
+- **The investigator follows the book.** Studied Combat now grants half your level to hit and
+  damage against the studied foe (much sharper than before), and from level 4 every hit on the
+  mark carries Studied Strike dice — the rogue half of the class. Companions study on their
+  own, and the kit sheds the fighter feats it never should have had.
+
 ## v1.20.15 — 2026-08-26
 
 - **Channels wait for real wounds.** A cleric companion no longer burns channels topping off
