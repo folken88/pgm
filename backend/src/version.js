@@ -651,8 +651,14 @@
 //                    lives in poker's docs/CRB-SPELL-PARITY.md. PGM chip labels for
 //                    Silenced/Cursed pending UI parity (#64).
 //
+//  1.20.18 2026-08-26 THE CLASS-LIST COVERAGE PASS (poker v3.37.130, Toby's rule 2): ten owed
+//                    CRB entries delivered — inquisitor Silence + Command, oracle Obscuring
+//                    Mist, wizard/sorcerer Heroism + Irresistible Dance, druid True Seeing +
+//                    Freedom of Movement + Mass Cure Moderate, bard Hold Person + Mass Cure
+//                    Moderate. Every future batch closes with the same audit.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.17';
-const HEADLINE = 'Core Rulebook parity begins: Silence mutes enemy casters, Bestow Curse rots their aim, Command drops them prone, and Obscuring Mist and Ray of Exhaustion round out the first batch of five.';
+const VERSION = '1.20.18';
+const HEADLINE = 'Every spell reaches every caster the book gives it to: inquisitors gain Silence and Command, wizards gain Heroism, druids gain True Seeing and Freedom of Movement, bards gain Hold Person — ten owed entries at their PF1 levels.';
 module.exports = { VERSION, HEADLINE };

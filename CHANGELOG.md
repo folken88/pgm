@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.18 — 2026-08-26
+
+- **Every caster gets what the book gives them.** A coverage audit against the Pathfinder
+  class lists delivered ten owed spells: inquisitors gain Silence and Command, oracles gain
+  Obscuring Mist, wizards and sorcerers gain Heroism and Irresistible Dance, druids gain True
+  Seeing, Freedom of Movement and Mass Cure Moderate, and bards gain Hold Person and Mass
+  Cure Moderate — all at their book levels.
+
 ## v1.20.17 — 2026-08-26
 
 - **Five more Core Rulebook spells** — the first batch on the road to full CRB parity:
