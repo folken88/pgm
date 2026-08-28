@@ -657,8 +657,14 @@
 //                    Freedom of Movement + Mass Cure Moderate, bard Hold Person + Mass Cure
 //                    Moderate. Every future batch closes with the same audit.
 //
+//  1.20.19 2026-08-28 THE BARD SLOT TABLE (poker v3.37.131 boundary audit, from Josh's
+//                    grumpy-raven challenge): the bard had been riding the SORCERER'S 9-level
+//                    per-day table (6th-level slots at 12 instead of 16, over-slotted
+//                    throughout). Now on the CRB bard table. Poker's progression-menu speech
+//                    fix is client-side there; PGM has no progression reader yet (#64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.18';
-const HEADLINE = 'Every spell reaches every caster the book gives it to: inquisitors gain Silence and Command, wizards gain Heroism, druids gain True Seeing and Freedom of Movement, bards gain Hold Person — ten owed entries at their PF1 levels.';
+const VERSION = '1.20.19';
+const HEADLINE = 'The bard now casts from the real bard table — 6th-level spells arrive at 16 as the book says, not 12 — caught by the progression audit.';
 module.exports = { VERSION, HEADLINE };

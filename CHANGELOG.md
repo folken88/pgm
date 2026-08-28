@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.19 — 2026-08-28
+
+- **The bard casts from the bard's own table.** A progression audit found bards using the
+  sorcerer's nine-level spell-slot table — far too many slots, far too early. They now follow
+  the Core Rulebook bard table exactly: 6th-level spells at 16, as written.
+
 ## v1.20.18 — 2026-08-26
 
 - **Every caster gets what the book gives them.** A coverage audit against the Pathfinder
