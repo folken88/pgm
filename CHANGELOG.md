@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.21 — 2026-08-28
+
+- **Cleric companions discover Air Walk.** The divine answer to flying enemies was in their
+  kit but never in their prepared list — promoted, so they cast it now.
+- **Sharper sound design.** Divine Power, the channel's undead-searing burst, and the
+  investigator's extracts each get their own distinct sound instead of sharing tags.
+
 ## v1.20.20 — 2026-08-28
 
 - **Parity of arms.** Your wizards, sorcerers and bards finally get Mirror Image — the same

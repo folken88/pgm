@@ -1293,6 +1293,20 @@ for (const _k of Object.values(KITS)) {
     }
   }
 }
+// SOUND DIFFERENTIATION PASS (v3.37.133, Josh's sound-design essay: 'the same
+// sound is used for channel positive, righteous might, divine power... blind
+// users pick up on sounds and process that more quickly than a line of speech').
+// Distinct sonic tags from the existing pool: DIVINE POWER rings the god-hammer,
+// the six EXTRACTS mix a drink (his hypo-gun idea noted for Toby if the Iron
+// Gods asset surfaces), the channel SEAR blazes (in _abHeal). Channel-heal and
+// Righteous Might keep the identities Josh already knows.
+for (const _k of Object.values(KITS)) {
+  if (!_k || !Array.isArray(_k.abilities)) continue;
+  for (const _a of _k.abilities) {
+    if (_a && _a.key === 'divinepower') _a.sound = '/audio/weapon_warhammer_smite.mp3';
+    if (_a && typeof _a.key === 'string' && _a.key.startsWith('ext_')) _a.sound = '/audio/mix_drink.mp3';
+  }
+}
 // TRUE SEEING is RANGE TOUCH (v1.20.10, poker v3.37.122 — Josh: 'True seeing
 // is range touch... I should be able to put it on any of my allies I wish.'):
 // every baked or injected copy becomes ally-targetable. See Invisibility

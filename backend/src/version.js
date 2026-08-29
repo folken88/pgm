@@ -670,8 +670,14 @@
 //                    synced mixins + the pf1core transplant. Poker's dispel-picker fix and
 //                    the browse-all progression menu are client-side there (#64).
 //
+//  1.20.21 2026-08-28 THE BACKLOG SWEEP (poker v3.37.133): bot clerics finally prep AIR WALK
+//                    (it sat below the default-prep cut in PRIORITY); the sound pass lands —
+//                    Divine Power rings the god-hammer, the channel sear blazes (synced
+//                    abilities), extracts mix a drink. Poker-only: the E-menu arrows/Home/End
+//                    and the Freedom of Movement ally prompt (PGM UI parity #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.20';
-const HEADLINE = 'Parity of arms: your wizards finally get Mirror Image, enemy priests channel over their flocks, and enemy casters dispel your buffs right back.';
+const VERSION = '1.20.21';
+const HEADLINE = 'Cleric companions finally prepare Air Walk, and the sound pass lands: Divine Power rings the god-hammer, the channel sear blazes, and the investigator mixes a drink.';
 module.exports = { VERSION, HEADLINE };
