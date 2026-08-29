@@ -1535,6 +1535,13 @@ const BUFF_META = {
   bullsstrength: { icon: '💪', img: BI('bullsstrength'), label: "Bull's Strength", desc: '+Str' },
   bearsendurance:{ icon: '🐻', img: BI('bearsendurance'), label: "Bear's Endurance", desc: '+Con, temp HP' },
   blazeofglory:  { icon: '☄️', label: 'Blaze of Glory',  desc: '+4 to all attacks' },
+  // v1.20.22 (poker v3.37.134, Josh's chip audit): five sticky buffs had no entry
+  // here and were invisible to the readouts.
+  divinepower:    { icon: '⚡', img: BI('bullsstrength'), label: 'Divine Power',    desc: '+1/3 levels hit & damage, extra swing' },
+  righteousmight: { icon: '💪', img: BI('bullsstrength'), label: 'Righteous Might', desc: '+2 hit, +4 damage, +2 AC & CMD' },
+  enlargeperson:  { icon: '🦣', img: BI('bullsstrength'), label: 'Enlarge Person',  desc: 'grown a size — +2 damage' },
+  heroismgreater: { icon: '🦸', img: BI('heroism'), label: 'Greater Heroism', desc: '+4 hit & saves' },
+  bloodlinesurge: { icon: '💥', img: BI('rage'), label: 'Bloodline Surge', desc: '+1 hit, +3 damage, +2 AC' },
   // Order of the Lion order buffs (PGM):
   lions_call:    { icon: '🦁', label: "Lion's Call",     desc: '+1 hit, +2 saves' },
   for_the_king:  { icon: '👑', label: 'For the King!',   desc: '+Cha hit & damage' },

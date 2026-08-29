@@ -19,6 +19,19 @@ PGM is made by:
 
 ---
 
+## v1.20.22 — 2026-08-29
+
+- **Five buffs surface in the readouts.** Divine Power, Righteous Might, Enlarge Person,
+  Greater Heroism and Bloodline Surge had no chip entry and were silently invisible.
+- **Divine Power goes full PF1.** +1 luck per 3 caster levels (max +6) to hit and damage,
+  temp HP equal to caster level, and an extra full-attack swing that yields to Haste.
+  Greater Magic Weapon is a 4th-level prayer on the divine lists now, per the book.
+- **Enemy Dispel v2.** A Greater Dispel now truly reverses numeric dungeon-long buffs
+  (Magic Vestment, GMW, Heroism, False Life, Bless...) — and a dispelled buff can be
+  re-cast the same room instead of claiming it's still up.
+- **Sound round 2.** Righteous Might, See Invisibility, Divine Favor, Shield of Faith and
+  Protection from Evil each get their own sonic identity.
+
 ## v1.20.21 — 2026-08-28
 
 - **Cleric companions discover Air Walk.** The divine answer to flying enemies was in their

@@ -676,8 +676,17 @@
 //                    abilities), extracts mix a drink. Poker-only: the E-menu arrows/Home/End
 //                    and the Freedom of Movement ally prompt (PGM UI parity #64).
 //
+//  1.20.22 2026-08-29 JOSH'S MIDNIGHT TRIPLE (poker v3.37.134): five chip-less sticky buffs
+//                    surface in the readouts (Divine Power, Righteous Might, Enlarge Person,
+//                    Greater Heroism, Bloodline Surge); Divine Power goes full PF1 (+1 luck/3 CL
+//                    max +6, temp HP = level, extra full-attack swing that yields to Haste); GMW
+//                    is a 4th-level prayer on the divine lists; enemy Dispel v2 REVERSES numeric
+//                    run-buffs (Vestment at last) and frees them for same-room recast; sound
+//                    round 2 (Righteous Might booms, See Invisibility goes spectral, Divine
+//                    Favor rings mjolnir, Shield of Faith clanks, Prot-from-Evil shimmers).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.21';
-const HEADLINE = 'Cleric companions finally prepare Air Walk, and the sound pass lands: Divine Power rings the god-hammer, the channel sear blazes, and the investigator mixes a drink.';
+const VERSION = '1.20.22';
+const HEADLINE = 'Five invisible buff chips surface, Divine Power goes full PF1 with its extra swing, and enemy Dispel truly strips Vestment-class buffs (and lets you re-cast them).';
 module.exports = { VERSION, HEADLINE };
