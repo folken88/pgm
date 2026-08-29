@@ -663,8 +663,15 @@
 //                    throughout). Now on the CRB bard table. Poker's progression-menu speech
 //                    fix is client-side there; PGM has no progression reader yet (#64).
 //
+//  1.20.20 2026-08-28 THE PARITY-OF-ARMS RELEASE (poker v3.37.132): Mirror Image for wizard/
+//                    sorcerer/bard (only magus/oracle carried it); enemy priests CHANNEL over
+//                    their wounded flocks; enemy CL9+ casters DISPEL the shiniest hero (CL13+
+//                    = Greater, sweeps everything; run-long snapshots deleted). All via the
+//                    synced mixins + the pf1core transplant. Poker's dispel-picker fix and
+//                    the browse-all progression menu are client-side there (#64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.19';
-const HEADLINE = 'The bard now casts from the real bard table — 6th-level spells arrive at 16 as the book says, not 12 — caught by the progression audit.';
+const VERSION = '1.20.20';
+const HEADLINE = 'Parity of arms: your wizards finally get Mirror Image, enemy priests channel over their flocks, and enemy casters dispel your buffs right back.';
 module.exports = { VERSION, HEADLINE };

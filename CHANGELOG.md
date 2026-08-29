@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.20 — 2026-08-28
+
+- **Parity of arms.** Your wizards, sorcerers and bards finally get Mirror Image — the same
+  decoys enemy casters have always used. In return, enemy priests now channel healing over
+  their wounded flocks, and capable enemy casters cast Dispel Magic at your shiniest hero —
+  stripping haste, images, flight, stoneskin and wards, exactly as you do to them.
+
 ## v1.20.19 — 2026-08-28
 
 - **The bard casts from the bard's own table.** A progression audit found bards using the
