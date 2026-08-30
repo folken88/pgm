@@ -19,6 +19,18 @@ PGM is made by:
 
 ---
 
+## v1.20.24 — 2026-08-30
+
+- **The martial casters.** Paladin, antipaladin, ranger and bloodrager get their PF1
+  spell lists on the PF1 four-level ladder (1st at level 4, 2nd at 7, 3rd at 10,
+  4th at 13). Rangers finally cast; bloodragers get Haste and Mirror Image.
+- **Spiritual Ally.** A guardian angel with a blazing longsword fights beside your
+  Spiritual Weapon — and the turn loop now fires BOTH spirits every round (they
+  previously only struck when cast here).
+- **Stoneskin (Communal) is room-only** per PF1 (the communal cast divides the
+  duration); solo Stoneskin still lasts the dungeon.
+- **The extracts fire a hypo-stim** (Toby's Tarkov asset — Josh's idea).
+
 ## v1.20.23 — 2026-08-30
 
 - **The luck channel.** Divine Favor scales +1 per 3 caster levels (max +3) and shares

@@ -692,8 +692,16 @@
 //                    pad model now marks level-locked abilities (minLevel/locked) via the
 //                    synced engine; poker-only: the N-catalog speech (PGM UI parity #64).
 //
+//  1.20.24 2026-08-30 TOBY'S SIX RULINGS (poker v3.37.136): paladin/antipaladin/ranger/
+//                    bloodrager get their PF1 spell lists on the PF1 ladder (1st@4, 2nd@7,
+//                    3rd@10, 4th@13 — the level-1 paladin home rule retires); SPIRITUAL ALLY
+//                    (an angel, APG) fights beside the Spiritual Weapon — and PGM's turn loop
+//                    now fires BOTH spirits every round (they only ever struck at cast here);
+//                    Stoneskin Communal is room-only (the communal cast divides the duration);
+//                    the extracts fire Toby's tarkov_stim hypo.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.23';
-const HEADLINE = 'Divine Favor and Divine Power now share one luck channel per the book - the bigger bonus stands, never the sum.';
+const VERSION = '1.20.24';
+const HEADLINE = 'Rangers, bloodragers and both paladins get their real PF1 spellbooks; a guardian angel fights beside your Spiritual Weapon - and both spirits now strike every round.';
 module.exports = { VERSION, HEADLINE };

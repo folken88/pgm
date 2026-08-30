@@ -670,6 +670,14 @@ function aiHeroTurn(run, hero, roll) {
     if (x.blinkedBy === hero.playerId || x.blinkedBy === hero.id) { if ((x._blinkHold || 0) > 0) x._blinkHold--; else x.blinkedBy = null; }
   }
 
+  // v1.20.24 (poker v3.37.136): the spirit spells strike at the START of their
+  // caster's turn. Poker fires this from Dungeon._advanceToActor (never synced);
+  // PGM's loop does it here — and the Spiritual ALLY (the angel) joins the
+  // weapon, both riding the caster's buffs via the synced _spiritStrike.
+  for (const _sk of ['spiritWeapon', 'spiritAlly']) {
+    if (hero[_sk] && hero[_sk].rounds > 0) { try { run.shim._spiritStrike(hero, _sk); } catch (e) {} }
+  }
+
   // Take-at-will (Tobias): an AI companion low on blood helps itself to a
   // party-property healing potion before acting.
   if (hero.hp > 0 && hero.hp <= hero.maxHp * 0.45) {
