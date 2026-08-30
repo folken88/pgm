@@ -685,8 +685,15 @@
 //                    round 2 (Righteous Might booms, See Invisibility goes spectral, Divine
 //                    Favor rings mjolnir, Shield of Faith clanks, Prot-from-Evil shimmers).
 //
+//  1.20.23 2026-08-30 THE LUCK CHANNEL (poker v3.37.135): Divine Favor scales +1 per 3 CL
+//                    (max +3) and shares ONE luck channel with Divine Power (max +6) — the
+//                    bigger stands, never the sum (PF1 RAW; veto point in poker's
+//                    docs/TOBY-QUESTIONS.md). DP's temp HP + extra swing always apply. The
+//                    pad model now marks level-locked abilities (minLevel/locked) via the
+//                    synced engine; poker-only: the N-catalog speech (PGM UI parity #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.22';
-const HEADLINE = 'Five invisible buff chips surface, Divine Power goes full PF1 with its extra swing, and enemy Dispel truly strips Vestment-class buffs (and lets you re-cast them).';
+const VERSION = '1.20.23';
+const HEADLINE = 'Divine Favor and Divine Power now share one luck channel per the book - the bigger bonus stands, never the sum.';
 module.exports = { VERSION, HEADLINE };

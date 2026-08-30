@@ -1523,7 +1523,7 @@ const BUFF_META = {
   prayer:        { icon: '📿', img: BI('prayer'), label: 'Prayer',          desc: 'allies +1 all, foes −1' },
   bless:         { icon: '✨', img: BI('bless'), label: 'Bless',           desc: '+1 to hit (whole delve)' },
   inspire:       { icon: '🎺', img: BI('inspire'), label: 'Inspire Courage', desc: 'allies +hit & damage' },
-  divinefavor:   { icon: '🙏', img: BI('divinefavor'), label: 'Divine Favor',    desc: '+hit & damage' },
+  divinefavor:   { icon: '🙏', img: BI('divinefavor'), label: 'Divine Favor',    desc: '+1/3 levels hit & damage (luck — bigger of this and Divine Power stands)' },
   heroism:       { icon: '🦸', img: BI('heroism'), label: 'Heroism',         desc: '+2 hit, saves & skills' },
   goodhope:      { icon: '🌟', img: BI('goodhope'), label: 'Good Hope',       desc: '+2 hit, damage & saves' },
   magearmor:     { icon: '🔷', img: BI('magearmor'), label: 'Mage Armor',      desc: '+4 armor AC' },
@@ -1537,7 +1537,7 @@ const BUFF_META = {
   blazeofglory:  { icon: '☄️', label: 'Blaze of Glory',  desc: '+4 to all attacks' },
   // v1.20.22 (poker v3.37.134, Josh's chip audit): five sticky buffs had no entry
   // here and were invisible to the readouts.
-  divinepower:    { icon: '⚡', img: BI('bullsstrength'), label: 'Divine Power',    desc: '+1/3 levels hit & damage, extra swing' },
+  divinepower:    { icon: '⚡', img: BI('bullsstrength'), label: 'Divine Power',    desc: '+1/3 levels hit & damage (luck — supersedes Divine Favor), temp HP, extra swing' },
   righteousmight: { icon: '💪', img: BI('bullsstrength'), label: 'Righteous Might', desc: '+2 hit, +4 damage, +2 AC & CMD' },
   enlargeperson:  { icon: '🦣', img: BI('bullsstrength'), label: 'Enlarge Person',  desc: 'grown a size — +2 damage' },
   heroismgreater: { icon: '🦸', img: BI('heroism'), label: 'Greater Heroism', desc: '+4 hit & saves' },

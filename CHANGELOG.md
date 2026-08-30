@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.23 — 2026-08-30
+
+- **The luck channel.** Divine Favor scales +1 per 3 caster levels (max +3) and shares
+  one luck channel with Divine Power (max +6) — same-type bonuses never stack (PF1),
+  so the bigger stands and the refusal is spoken. Divine Power keeps its temp HP and
+  extra full-attack swing regardless.
+
 ## v1.20.22 — 2026-08-29
 
 - **Five buffs surface in the readouts.** Divine Power, Righteous Might, Enlarge Person,
