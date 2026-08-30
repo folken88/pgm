@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.25 — 2026-08-30
+
+- **Spirit doctrine.** A Spiritual Weapon or Ally that outlives its mark now favors
+  the caster's current target, then foes the caster can't reach (flyers), then the
+  biggest threat — and it hunts with the caster's senses: invisible or
+  darkness-shrouded foes need the caster's own magical sight to acquire.
+
 ## v1.20.24 — 2026-08-30
 
 - **The martial casters.** Paladin, antipaladin, ranger and bloodrager get their PF1

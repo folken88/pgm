@@ -700,8 +700,14 @@
 //                    Stoneskin Communal is room-only (the communal cast divides the duration);
 //                    the extracts fire Toby's tarkov_stim hypo.
 //
+//  1.20.25 2026-08-30 SPIRIT DOCTRINE (poker v3.37.137, synced engine): a spirit that
+//                    outlives its mark hunts the caster's CURRENT target first, then foes
+//                    the caster can't reach (flyers), then the biggest threat — and it has
+//                    the CASTER'S senses (no acquiring invisible foes without See Invis /
+//                    True Seeing, nor darkness-shrouded ones without Darkvision).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.24';
-const HEADLINE = 'Rangers, bloodragers and both paladins get their real PF1 spellbooks; a guardian angel fights beside your Spiritual Weapon - and both spirits now strike every round.';
+const VERSION = '1.20.25';
+const HEADLINE = 'The spirit spells follow their caster: current target first, unreachable flyers next, and they see only what the caster sees.';
 module.exports = { VERSION, HEADLINE };
