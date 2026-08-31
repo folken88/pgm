@@ -79,7 +79,7 @@ module.exports = {
       toHit: base.toHit + extra,
       dmgDie: base.dmgDie, dmgCount: base.dmgCount || 1, dmgBonus: base.dmgBonus + half,
       fort: base.fort + Math.ceil(extra / 2), reflex: base.reflex + Math.ceil(extra / 2),
-      align: base.align || 'NE', evil: !!base.evil, markedEvil: false, type: base.type || 'humanoid',
+      align: base.align || 'NE', evil: !!base.evil, markedEvil: false, good: !!base.good, markedGood: false, type: base.type || 'humanoid',
       flatFooted: true, prone: false, fascinated: false, asleep: false, loseTurn: false,
       paralyze: !!base.paralyze, paralyzeDC: (base.paralyzeDC || PARALYZE_DC) + half, sickened: 0,
       attacks: base.attacks || 1,

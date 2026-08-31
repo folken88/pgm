@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.27 — 2026-08-31
+
+- **The dark mirror.** Antipaladins get Smite Good and Detect Good — the honest-scan
+  mirror of the paladin's pair, biting only good-aligned foes.
+- **The Heavenly Host radiates good at last.** No monster ever carried the good flag,
+  so the antipaladin's unholy weapon rider had never fired. Fixed via the synced
+  bestiary; the swing and enemy builder carry the mirror flags.
+
 ## v1.20.26 — 2026-08-31
 
 - **The martial range audit.** Magic Fang and Displacement are range touch in PF1 —

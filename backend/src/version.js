@@ -713,8 +713,14 @@
 //                    rotation (it's See Invisibility's identity). Poker-only: the universal
 //                    spellbook button + Combat Maneuvers submenu (PGM UI parity #64).
 //
+//  1.20.27 2026-08-31 THE DARK MIRROR (poker v3.37.139): antipaladin Smite Good + Detect
+//                    Good lead the pad (honest scan, extra fury only vs good foes); the
+//                    Heavenly Host + Glorious Reclamation finally radiate GOOD (synced
+//                    bestiary), waking the Fiendish Boon's unholy rider that had never
+//                    fired; PGM's swing + enemy builder carry the mirror flags.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.26';
-const HEADLINE = 'Magic Fang and Displacement reach allies per the book, and buff spells finally sound like buffs.';
+const VERSION = '1.20.27';
+const HEADLINE = 'The antipaladin gets its dark mirror: Smite Good and Detect Good - and the Heavenly Host finally radiates the goodness its foes were built to punish.';
 module.exports = { VERSION, HEADLINE };

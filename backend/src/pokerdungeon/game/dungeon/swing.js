@@ -116,7 +116,7 @@ module.exports = {
     const pbs = (weapon && weapon.ranged && target && target._engagedAlly) ? (fighterFeats(cls, lvl, true).pbs || 0) : 0;
     // Smite Evil: an ACTIVATED smite (paladin's ability) vs an evil foe adds a
     // to-hit bump + bonus (un-multiplied) damage equal to level.
-    const smite = !!(attacker.smiteActive && target && (target.evil || target.markedEvil));   // Detect Evil marks neutral foes smite-able
+    const smite = !!(attacker.smiteActive && target && (target.evil || target.markedEvil)) || !!(attacker.smiteGoodActive && target && (target.good || target.markedGood));   // Detect Evil/Good mark neutral foes smite-able (Smite Good = the antipaladin mirror, v1.20.27)
     // Sneak Attack: rogue-likes add precision dice vs a target that's denied its
     // defenses — flat-footed, prone, sickened, or paralyzed (PF1e). NOT crit-multiplied.
     // A target is denied its Dex vs an UNSEEN attacker too — Greater Invisibility
@@ -312,7 +312,7 @@ module.exports = {
     // energy that only bites the opposed alignment — vs EVIL foes (holy) / GOOD foes
     // (unholy). Rides on top: not soaked by physical DR, not crit-multiplied.
     if (arcHoly && (target.evil || target.markedEvil)) dmg += dRollN(arcHoly, 6);
-    if (arcUnholy && target.good) dmg += dRollN(arcUnholy, 6);
+    if (arcUnholy && (target.good || target.markedGood)) dmg += dRollN(arcUnholy, 6);   // Detect Good marks feed the unholy rider too
     return { hit: true, crit, smite, sneakDice, sneakDmg, damage: Math.max(0, dmg), drTag, roll, toHit, total, ac, sound: pick(SND.flesh) };
   }
   // (the villain brain — _monsterSwing/_enemyAct/maneuvers/caster brains — moved to game/dungeon/enemyAI.js — Phase-2 seam 3)
