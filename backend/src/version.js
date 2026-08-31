@@ -706,8 +706,15 @@
 //                    the CASTER'S senses (no acquiring invisible foes without See Invis /
 //                    True Seeing, nor darkness-shrouded ones without Darkvision).
 //
+//  1.20.26 2026-08-30 THE MARTIAL RANGE AUDIT + BUFF SOUNDS (poker v3.37.138): Magic Fang
+//                    and Displacement are RANGE TOUCH per PF1 — ally-castable in every kit
+//                    (the drunk extract stays self); Divine Favor / Divine Power lose their
+//                    ATTACK sounds for buff-family sounds; ghosts_n_stuff leaves the Haste
+//                    rotation (it's See Invisibility's identity). Poker-only: the universal
+//                    spellbook button + Combat Maneuvers submenu (PGM UI parity #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.25';
-const HEADLINE = 'The spirit spells follow their caster: current target first, unreachable flyers next, and they see only what the caster sees.';
+const VERSION = '1.20.26';
+const HEADLINE = 'Magic Fang and Displacement reach allies per the book, and buff spells finally sound like buffs.';
 module.exports = { VERSION, HEADLINE };

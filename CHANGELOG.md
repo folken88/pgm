@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.26 — 2026-08-31
+
+- **The martial range audit.** Magic Fang and Displacement are range touch in PF1 —
+  both were locked to self; now ally-castable everywhere (the investigator's drunk
+  extract stays personal).
+- **Buff spells sound like buffs.** Divine Favor and Divine Power traded their attack
+  sounds (mjolnir / warhammer) for buff-family sounds.
+
 ## v1.20.25 — 2026-08-30
 
 - **Spirit doctrine.** A Spiritual Weapon or Ally that outlives its mark now favors
