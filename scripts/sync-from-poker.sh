@@ -31,7 +31,7 @@ OWNER=$(stat -c '%U:%G' "$PGM/pf1core/pf1data/monsters.js")
 # mechanics: enemy Blaze of Glory, ranged-attack SFX, flyers-don't-wrestle, flavor
 # summons, Ton Bokiri rage). Adding a brand-new mixin would need shim wiring — skip.
 MIXINS="enemyAI abilities heroAI summons"
-SOUNDS="tarkov_mp153_shotgun.mp3 tarkov_revolver_357_shot.mp3 sword_hit_meaty1.mp3 sword_hit_meaty3.mp3 sword_hit_meaty4.mp3 sword_hit_meaty5.mp3 sword_hit_meaty6.mp3 sword_slash_crunch1.mp3 sword_slice_bloody1.mp3 sword_hit_clunk1.mp3 sword_smack_big.mp3 wolf_bite.mp3 wolf_bite_big.mp3 bear_growl_hit.mp3 enemy_caimon_bite.mp3 bone_slam.mp3 zombie_growl.mp3 metal_clank.mp3 mjolnir_short_hitd.mp3 spell_shock.mp3 slorr_come_here_grapple_chain.mp3 spell_dimensional_anchor.mp3 tarkov_stim.mp3"
+SOUNDS="tarkov_mp153_shotgun.mp3 tarkov_revolver_357_shot.mp3 sword_hit_meaty1.mp3 sword_hit_meaty3.mp3 sword_hit_meaty4.mp3 sword_hit_meaty5.mp3 sword_hit_meaty6.mp3 sword_slash_crunch1.mp3 sword_slice_bloody1.mp3 sword_hit_clunk1.mp3 sword_smack_big.mp3 wolf_bite.mp3 wolf_bite_big.mp3 bear_growl_hit.mp3 enemy_caimon_bite.mp3 bone_slam.mp3 zombie_growl.mp3 metal_clank.mp3 mjolnir_short_hitd.mp3 spell_shock.mp3 slorr_come_here_grapple_chain.mp3 spell_dimensional_anchor.mp3 tarkov_stim.mp3 invoke.mp3 Invoker_Alacrity.mp3 invoker_ghost_walk.mp3"
 
 rebuild() { cd "$PGMROOT" && docker compose build >/dev/null 2>&1 && docker compose up -d --force-recreate >/dev/null 2>&1; sleep 6; }
 

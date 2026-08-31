@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.29 — 2026-08-31
+
+- **The invoker set.** Dedicated buff sounds from the media library: Divine Favor
+  invokes, Divine Power surges with alacrity, Greater Invisibility ghost-walks.
+- **Paladin home rules stamped.** Blessing of Fervor and Shield of Faith stay by
+  explicit home rule; the speed race gets a 4-in-5 weighting for bot variety.
+
 ## v1.20.28 — 2026-08-31
 
 - **The speed race.** Against a big or caster-heavy enemy field, bot casters now put

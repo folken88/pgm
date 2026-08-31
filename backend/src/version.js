@@ -725,8 +725,14 @@
 //                    (paladin 4th: +2/+2 and +2d6 holy vs evil, the Redeemer's channel);
 //                    Bear's Endurance leaves the paladin list (not in the book).
 //
+//  1.20.29 2026-08-31 TOBY'S RULINGS ROUND TWO (poker v3.37.141): the invoker buff assets
+//                    land (Divine Favor invokes, Divine Power surges with alacrity, Greater
+//                    Invisibility ghost-walks); Blessing of Fervor + Shield of Faith stamped
+//                    as paladin HOME RULES (no more list-audit reports); the speed race
+//                    carries Toby's 4-in-5 dice via the synced hero brain.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.28';
-const HEADLINE = 'Casters win the speed race - Haste goes up first against big or caster-heavy fields - and the paladin draws the book\'s own Holy Sword.';
+const VERSION = '1.20.29';
+const HEADLINE = 'Buff spells get their own voices at last - Divine Favor invokes, Divine Power surges, Greater Invisibility walks like a ghost.';
 module.exports = { VERSION, HEADLINE };
