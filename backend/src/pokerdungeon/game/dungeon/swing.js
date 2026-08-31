@@ -311,7 +311,7 @@ module.exports = {
     // Divine Bond HOLY (paladin) / Fiendish Boon UNHOLY (antipaladin): +2d6 of aligned
     // energy that only bites the opposed alignment — vs EVIL foes (holy) / GOOD foes
     // (unholy). Rides on top: not soaked by physical DR, not crit-multiplied.
-    if (arcHoly && (target.evil || target.markedEvil)) dmg += dRollN(arcHoly, 6);
+    if ((arcHoly || attacker._holySword) && (target.evil || target.markedEvil)) dmg += dRollN(Math.max(arcHoly, attacker._holySword || 0), 6);   // Holy Sword (paladin 4th, v1.20.28) blesses whatever weapon is in hand
     if (arcUnholy && (target.good || target.markedGood)) dmg += dRollN(arcUnholy, 6);   // Detect Good marks feed the unholy rider too
     return { hit: true, crit, smite, sneakDice, sneakDmg, damage: Math.max(0, dmg), drTag, roll, toHit, total, ac, sound: pick(SND.flesh) };
   }

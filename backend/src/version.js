@@ -719,8 +719,14 @@
 //                    bestiary), waking the Fiendish Boon's unholy rider that had never
 //                    fired; PGM's swing + enemy builder carry the mirror flags.
 //
+//  1.20.28 2026-08-31 THE SPEED RACE + THE BOOK'S PALADIN (poker v3.37.140): vs a big (4+)
+//                    or caster-heavy (2+) field, bot casters put party Haste/Fervor up FIRST
+//                    (synced hero brain — Dinvaya's medusa-room conviction); HOLY SWORD ships
+//                    (paladin 4th: +2/+2 and +2d6 holy vs evil, the Redeemer's channel);
+//                    Bear's Endurance leaves the paladin list (not in the book).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.27';
-const HEADLINE = 'The antipaladin gets its dark mirror: Smite Good and Detect Good - and the Heavenly Host finally radiates the goodness its foes were built to punish.';
+const VERSION = '1.20.28';
+const HEADLINE = 'Casters win the speed race - Haste goes up first against big or caster-heavy fields - and the paladin draws the book\'s own Holy Sword.';
 module.exports = { VERSION, HEADLINE };

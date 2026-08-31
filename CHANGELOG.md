@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.28 — 2026-08-31
+
+- **The speed race.** Against a big or caster-heavy enemy field, bot casters now put
+  party Haste / Blessing of Fervor up FIRST — before summons, wards and dispel duels.
+- **The book's paladin.** Holy Sword ships (paladin 4th: +2/+2 and +2d6 holy vs evil
+  foes on every hit); Bear's Endurance leaves the list (not in the book).
+
 ## v1.20.27 — 2026-08-31
 
 - **The dark mirror.** Antipaladins get Smite Good and Detect Good — the honest-scan
