@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.30 — 2026-09-01
+
+- **The ghost in the spellbook.** A saved loadout could hold another character's
+  signature spells — invisible in the menu but still eating prepared slots, and the
+  overflow trim then deleted legitimate spells to make room. The rebucket now drops
+  every key its member cannot actually cast; one toggle heals a corrupted save.
+
 ## v1.20.29 — 2026-08-31
 
 - **The invoker set.** Dedicated buff sounds from the media library: Divine Favor

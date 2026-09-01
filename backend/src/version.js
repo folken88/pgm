@@ -731,8 +731,15 @@
 //                    as paladin HOME RULES (no more list-audit reports); the speed race
 //                    carries Toby's 4-in-5 dice via the synced hero brain.
 //
+//  1.20.30 2026-09-01 THE GHOST IN THE SPELLBOOK (poker v3.37.142, synced engine): the
+//                    loadout rebucket drops spells the member cannot actually cast (another
+//                    character's signature keys, or above-level strays after a level-down) -
+//                    ghost occupants no longer eat prepared slots invisibly, and one toggle
+//                    heals a corrupted save. Poker-only: the K menu's castings-per-room
+//                    speech, domain-spell announcements and level-stage arrows (#64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.29';
-const HEADLINE = 'Buff spells get their own voices at last - Divine Favor invokes, Divine Power surges, Greater Invisibility walks like a ghost.';
+const VERSION = '1.20.30';
+const HEADLINE = 'The prepare ghost is exorcised: stray spells from other characters no longer eat prepared slots invisibly.';
 module.exports = { VERSION, HEADLINE };
