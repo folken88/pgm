@@ -738,8 +738,14 @@
 //                    heals a corrupted save. Poker-only: the K menu's castings-per-room
 //                    speech, domain-spell announcements and level-stage arrows (#64).
 //
+//  1.20.31 2026-09-01 THE DRUID DOSSIER (poker v3.37.143): Call Lightning / Call Lightning
+//                    Storm linger for the room - a free 3d6/5d6 bolt at the caster's turn
+//                    start, hunting with the caster's senses; Sunbeam and Sunburst run the
+//                    PF1 undead table per target (1d6/level vs undead, 1d8/level vs
+//                    vampires); Sunbeam is aimable (poker client; PGM UI parity #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.30';
-const HEADLINE = 'The prepare ghost is exorcised: stray spells from other characters no longer eat prepared slots invisibly.';
+const VERSION = '1.20.31';
+const HEADLINE = 'The druid storms linger - a free bolt every turn - and Sunbeam sears the undead with true daylight per the book.';
 module.exports = { VERSION, HEADLINE };

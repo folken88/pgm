@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.31 — 2026-09-01
+
+- **The storms linger.** Call Lightning and Call Lightning Storm stay overhead for
+  the room — a free bolt (3d6 / 5d6, Reflex half) fires at the start of each of the
+  caster's turns, hunting with the caster's senses like the spirit spells.
+- **True daylight.** Sunbeam and Sunburst run the PF1 undead table per target —
+  1d6 per level vs undead, 1d8 per level vs light-vulnerable vampires.
+
 ## v1.20.30 — 2026-09-01
 
 - **The ghost in the spellbook.** A saved loadout could hold another character's
