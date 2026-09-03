@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.32 — 2026-09-03
+
+- **Blind swings.** A blinded attacker now has PF1's 50% total-concealment miss chance on
+  every attack (was a flat -4); blindsense creatures (dragons, oozes) ignore it, and
+  blindness wearing off is announced.
+- **One sky per caster.** A lesser Call Lightning can no longer overwrite a greater storm -
+  bigger stands, equal renews, greater replaces, all spoken; idle storm rounds are narrated.
+- **The bestiary lands.** The synced bestiary now carries the good-alignment flags for the
+  first time (poker had been shipping them to an orphan file since v3.37.139).
+
 ## v1.20.31 — 2026-09-01
 
 - **The storms linger.** Call Lightning and Call Lightning Storm stay overhead for

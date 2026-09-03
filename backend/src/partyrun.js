@@ -677,6 +677,9 @@ function aiHeroTurn(run, hero, roll) {
   for (const _sk of ['spiritWeapon', 'spiritAlly']) {
     if (hero[_sk] && hero[_sk].rounds > 0) { try { run.shim._spiritStrike(hero, _sk); } catch (e) {} }
   }
+  // v1.20.31 (poker v3.37.143): a lingering Call Lightning storm bolts once at
+  // the start of its caster's turn, same slot as the spirit spells.
+  if (hero.storm && hero.storm.rounds > 0) { try { run.shim._stormStrike(hero); } catch (e) {} }
 
   // Take-at-will (Tobias): an AI companion low on blood helps itself to a
   // party-property healing potion before acting.
@@ -730,6 +733,9 @@ function enemyTurn(run, enemy, roll) {
   const target = targets.slice().sort((a, b) => a.hp - b.hp)[0];
   const flat = target.flatFooted;
   const targetAC = (flat ? target.flatAc : target.ac) + pf1.buffs.buffAcMod(target);
+  // v1.20.32 (poker v3.37.144): a blinded attacker has total concealment from every foe -
+  // a 50% miss on each attack; blindsense creatures ignore it.
+  if (enemy.blinded > 0 && !enemy.blindsense && roll() < 0.5) { logEvent(run, `${enemy.name}, BLIND, lashes out at where ${target.name} was - total concealment, and it finds nothing. [50% miss]`, 'event', SFX.pick(SFX.SND.whiffSword, roll)); return; }
   const res = combat.creatureAttack({ attack: enemy.toHit || 0, dmg: { count: enemy.dmgCount || 1, sides: enemy.dmgDie || 4, bonus: enemy.dmgBonus || 0 } }, targetAC, roll, -pf1.tick.attackPenalty(enemy));
   const ff = flat ? ' (caught flat-footed!)' : '';
   if (res.hit) {
@@ -1550,6 +1556,7 @@ const BUFF_META = {
   enlargeperson:  { icon: '🦣', img: BI('bullsstrength'), label: 'Enlarge Person',  desc: 'grown a size — +2 damage' },
   heroismgreater: { icon: '🦸', img: BI('heroism'), label: 'Greater Heroism', desc: '+4 hit & saves' },
   bloodlinesurge: { icon: '💥', img: BI('rage'), label: 'Bloodline Surge', desc: '+1 hit, +3 damage, +2 AC' },
+  holysword:      { icon: '⚔️', img: BI('bullsstrength'), label: 'Holy Sword', desc: '+2 hit & damage, +2d6 holy vs evil' },
   // Order of the Lion order buffs (PGM):
   lions_call:    { icon: '🦁', label: "Lion's Call",     desc: '+1 hit, +2 saves' },
   for_the_king:  { icon: '👑', label: 'For the King!',   desc: '+Cha hit & damage' },

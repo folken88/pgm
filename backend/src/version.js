@@ -744,8 +744,17 @@
 //                    PF1 undead table per target (1d6/level vs undead, 1d8/level vs
 //                    vampires); Sunbeam is aimable (poker client; PGM UI parity #64).
 //
+//  1.20.32 2026-09-03 BLIND SWINGS + ONE SKY + THE BESTIARY LANDS (poker v3.37.144): a blinded
+//                    attacker now carries the PF1 50% total-concealment miss on every attack
+//                    (blindsense creatures exempt; blindness wearing off is spoken); a lesser
+//                    Call Lightning no longer overwrites a greater storm (bigger stands, equal
+//                    renews, greater replaces - all spoken; idle storm rounds narrated; bot
+//                    druids stop re-casting a riding storm). The synced bestiary now carries
+//                    the good-alignment flags (Smite Good / Detect Good / the unholy rider)
+//                    for the first time - poker had been shipping them to an orphan file.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.31';
-const HEADLINE = 'The druid storms linger - a free bolt every turn - and Sunbeam sears the undead with true daylight per the book.';
+const VERSION = '1.20.32';
+const HEADLINE = 'Blinded foes swing at the dark - a 50% miss per the book - storms keep their sky, and the good-aligned bestiary flags are finally live.';
 module.exports = { VERSION, HEADLINE };
