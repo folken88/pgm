@@ -753,8 +753,15 @@
 //                    the good-alignment flags (Smite Good / Detect Good / the unholy rider)
 //                    for the first time - poker had been shipping them to an orphan file.
 //
+//  1.20.33 2026-09-03 THE FATIGUE TIERS + TURN-START LINES (poker v3.37.145): exhausted = Str/Dex
+//                    -6 (-3 to hit, damage, AC and Reflex in the villain brain + staggered as the
+//                    half-speed stand-in), fatigued = -2 (-1 each); Ray of Exhaustion Fortitude
+//                    partial; Waves of Fatigue (CRB 5th) joins wizard/sorcerer. Storm bolts and
+//                    spirit strikes are flagged turnStart in the log (poker's blind narrator
+//                    folds them into the turn prompt; PGM UI parity #64).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.32';
-const HEADLINE = 'Blinded foes swing at the dark - a 50% miss per the book - storms keep their sky, and the good-aligned bestiary flags are finally live.';
+const VERSION = '1.20.33';
+const HEADLINE = 'Exhaustion is a real condition per the book - two tiers - and Waves of Fatigue joins the arcane lists.';
 module.exports = { VERSION, HEADLINE };

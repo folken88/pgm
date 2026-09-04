@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.33 — 2026-09-03
+
+- **The fatigue tiers.** Exhausted = Str/Dex -6 (-3 to hit, damage, AC and Reflex, plus
+  staggered standing in for half speed); fatigued = -2 (-1 each). Ray of Exhaustion is
+  Fortitude-partial; Waves of Fatigue (CRB 5th) joins wizard and sorcerer.
+- **Turn-start lines.** Storm bolts and spirit strikes carry a turnStart log flag and sound
+  on their own channel (poker's blind narrator folds them into the turn prompt).
+
 ## v1.20.32 — 2026-09-03
 
 - **Blind swings.** A blinded attacker now has PF1's 50% total-concealment miss chance on
