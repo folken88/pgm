@@ -760,8 +760,14 @@
 //                    spirit strikes are flagged turnStart in the log (poker's blind narrator
 //                    folds them into the turn prompt; PGM UI parity #64).
 //
+//  1.20.34 2026-09-04 CRB BATCH 2 - WALLS & ZONES (poker v3.37.146): Wall of Fire / Ice / Force,
+//                    Web and Solid Fog. While one stands, melee foes reach at most two per target
+//                    per round (Force: one), no flanking or sneak attacks, and the foes that press
+//                    through pay the rider (Fire 2d6+CL, Ice 1d6+CL, Web Reflex-or-lose-the-turn,
+//                    Fog -2 hit/damage). One wall per room; bots raise one vs melee-heavy fields.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.33';
-const HEADLINE = 'Exhaustion is a real condition per the book - two tiers - and Waves of Fatigue joins the arcane lists.';
+const VERSION = '1.20.34';
+const HEADLINE = 'Walls and zones arrive - while one stands, only two melee foes can reach the same target each round, and no one can be flanked or sneak-attacked.';
 module.exports = { VERSION, HEADLINE };

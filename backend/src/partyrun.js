@@ -384,6 +384,7 @@ function nextTurn(run) {
   run.turnIndex = (run.turnIndex + 1) % run.combatants.length;
   if (run.turnIndex === 0) {
     run.round += 1;   // wrapped to top of initiative = new round
+    try { run.shim._wallTick(); } catch (e) {}   // v1.20.34 (poker v3.37.146): the standing wall burns down a round; the per-target press count resets
     if (run.round >= 2) aiClaimLoot(run);   // humans had round 1 to claim; AI now sweeps relevant leftovers
   }
 }

@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.34 — 2026-09-04
+
+- **Walls and zones (CRB batch 2).** Wall of Fire, Wall of Ice, Wall of Force, Web and
+  Solid Fog. While one stands, melee foes can reach at most two per target each round
+  (Force: one), the party cannot be flanked or sneak-attacked, and the foes that press
+  through pay the wall's rider. One wall per room; bots raise one against a melee-heavy
+  field after the speed race.
+
 ## v1.20.33 — 2026-09-03
 
 - **The fatigue tiers.** Exhausted = Str/Dex -6 (-3 to hit, damage, AC and Reflex, plus

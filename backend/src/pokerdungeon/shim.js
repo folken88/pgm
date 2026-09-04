@@ -46,6 +46,7 @@ class DungeonShim {
   constructor(run) {
     this.run = run;
     this.blackTentacles = null;
+    this.wall = null; this._wallPress = {};   // v1.20.34 (poker v3.37.146): a standing wall never carries between rooms
     this.lootRoll = null;
     this.pendingLoot = [];
   }
