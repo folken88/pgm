@@ -19,6 +19,18 @@ PGM is made by:
 
 ---
 
+## v1.20.36 — 2026-09-06
+
+- **The knife in the dark.** An arcane caster wraps the party's sneak-attacker in Greater
+  Invisibility once per rogue per room.
+- **The storm caller.** A caster with a lightning staff weighs electricity blasts 1.5x.
+- **The PF1 list audit.** 37 missing class entries added to the spell lists (Burning Hands,
+  Displacement, Fire Shield, Greater Heroism on the arcanists; Darkness, Banishment, Storm of
+  Vengeance on the cleric; Flame Strike, Stoneskin, Heal on the druid; the bard's
+  Invisibility pair, Dimension Door, Freedom of Movement, and more).
+- Play styles (summoner / guardian / storm) apply when the host ships characterBuilds; PGM
+  runs the generic doctrine.
+
 ## v1.20.35 — 2026-09-06
 
 - **Rays obey illusions.** Disintegrate, the ray spells and the touch spells now burst

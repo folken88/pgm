@@ -772,8 +772,15 @@
 //                    then a spirit spell before the summon opener, which fires once per room;
 //                    every foe-dispel counts toward the cap; Greater Dispel Magic on Clr/Wiz/Sor/Brd.
 //
+//  1.20.36 2026-09-06 PLAY STYLES + THE LIST AUDIT (poker v3.37.149): the bot brain reads a per-
+//                    character style (summoner / guardian / storm) when the host ships
+//                    characterBuilds (PGM does not - the generic doctrine applies); an arcane
+//                    caster wraps the party's sneak-attacker in Greater Invisibility; electricity
+//                    blasts weigh 1.5x for a lightning-staff caster; 37 missing PF1 class entries
+//                    added to the spell lists.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.35';
-const HEADLINE = 'The caster brain: rays obey illusions, and bot casters see true, free the grappled, re-fly, and smite before they summon.';
+const VERSION = '1.20.36';
+const HEADLINE = 'The rogue gets Greater Invisibility, lightning casters call the lightning, and 37 missing PF1 class entries join the spell lists.';
 module.exports = { VERSION, HEADLINE };
