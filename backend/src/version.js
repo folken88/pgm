@@ -766,8 +766,14 @@
 //                    through pay the rider (Fire 2d6+CL, Ice 1d6+CL, Web Reflex-or-lose-the-turn,
 //                    Fog -2 hit/damage). One wall per room; bots raise one vs melee-heavy fields.
 //
+//  1.20.35 2026-09-06 THE CASTER BRAIN (poker v3.37.148): rays and touch spells obey mirror images
+//                    and concealment; bots cast True Seeing on the striker, Freedom of Movement on
+//                    the grappled, re-fly before dispel duels; a divine smiter casts Divine Power
+//                    then a spirit spell before the summon opener, which fires once per room;
+//                    every foe-dispel counts toward the cap; Greater Dispel Magic on Clr/Wiz/Sor/Brd.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.34';
-const HEADLINE = 'Walls and zones arrive - while one stands, only two melee foes can reach the same target each round, and no one can be flanked or sneak-attacked.';
+const VERSION = '1.20.35';
+const HEADLINE = 'The caster brain: rays obey illusions, and bot casters see true, free the grappled, re-fly, and smite before they summon.';
 module.exports = { VERSION, HEADLINE };

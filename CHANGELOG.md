@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.35 — 2026-09-06
+
+- **Rays obey illusions.** Disintegrate, the ray spells and the touch spells now burst
+  mirror images 1-in-(N+1) and miss unseen foes 50% (True Seeing / blindsense pierce).
+- **The caster brain.** Bot casters cast True Seeing on the party's striker when foes are
+  imaged or invisible, Freedom of Movement on a grappled ally, re-fly before a dispel
+  duel; a divine melee caster casts Divine Power then a spirit spell before the summon
+  opener, which fires once per room; every foe-dispel counts toward the per-foe cap.
+- **Greater Dispel Magic** joins cleric, wizard, sorcerer and bard (PF1).
+
 ## v1.20.34 — 2026-09-04
 
 - **Walls and zones (CRB batch 2).** Wall of Fire, Wall of Ice, Wall of Force, Web and
