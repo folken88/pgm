@@ -779,8 +779,12 @@
 //                    blasts weigh 1.5x for a lightning-staff caster; 37 missing PF1 class entries
 //                    added to the spell lists.
 //
+//  1.20.37 2026-09-07 OVERLAND FLIGHT IS A SPELL (poker v3.37.150): costs like any other 5th-level
+//                    spell (slot / room casting) instead of once per dungeon, so a grounded caster
+//                    re-flies with it instead of falling back to 3rd-level Fly every room.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.36';
-const HEADLINE = 'The rogue gets Greater Invisibility, lightning casters call the lightning, and 37 missing PF1 class entries join the spell lists.';
+const VERSION = '1.20.37';
+const HEADLINE = 'Overland Flight is a real 5th-level spell now - a grounded caster re-flies with it instead of 3rd-level Fly.';
 module.exports = { VERSION, HEADLINE };

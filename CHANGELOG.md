@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.37 — 2026-09-07
+
+- **Overland Flight is a spell.** It costs like any other 5th-level spell (slot / room casting)
+  instead of once per dungeon, so a grounded caster re-flies with it instead of falling back
+  to 3rd-level Fly every room.
+
 ## v1.20.36 — 2026-09-06
 
 - **The knife in the dark.** An arcane caster wraps the party's sneak-attacker in Greater
