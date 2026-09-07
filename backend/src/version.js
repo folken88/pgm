@@ -783,8 +783,14 @@
 //                    spell (slot / room casting) instead of once per dungeon, so a grounded caster
 //                    re-flies with it instead of falling back to 3rd-level Fly every room.
 //
+//  1.20.38 2026-09-07 THE METAMAGIC CALCULUS (poker v3.37.151): a spontaneous bot prices every
+//                    affordable Intensify/Empower/Maximize combination by expected damage (PF1)
+//                    instead of grabbing Maximize by reflex; Quicken on both sides - a bot quickens a
+//                    blast and acts again, a CL17+ enemy caster quickens a 5th-or-lower blast once a
+//                    room and keeps its turn; the guardian style heals at 60%.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.37';
-const HEADLINE = 'Overland Flight is a real 5th-level spell now - a grounded caster re-flies with it instead of 3rd-level Fly.';
+const VERSION = '1.20.38';
+const HEADLINE = 'The metamagic calculus: casters price Intensify, Empower and Maximize by real expected damage, and Quicken is finally used on both sides.';
 module.exports = { VERSION, HEADLINE };

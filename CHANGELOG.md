@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.38 — 2026-09-07
+
+- **The metamagic calculus.** A spontaneous bot prices every affordable Intensify / Empower /
+  Maximize combination by expected damage (PF1, stacking included) instead of grabbing
+  Maximize by reflex.
+- **Quicken, both sides.** A bot with the feat quickens a blast and acts again; a CL17+ enemy
+  caster quickens a 5th-or-lower blast once per room and keeps its turn.
+- The guardian style heals at 60%.
+
 ## v1.20.37 — 2026-09-07
 
 - **Overland Flight is a spell.** It costs like any other 5th-level spell (slot / room casting)
