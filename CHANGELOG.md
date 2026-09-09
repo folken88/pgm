@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.39 — 2026-09-09
+
+- **Semantics.** A metamagic spell is announced as shaped, never channeled — channeling belongs
+  to the clerics.
+
 ## v1.20.38 — 2026-09-07
 
 - **The metamagic calculus.** A spontaneous bot prices every affordable Intensify / Empower /

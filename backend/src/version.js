@@ -789,8 +789,11 @@
 //                    blast and acts again, a CL17+ enemy caster quickens a 5th-or-lower blast once a
 //                    room and keeps its turn; the guardian style heals at 60%.
 //
+//  1.20.39 2026-09-09 SEMANTICS (poker v3.37.152): a metamagic spell is announced as SHAPED, never
+//                    channeled - channeling belongs to the clerics (Josh).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.38';
-const HEADLINE = 'The metamagic calculus: casters price Intensify, Empower and Maximize by real expected damage, and Quicken is finally used on both sides.';
+const VERSION = '1.20.39';
+const HEADLINE = 'A metamagic spell is shaped, never channeled - channeling belongs to the clerics.';
 module.exports = { VERSION, HEADLINE };
