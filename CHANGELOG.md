@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.44 — 2026-09-15
+
+- **CRB batch 7 — the summon ladder.** Summon Monster I–IX and Summon Nature's Ally I–IX on
+  every list (bard I–VI, ranger I–IV), pool data from the shared bestiary; SM IV/VI/VIII gain a
+  hound archon, a bralani azata and an erelim angel.
+
 ## v1.20.43 — 2026-09-15
 
 - **CRB batch 6 — clouds & phantasms.** Acid Fog, Incendiary Cloud, Phantasmal Killer, Weird

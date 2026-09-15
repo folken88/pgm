@@ -809,8 +809,12 @@
 //                    Phantasmal Killer, Weird, Contagion; the clouds bite every round, the phantasms
 //                    kill by fright, Contagion leaves a foe diseased for the room.
 //
+//  1.20.44 2026-09-15 CRB BATCH 7 - THE SUMMON LADDER (poker v3.37.157): Summon Monster I-IX and
+//                    Nature's Ally I-IX on every list (bard I-VI, ranger I-IV) - pool data from the
+//                    shared bestiary; SM IV/VI/VIII gain an archon/azata/angel.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.43';
-const HEADLINE = 'CRB batch 6 - clouds & phantasms: Acid Fog, Incendiary Cloud, Phantasmal Killer, Weird, Contagion.';
+const VERSION = '1.20.44';
+const HEADLINE = 'CRB batch 7 - the summon ladder: Summon Monster and Nature\'s Ally I through IX.';
 module.exports = { VERSION, HEADLINE };
