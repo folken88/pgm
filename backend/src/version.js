@@ -805,8 +805,12 @@
 //                    Spell Resistance, Lesser Globe / Globe of Invulnerability, Death Ward; enemy casters
 //                    bestow curses; Hold Person tests SR; bots pick the wards that answer the field.
 //
+//  1.20.43 2026-09-15 CRB BATCH 6 - CLOUDS & PHANTASMS (poker v3.37.156): Acid Fog, Incendiary Cloud,
+//                    Phantasmal Killer, Weird, Contagion; the clouds bite every round, the phantasms
+//                    kill by fright, Contagion leaves a foe diseased for the room.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.42';
-const HEADLINE = 'CRB batch 5 - condition removal & wards: Remove Curse, Remove Fear, Spell Resistance, Globe of Invulnerability, Death Ward.';
+const VERSION = '1.20.43';
+const HEADLINE = 'CRB batch 6 - clouds & phantasms: Acid Fog, Incendiary Cloud, Phantasmal Killer, Weird, Contagion.';
 module.exports = { VERSION, HEADLINE };

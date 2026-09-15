@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.43 — 2026-09-15
+
+- **CRB batch 6 — clouds & phantasms.** Acid Fog, Incendiary Cloud, Phantasmal Killer, Weird
+  and Contagion on the PF1 lists; the clouds bite every round they stand, the phantasms kill
+  by fright (Will to disbelieve, then Fort or die), Contagion leaves a foe diseased for the room.
+
 ## v1.20.42 — 2026-09-15
 
 - **CRB batch 5 — condition removal & wards.** Remove Curse, Remove Fear, Spell Resistance,
