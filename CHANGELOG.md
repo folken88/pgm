@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.42 — 2026-09-15
+
+- **CRB batch 5 — condition removal & wards.** Remove Curse, Remove Fear, Spell Resistance,
+  Lesser Globe / Globe of Invulnerability and Death Ward on the PF1 lists; enemy casters bestow
+  curses (Will negates, −4 to hit until Remove Curse); Hold Person tests SR; bots pick the wards
+  that answer the field. (The curse's −4 on saves and Remove Fear's +4 vs fear live in poker's
+  host save math; the party-run host carries the to-hit penalty and the wards.)
+
 ## v1.20.41 — 2026-09-15
 
 - **CRB batch 4 — divine staples.** Deeper Darkness (darkvision does not pierce it), Daylight

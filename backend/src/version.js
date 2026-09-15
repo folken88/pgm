@@ -801,8 +801,12 @@
 //                    Remove Blindness/Deafness, Harm, and the paladin's Remove Paralysis; bots pick the
 //                    cleanse that matches the affliction.
 //
+//  1.20.42 2026-09-15 CRB BATCH 5 - CONDITION REMOVAL & WARDS (poker v3.37.155): Remove Curse, Remove Fear,
+//                    Spell Resistance, Lesser Globe / Globe of Invulnerability, Death Ward; enemy casters
+//                    bestow curses; Hold Person tests SR; bots pick the wards that answer the field.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.41';
-const HEADLINE = 'CRB batch 4 - divine staples: Deeper Darkness, Daylight, Remove Blindness, Harm.';
+const VERSION = '1.20.42';
+const HEADLINE = 'CRB batch 5 - condition removal & wards: Remove Curse, Remove Fear, Spell Resistance, Globe of Invulnerability, Death Ward.';
 module.exports = { VERSION, HEADLINE };
