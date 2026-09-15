@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.48 — 2026-09-15
+
+- **CRB batch 11 — wards.** Blur, Entropic Shield, Protection from Arrows, Wind Wall, Sanctuary,
+  True Strike, Keen Edge, Bless Weapon, Resist Energy ×5, Protection from Energy ×4, Shield Other,
+  Spell Turning, the four 8th-level auras, Transformation (bots never cast it), Antilife Shell.
+  One energy soak now serves every damage type. (Blur, True Strike, Keen Edge, Bless Weapon,
+  Sanctuary's targeting and Shield Other's share live in poker's host; the party-run host carries
+  the flags, the enemy-side gates and the soak.)
+
 ## v1.20.47 — 2026-09-15
 
 - **CRB batch 10 — clones & staples.** 43 spells riding effects the engine already had: the

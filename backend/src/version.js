@@ -826,8 +826,13 @@
 //                    Shout, the patterns, party invisibility, the stat buffs, Chaos Hammer, Bane, Aid, Rage,
 //                    Limited Wish and more; Charm Person is humanoids-only (RAW).
 //
+//  1.20.48 2026-09-15 CRB BATCH 11 - WARDS (poker v3.37.161): Blur, Entropic Shield, Protection from
+//                    Arrows, Wind Wall, Sanctuary, True Strike, Keen Edge, Bless Weapon, Resist Energy x5,
+//                    Protection from Energy x4, Shield Other, Spell Turning, the four auras, Transformation,
+//                    Antilife Shell. One energy soak for every type.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.47';
-const HEADLINE = 'CRB batch 10 - clones & staples: 43 spells from Inflict Wounds to Limited Wish.';
+const VERSION = '1.20.48';
+const HEADLINE = 'CRB batch 11 - wards: Blur, Wind Wall, Sanctuary, True Strike, Keen Edge, Resist Energy, Shield Other, Spell Turning, the auras, and more.';
 module.exports = { VERSION, HEADLINE };
