@@ -817,8 +817,12 @@
 //                    Baleful Polymorph on the PF1 lists; melee-only foes cannot close through a Repulsion,
 //                    a polymorphed foe is a harmless rabbit for the room. Chips for the batch-5 wards + Blink.
 //
+//  1.20.46 2026-09-15 CRB BATCH 9 - CAGES & WORDS (poker v3.37.159): Forcecage, Holy Word, Blasphemy,
+//                    Dictum, Word of Chaos, Earthquake on the PF1 lists; the words judge by alignment
+//                    and HD vs caster level, a caged foe is sealed from the fight.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.45';
-const HEADLINE = 'CRB batch 8 - tricks & save-or-suffer: Blink, Repulsion, Insanity, Baleful Polymorph.';
+const VERSION = '1.20.46';
+const HEADLINE = 'CRB batch 9 - cages & words: Forcecage, Holy Word, Blasphemy, Dictum, Word of Chaos, Earthquake.';
 module.exports = { VERSION, HEADLINE };

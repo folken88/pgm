@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.46 — 2026-09-15
+
+- **CRB batch 9 — cages & words.** Forcecage, Holy Word, Blasphemy, Dictum, Word of Chaos and
+  Earthquake on the PF1 lists; the words judge by alignment and HD vs caster level (no save, SR
+  applies), a caged foe is sealed from the fight for 1 round/level. (Forcecage's untargetable gate
+  lives in poker's host; the party-run host carries the cast and the enemy-turn skip.)
+
 ## v1.20.45 — 2026-09-15
 
 - **CRB batch 8 — tricks & save-or-suffer.** Blink, Repulsion, Insanity and Baleful Polymorph on
