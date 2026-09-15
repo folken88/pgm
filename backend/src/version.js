@@ -821,8 +821,13 @@
 //                    Dictum, Word of Chaos, Earthquake on the PF1 lists; the words judge by alignment
 //                    and HD vs caster level, a caged foe is sealed from the fight.
 //
+//  1.20.47 2026-09-15 CRB BATCH 10 - CLONES & STAPLES (poker v3.37.160): 43 spells riding existing
+//                    effects - the Inflict line, Magic Weapon, Charm Monster, Deep Slumber, Greater
+//                    Shout, the patterns, party invisibility, the stat buffs, Chaos Hammer, Bane, Aid, Rage,
+//                    Limited Wish and more; Charm Person is humanoids-only (RAW).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.46';
-const HEADLINE = 'CRB batch 9 - cages & words: Forcecage, Holy Word, Blasphemy, Dictum, Word of Chaos, Earthquake.';
+const VERSION = '1.20.47';
+const HEADLINE = 'CRB batch 10 - clones & staples: 43 spells from Inflict Wounds to Limited Wish.';
 module.exports = { VERSION, HEADLINE };

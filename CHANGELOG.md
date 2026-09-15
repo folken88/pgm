@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.47 — 2026-09-15
+
+- **CRB batch 10 — clones & staples.** 43 spells riding effects the engine already had: the
+  Inflict line and Mass Inflict, Magic Weapon, Greater Magic Fang, Charm Monster (+Mass), Deep
+  Slumber, Suggestion, Dismissal, Greater Command, Lesser Confusion, Greater Shout, True
+  Resurrection, Regenerate, Fog Cloud, Faerie Fire, the fascinate patterns, party invisibility,
+  the Mass stat buffs, Eagle's/Fox's/Owl's (+2 spell DC for casters of that stat), Energy Drain,
+  Chaos Hammer / Order's Wrath (the PF1 alignment table), Bane, Aid, Rage, Limited Wish. RAW
+  fix: Charm Person reaches humanoids only.
+
 ## v1.20.46 — 2026-09-15
 
 - **CRB batch 9 — cages & words.** Forcecage, Holy Word, Blasphemy, Dictum, Word of Chaos and
