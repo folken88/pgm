@@ -831,8 +831,14 @@
 //                    Protection from Energy x4, Shield Other, Spell Turning, the four auras, Transformation,
 //                    Antilife Shell. One energy soak for every type.
 //
+//  1.20.49 2026-09-15 CRB BATCH 12 - OFFENSE (poker v3.37.162): Color Spray, Scintillating Pattern, Eyebite,
+//                    Crushing Despair, Mind Fog, Ghoul Touch, Halt Undead, Resilient Sphere, Circle of Death,
+//                    Song of Discord, Mage's Sword, Flaming Sphere, Produce Flame, Wall of Thorns, Spike Stones,
+//                    Prismatic Wall, Disjunction, Poison, Rusting Grasp, Shatter, Telekinesis, Whirlwind, Break
+//                    Enchantment, Animate Dead, Control Undead. The Core Rulebook import is complete.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.48';
-const HEADLINE = 'CRB batch 11 - wards: Blur, Wind Wall, Sanctuary, True Strike, Keen Edge, Resist Energy, Shield Other, Spell Turning, the auras, and more.';
+const VERSION = '1.20.49';
+const HEADLINE = 'CRB batch 12 - offense: Color Spray, Circle of Death, Mind Fog, Flaming Sphere, Prismatic Wall, Poison and 20 more. The Core Rulebook import is complete.';
 module.exports = { VERSION, HEADLINE };

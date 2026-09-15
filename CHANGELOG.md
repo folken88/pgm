@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.49 — 2026-09-15
+
+- **CRB batch 12 — offense, the last sweep.** Color Spray, Scintillating Pattern and Eyebite (HD
+  ladders), Crushing Despair, Mind Fog, Ghoul Touch, Halt Undead, Resilient Sphere, Circle of Death,
+  Song of Discord, Mage's Sword, Flaming Sphere, Produce Flame, Wall of Thorns, Spike Stones,
+  Prismatic Wall, Mage's Disjunction, Poison, Rusting Grasp, Shatter, Telekinesis, Whirlwind, Break
+  Enchantment, Animate Dead, Control Undead. The Core Rulebook spell import is complete: every CRB
+  spell is on its class lists or documented as impractical in poker's ledger. (Poison's per-turn tick
+  lives in poker's host turn loop; the party-run host carries the condition.)
+
 ## v1.20.48 — 2026-09-15
 
 - **CRB batch 11 — wards.** Blur, Entropic Shield, Protection from Arrows, Wind Wall, Sanctuary,
