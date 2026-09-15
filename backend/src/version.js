@@ -797,8 +797,12 @@
 //                    lose their turns (shaken with it), confused foes roll the book's d100 table,
 //                    feebleminded casters cannot cast; one applier lands every save-or-suffer.
 //
+//  1.20.41 2026-09-15 CRB BATCH 4 - DIVINE STAPLES (poker v3.37.154): Deeper Darkness, Daylight,
+//                    Remove Blindness/Deafness, Harm, and the paladin's Remove Paralysis; bots pick the
+//                    cleanse that matches the affliction.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.40';
-const HEADLINE = 'CRB batch 3 - fear and the mind: Cause Fear, Scare, Fear, Confusion and Feeblemind.';
+const VERSION = '1.20.41';
+const HEADLINE = 'CRB batch 4 - divine staples: Deeper Darkness, Daylight, Remove Blindness, Harm.';
 module.exports = { VERSION, HEADLINE };

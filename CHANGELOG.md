@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.41 — 2026-09-15
+
+- **CRB batch 4 — divine staples.** Deeper Darkness (darkvision does not pierce it), Daylight
+  (lifts magical darkness, blocks lesser darkness for the room), Remove Blindness/Deafness,
+  Harm (the undead are healed by it), and the paladin's Remove Paralysis. Bots pick the cleanse
+  that matches the affliction.
+
 ## v1.20.40 — 2026-09-15
 
 - **CRB batch 3 — fear and the mind.** Cause Fear, Scare, Fear, Confusion and Feeblemind on
