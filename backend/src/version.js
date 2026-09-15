@@ -792,8 +792,13 @@
 //  1.20.39 2026-09-09 SEMANTICS (poker v3.37.152): a metamagic spell is announced as SHAPED, never
 //                    channeled - channeling belongs to the clerics (Josh).
 //
+//  1.20.40 2026-09-15 CRB BATCH 3 - FEAR & THE MIND (poker v3.37.153): Cause Fear, Scare, Fear,
+//                    Confusion and Feeblemind on the PF1 lists; frightened/panicked foes flee and
+//                    lose their turns (shaken with it), confused foes roll the book's d100 table,
+//                    feebleminded casters cannot cast; one applier lands every save-or-suffer.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.39';
-const HEADLINE = 'A metamagic spell is shaped, never channeled - channeling belongs to the clerics.';
+const VERSION = '1.20.40';
+const HEADLINE = 'CRB batch 3 - fear and the mind: Cause Fear, Scare, Fear, Confusion and Feeblemind.';
 module.exports = { VERSION, HEADLINE };

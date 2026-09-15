@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.40 — 2026-09-15
+
+- **CRB batch 3 — fear and the mind.** Cause Fear, Scare, Fear, Confusion and Feeblemind on
+  the PF1 lists. Frightened / panicked foes flee and lose their turns (shaken with it);
+  confused foes roll the book's d100 table each turn; feebleminded casters cannot cast.
+
 ## v1.20.39 — 2026-09-09
 
 - **Semantics.** A metamagic spell is announced as shaped, never channeled — channeling belongs
