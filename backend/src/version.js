@@ -837,8 +837,12 @@
 //                    Prismatic Wall, Disjunction, Poison, Rusting Grasp, Shatter, Telekinesis, Whirlwind, Break
 //                    Enchantment, Animate Dead, Control Undead. The Core Rulebook import is complete.
 //
+//  1.20.50 2026-09-15 RACES THAT MATTER (poker v3.37.163): foes with darkvision ignore lesser Darkness (the
+//                    cast names who sees through it), racial spell-like abilities once a dungeon (drow Darkness +
+//                    Faerie Fire, tiefling Darkness, aasimar Daylight, ifrit Burning Hands), drow light blindness.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.49';
-const HEADLINE = 'CRB batch 12 - offense: Color Spray, Circle of Death, Mind Fog, Flaming Sphere, Prismatic Wall, Poison and 20 more. The Core Rulebook import is complete.';
+const VERSION = '1.20.50';
+const HEADLINE = 'Races that matter: foes with darkvision ignore lesser Darkness, racial spell-likes once a dungeon, drow light blindness.';
 module.exports = { VERSION, HEADLINE };

@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.50 — 2026-09-15
+
+- **Races that matter.** Lesser Darkness no longer shrouds foes that see in the dark (undead,
+  outsiders, constructs, giants, goblins, kobolds, orcs, dwarves, drow…) and the cast names who sees
+  through it; Deeper Darkness still blinds them. Racial spell-like abilities once a dungeon: drow
+  Darkness + Faerie Fire, tiefling Darkness, aasimar Daylight, ifrit Burning Hands. Drow are dazzled
+  (−1 to hit) under a Daylight. (The hero-side racial-darkvision targeting rule and the race picker
+  live in poker's host and lobby.)
+
 ## v1.20.49 — 2026-09-15
 
 - **CRB batch 12 — offense, the last sweep.** Color Spray, Scintillating Pattern and Eyebite (HD
