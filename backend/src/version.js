@@ -813,8 +813,12 @@
 //                    Nature's Ally I-IX on every list (bard I-VI, ranger I-IV) - pool data from the
 //                    shared bestiary; SM IV/VI/VIII gain an archon/azata/angel.
 //
+//  1.20.45 2026-09-15 CRB BATCH 8 - TRICKS & SAVE-OR-SUFFER (poker v3.37.158): Blink, Repulsion, Insanity,
+//                    Baleful Polymorph on the PF1 lists; melee-only foes cannot close through a Repulsion,
+//                    a polymorphed foe is a harmless rabbit for the room. Chips for the batch-5 wards + Blink.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.44';
-const HEADLINE = 'CRB batch 7 - the summon ladder: Summon Monster and Nature\'s Ally I through IX.';
+const VERSION = '1.20.45';
+const HEADLINE = 'CRB batch 8 - tricks & save-or-suffer: Blink, Repulsion, Insanity, Baleful Polymorph.';
 module.exports = { VERSION, HEADLINE };

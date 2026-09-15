@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.45 — 2026-09-15
+
+- **CRB batch 8 — tricks & save-or-suffer.** Blink, Repulsion, Insanity and Baleful Polymorph on
+  the PF1 lists; melee-only foes cannot close through a Repulsion, a polymorphed foe is a harmless
+  rabbit for the room, an enemy Dispel can rip Blink. Chips for the batch-5 wards and Blink. (Blink's
+  miss chances live in poker's host attack math; the party-run host carries the flag and the rip.)
+
 ## v1.20.44 — 2026-09-15
 
 - **CRB batch 7 — the summon ladder.** Summon Monster I–IX and Summon Nature's Ally I–IX on

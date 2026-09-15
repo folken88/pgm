@@ -1529,6 +1529,13 @@ const BI = (k) => '/dungeon/buffs/' + k + '.webp';
 const BUFF_META = {
   // Sticky room buffs / stance toggles held in m.buffApplied (truthy = ON — a
   // toggled-off stance stays as key:false, so we truthiness-check, never key-exists).
+  // CRB batches 5 & 8 (poker v3.37.155 / .158): the wards and Blink
+  removefear:      { icon: '🦁', img: BI('protevil'), label: 'Remove Fear',      desc: 'fearless — Daunting Success finds no purchase, +4 on saves vs fear (this dungeon)' },
+  spellresistance: { icon: '🛡️', img: BI('protevil'), label: 'Spell Resistance', desc: 'SR 12 + caster level — enemy spells must beat it or fail (this room)' },
+  globelesser:     { icon: '🔮', img: BI('protevil'), label: 'Lesser Globe of Invulnerability', desc: 'enemy spells of 3rd level or lower cannot reach you (this room)' },
+  globeofinvuln:   { icon: '🔮', img: BI('protevil'), label: 'Globe of Invulnerability', desc: 'enemy spells of 4th level or lower cannot reach you (this room)' },
+  deathward:       { icon: '⚰️', img: BI('protevil'), label: 'Death Ward',       desc: 'immune to death magic and negative energy (this room)' },
+  blinkspell:      { icon: '✨', img: BI('fly'),      label: 'Blink',            desc: 'flickering between planes — 50% of attacks on you miss, 20% of yours flicker away (this room)' },
   rage:          { icon: '😤', img: BI('rage'), label: 'Rage',            desc: '+hit & damage, −AC' },
   bloodrage:     { icon: '🩸', img: BI('rage'), label: 'Bloodrage',       desc: '+hit & damage, −AC' },
   powerattack:   { icon: '💥', img: BI('powerattack'), label: 'Power Attack',    desc: '−hit, +damage' },
