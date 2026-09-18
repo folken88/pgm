@@ -841,8 +841,11 @@
 //                    cast names who sees through it), racial spell-like abilities once a dungeon (drow Darkness +
 //                    Faerie Fire, tiefling Darkness, aasimar Daylight, ifrit Burning Hands), drow light blindness.
 //
+//  1.20.51 2026-09-18 SPELLS KNOWN ARE A HARD LIMIT (poker v3.37.164): the PF1 spells-known tables bind
+//                    sorcerers, oracles, bards and inquisitors; default known lists obey the cap.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.50';
-const HEADLINE = 'Races that matter: foes with darkvision ignore lesser Darkness, racial spell-likes once a dungeon, drow light blindness.';
+const VERSION = '1.20.51';
+const HEADLINE = 'Spells known are a hard limit: sorcerers, oracles, bards and inquisitors know what the book says.';
 module.exports = { VERSION, HEADLINE };

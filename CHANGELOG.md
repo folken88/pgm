@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.51 — 2026-09-18
+
+- **Spells known are a hard limit.** Spontaneous casters (sorcerer, oracle, bard, inquisitor) now
+  know only as many spells per level as the PF1 tables allow; default known lists obey the cap.
+
 ## v1.20.50 — 2026-09-15
 
 - **Races that matter.** Lesser Darkness no longer shrouds foes that see in the dark (undead,
