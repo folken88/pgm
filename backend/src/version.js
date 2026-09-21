@@ -844,8 +844,13 @@
 //  1.20.51 2026-09-18 SPELLS KNOWN ARE A HARD LIMIT (poker v3.37.164): the PF1 spells-known tables bind
 //                    sorcerers, oracles, bards and inquisitors; default known lists obey the cap.
 //
+//  1.20.52 2026-09-21 CASTER-TABLE AUDIT + MIRROR IMAGE (poker v3.37.165): inquisitor/magus castings follow
+//                    the bard table (APG/UM), paladin/ranger L14-20 follow CRB 3-11, Mirror Image counts by
+//                    caster level and a near miss pops a figment, bots do not summon the ground-bound at
+//                    flyers, racial spell-likes refill every fifth room.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.51';
-const HEADLINE = 'Spells known are a hard limit: sorcerers, oracles, bards and inquisitors know what the book says.';
+const VERSION = '1.20.52';
+const HEADLINE = 'Caster tables audited against the book, Mirror Image by caster level, smarter summons.';
 module.exports = { VERSION, HEADLINE };

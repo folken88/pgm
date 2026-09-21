@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.52 — 2026-09-21
+
+- **Caster-table audit.** Inquisitor and magus castings now follow the bard's spells-per-day table
+  (they had drifted one to two over the book at every level); paladin, ranger and antipaladin levels
+  14-20 follow the book. Mirror Image counts images by caster level and a miss by 5 or less pops a
+  figment; bots never summon ground-bound creatures at an all-airborne field; racial spell-likes
+  refill every fifth room. (The hit-side image roll lives in poker's host.)
+
 ## v1.20.51 — 2026-09-18
 
 - **Spells known are a hard limit.** Spontaneous casters (sorcerer, oracle, bard, inquisitor) now
