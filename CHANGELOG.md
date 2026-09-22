@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.53 — 2026-09-22
+
+- **Self buffs speak.** A self-only buff says what it did ("+1 to hit, +3 damage, +2 AC, on yourself
+  only"); the extra-strike line names Haste vs Blessing of Fervor.
+
 ## v1.20.52 — 2026-09-21
 
 - **Caster-table audit.** Inquisitor and magus castings now follow the bard's spells-per-day table

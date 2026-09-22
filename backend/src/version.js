@@ -849,8 +849,11 @@
 //                    caster level and a near miss pops a figment, bots do not summon the ground-bound at
 //                    flyers, racial spell-likes refill every fifth room.
 //
+//  1.20.53 2026-09-22 SELF BUFFS SPEAK (poker v3.37.166): a self buff says what it did and that it is self-only;
+//                    the extra-strike line names Haste vs Blessing of Fervor.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.52';
-const HEADLINE = 'Caster tables audited against the book, Mirror Image by caster level, smarter summons.';
+const VERSION = '1.20.53';
+const HEADLINE = 'Self buffs say what they did, and Blessing of Fervor no longer narrates as Haste.';
 module.exports = { VERSION, HEADLINE };
