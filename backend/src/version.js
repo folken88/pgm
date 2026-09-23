@@ -852,8 +852,13 @@
 //  1.20.53 2026-09-22 SELF BUFFS SPEAK (poker v3.37.166): a self buff says what it did and that it is self-only;
 //                    the extra-strike line names Haste vs Blessing of Fervor.
 //
+//  1.20.54 2026-09-23 SWIFT SURGE + NO WASTED STAT BUFFS (poker v3.37.167): Bloodline Surge is a swift action
+//                    (one swift a turn, shared with Quicken); bots cast a casting-stat buff only when a primary
+//                    caster of that stat gains, rank mass to-hit/AC/HP buffs above it, aim the single ones at a
+//                    caster, chain a free/swift feature into a real action; the theurge counts as Int and Wis.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.53';
-const HEADLINE = 'Self buffs say what they did, and Blessing of Fervor no longer narrates as Haste.';
+const VERSION = '1.20.54';
+const HEADLINE = 'Bloodline Surge is a swift action, and bot casters stop wasting slots on stat buffs nobody gains from.';
 module.exports = { VERSION, HEADLINE };

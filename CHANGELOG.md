@@ -19,6 +19,16 @@ PGM is made by:
 
 ---
 
+## v1.20.54 — 2026-09-23
+
+- **Bloodline Surge is a swift action.** It lands and you keep the turn; one swift action a turn,
+  shared with Quicken / Curator. Bots chain a free or swift feature (Rage, Surge, Judgement) into a
+  real action the same turn.
+- **No wasted stat buffs.** A casting-stat buff (Eagle's / Fox's / Owl's, single or Mass) is cast
+  only when a primary caster of that stat would gain; at equal level a mass to-hit / AC / HP buff
+  outranks it; the single ones aim at a caster of that stat. The theurge counts as an Int and a
+  Wis caster.
+
 ## v1.20.53 — 2026-09-22
 
 - **Self buffs speak.** A self-only buff says what it did ("+1 to hit, +3 damage, +2 AC, on yourself
