@@ -19,6 +19,15 @@ PGM is made by:
 
 ---
 
+## v1.20.56 — 2026-09-23
+
+- **Sorcerer bloodlines (CRB), part 1.** pf1data/bloodlines.js carries all ten bloodlines with
+  their bonus spells (always known; they replace the old +1 free pick) and their 1/3/9/15/20 powers:
+  rays, shaken touches, claws, level-d6 blasts, wings, Fleeting Glance, the Luck reroll, New Arcana
+  and every passive (resistances, immunities, natural armor, Fated luck, SR, DR, flight). A member
+  carries `m.bloodline` (default none — PGM has no lobby picker); the natural-armor / luck folds into
+  AC and saves live in poker's host only.
+
 ## v1.20.55 — 2026-09-23
 
 - **Bots read the room.** When no living foe can reach any hero (the party airborne, no foe that

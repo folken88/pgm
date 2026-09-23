@@ -860,8 +860,13 @@
 //  1.20.55 2026-09-23 READ THE ROOM (poker v3.37.168): when no foe can reach the airborne party, bots skip
 //                    buffs, wards, Haste/Fervor and lockdowns and spend the turn on damage.
 //
+//  1.20.56 2026-09-23 SORCERER BLOODLINES, PART 1 (poker v3.37.169): pf1data/bloodlines.js (all ten CRB
+//                    bloodlines: bonus spells + 1/3/9/15/20 powers), the bloodline-aware spells-known caps, the
+//                    synced mixins (rays, blasts, claws, passives, resistances). No picker here — a member carries
+//                    m.bloodline; the AC/save folds are poker-host only.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.55';
-const HEADLINE = 'Bots read the room: out of every foe\u2019s reach, they skip buffs and lockdowns and go straight to damage.';
+const VERSION = '1.20.56';
+const HEADLINE = 'Sorcerer bloodlines from the Core Rulebook: bonus spells and powers for a member with a bloodline.';
 module.exports = { VERSION, HEADLINE };
