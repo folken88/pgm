@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.55 — 2026-09-23
+
+- **Bots read the room.** When no living foe can reach any hero (the party airborne, no foe that
+  flies, shoots, casts, shouts, hooks, summons or hurls hellfire), a bot skips every buff, ward,
+  Haste/Fervor and lockdown and spends the turn on damage. One line per room says so.
+
 ## v1.20.54 — 2026-09-23
 
 - **Bloodline Surge is a swift action.** It lands and you keep the turn; one swift action a turn,

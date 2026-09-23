@@ -857,8 +857,11 @@
 //                    caster of that stat gains, rank mass to-hit/AC/HP buffs above it, aim the single ones at a
 //                    caster, chain a free/swift feature into a real action; the theurge counts as Int and Wis.
 //
+//  1.20.55 2026-09-23 READ THE ROOM (poker v3.37.168): when no foe can reach the airborne party, bots skip
+//                    buffs, wards, Haste/Fervor and lockdowns and spend the turn on damage.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.54';
-const HEADLINE = 'Bloodline Surge is a swift action, and bot casters stop wasting slots on stat buffs nobody gains from.';
+const VERSION = '1.20.55';
+const HEADLINE = 'Bots read the room: out of every foe\u2019s reach, they skip buffs and lockdowns and go straight to damage.';
 module.exports = { VERSION, HEADLINE };
