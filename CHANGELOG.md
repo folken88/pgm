@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.59 — 2026-09-24
+
+- **The Iron Gods firearms.** Grit (Wis mod a room, +1 on a gun kill or crit) and three gunslinger
+  deeds: Up Close & Deadly, Dead Shot, Gunslinger's Dodge. Every foe with a firearm shoots at touch AC.
+  Three Numerian shooters (Silverhawk Shooter, Torch City Guard, Drone 8.0 Myrmidon) join the bestiary.
+
 ## v1.20.58 — 2026-09-23
 
 - **The doctrine roll.** Each turn a bot with more than one intent rolls buff / control / dispel /

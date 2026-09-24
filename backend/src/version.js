@@ -874,8 +874,13 @@
 //                    plays ignore the roll; best buff first; the roll is spoken. PGM has no characterBuilds, so the
 //                    per-character overrides (Celeb, Bujon) fall back to the class table.
 //
+//  1.20.59 2026-09-24 THE IRON GODS FIREARMS (poker v3.37.172): grit and the three gunslinger deeds, Up Close & Deadly
+//                    on the attack loop, Dead Shot, Gunslinger's Dodge; every foe with a firearm shoots at touch AC (gun
+//                    flag); the Silverhawk Shooter, Torch City Guard and Drone 8.0 Myrmidon join the bestiary. The eight
+//                    gun staples land where PGM carries staples.js.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.58';
-const HEADLINE = 'Bots roll their doctrine each turn: buff, control, dispel or attack by role, best buff first.';
+const VERSION = '1.20.59';
+const HEADLINE = 'The Iron Gods firearms: grit and deeds for gunslingers, and every gun hits touch AC.';
 module.exports = { VERSION, HEADLINE };
