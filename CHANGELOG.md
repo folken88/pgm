@@ -19,6 +19,14 @@ PGM is made by:
 
 ---
 
+## v1.20.58 — 2026-09-23
+
+- **The doctrine roll.** Each turn a bot with more than one intent rolls buff / control / dispel /
+  attack by role (support 40/30/0/30, arcane 15/35/10/40, theurge 35/30/20/15, magus and inquisitor
+  20/0/10/70, four-level casters 25/0/0/75, everyone else 100% attack), takes the best action of that
+  kind, and falls through by weight when the roll has nothing worth doing. Heals, revives, wards and
+  free features ignore the roll; the first decision of a room is the best buff; the roll is spoken.
+
 ## v1.20.57 — 2026-09-23
 
 - **Toby's rulings (poker v3.37.170).** Holy Smite (vs evil) and Unholy Blight (vs good) follow the

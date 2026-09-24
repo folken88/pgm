@@ -869,8 +869,13 @@
 //                    cast 1st-level spells from L1; the bloodrager list grows (ACG); bloodragers pick bloodlines
 //                    (a picked one replaces the generic Surge); firearms for the gunslinger where PGM carries staples.
 //
+//  1.20.58 2026-09-23 THE DOCTRINE ROLL (poker v3.37.171): bots roll buff / control / dispel / attack by role each
+//                    turn (support 40/30/0/30, arcane 15/35/10/40, theurge 35/30/20/15, martial 100% attack); reactive
+//                    plays ignore the roll; best buff first; the roll is spoken. PGM has no characterBuilds, so the
+//                    per-character overrides (Celeb, Bujon) fall back to the class table.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.57';
-const HEADLINE = 'Spells from level 1 for the slow casters, bloodragers pick bloodlines, and Holy Smite reads alignment.';
+const VERSION = '1.20.58';
+const HEADLINE = 'Bots roll their doctrine each turn: buff, control, dispel or attack by role, best buff first.';
 module.exports = { VERSION, HEADLINE };
