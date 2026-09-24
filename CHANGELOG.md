@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.57 — 2026-09-23
+
+- **Toby's rulings (poker v3.37.170).** Holy Smite (vs evil) and Unholy Blight (vs good) follow the
+  PF1 alignment table; paladin / antipaladin / ranger / bloodrager cast 1st-level spells from level 1
+  (the rest of the ladder stays slow); the bloodrager list grows to the ACG list; bloodragers pick
+  bloodlines (bonus spells once a room; a picked bloodline replaces the generic Bloodline Surge).
+
 ## v1.20.56 — 2026-09-23
 
 - **Sorcerer bloodlines (CRB), part 1.** pf1data/bloodlines.js carries all ten bloodlines with

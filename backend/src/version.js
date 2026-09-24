@@ -865,8 +865,12 @@
 //                    synced mixins (rays, blasts, claws, passives, resistances). No picker here — a member carries
 //                    m.bloodline; the AC/save folds are poker-host only.
 //
+//  1.20.57 2026-09-23 TOBY'S RULINGS (poker v3.37.170): Holy Smite / Unholy Blight read alignment; the slow casters
+//                    cast 1st-level spells from L1; the bloodrager list grows (ACG); bloodragers pick bloodlines
+//                    (a picked one replaces the generic Surge); firearms for the gunslinger where PGM carries staples.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.56';
-const HEADLINE = 'Sorcerer bloodlines from the Core Rulebook: bonus spells and powers for a member with a bloodline.';
+const VERSION = '1.20.57';
+const HEADLINE = 'Spells from level 1 for the slow casters, bloodragers pick bloodlines, and Holy Smite reads alignment.';
 module.exports = { VERSION, HEADLINE };
