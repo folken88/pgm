@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.60 — 2026-09-24
+
+- **The squishy theurge and the second hook.** A theurge counts as squishy (Freedom of Movement
+  goes to the hooked flyer; enemy grapple weighting). A second chain-hook on an already-held hero
+  no longer snatches them out of the air again. "an Ikualo'a".
+
 ## v1.20.59 — 2026-09-24
 
 - **The Iron Gods firearms.** Grit (Wis mod a room, +1 on a gun kill or crit) and three gunslinger

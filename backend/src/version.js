@@ -879,8 +879,12 @@
 //                    flag); the Silverhawk Shooter, Torch City Guard and Drone 8.0 Myrmidon join the bestiary. The eight
 //                    gun staples land where PGM carries staples.js.
 //
+//  1.20.60 2026-09-24 THE SQUISHY THEURGE + THE SECOND HOOK (poker v3.37.173): the theurge counts as squishy
+//                    (Freedom of Movement goes to the hooked flyer, enemy grapple weighting); a second chain-hook on an
+//                    already-held hero no longer snatches them out of the air again; 'an Ikualo'a'.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.59';
-const HEADLINE = 'The Iron Gods firearms: grit and deeds for gunslingers, and every gun hits touch AC.';
+const VERSION = '1.20.60';
+const HEADLINE = 'The squishy theurge and the second hook (poker v3.37.173 sync).';
 module.exports = { VERSION, HEADLINE };
