@@ -883,8 +883,11 @@
 //                    (Freedom of Movement goes to the hooked flyer, enemy grapple weighting); a second chain-hook on an
 //                    already-held hero no longer snatches them out of the air again; 'an Ikualo'a'.
 //
+//  1.20.61 2026-09-25 THE ROLL GOES QUIET (poker v3.37.174): the caster bots' doctrine roll and the read-the-room
+//                    call are log-only 'ai' events — nothing narrated. Decisions unchanged.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.60';
-const HEADLINE = 'The squishy theurge and the second hook (poker v3.37.173 sync).';
+const VERSION = '1.20.61';
+const HEADLINE = 'The roll goes quiet: the bots decide behind the scenes (poker v3.37.174 sync).';
 module.exports = { VERSION, HEADLINE };

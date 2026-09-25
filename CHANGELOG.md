@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.61 — 2026-09-25
+
+- **The roll goes quiet.** The caster bots' doctrine roll and the read-the-room call are
+  log-only events now; nothing is narrated. Decisions unchanged.
+
 ## v1.20.60 — 2026-09-24
 
 - **The squishy theurge and the second hook.** A theurge counts as squishy (Freedom of Movement
