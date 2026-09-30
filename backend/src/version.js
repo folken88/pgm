@@ -886,8 +886,12 @@
 //  1.20.61 2026-09-25 THE ROLL GOES QUIET (poker v3.37.174): the caster bots' doctrine roll and the read-the-room
 //                    call are log-only 'ai' events — nothing narrated. Decisions unchanged.
 //
+//  1.20.62 2026-09-29 APG/UM BATCH A1 (poker v3.37.175): Ear-Piercing Scream, Frigid Touch, Stone Call, Sirocco,
+//                    Cleanse on their PF1 lists; aoe noSave/noSR/fatigue/ground riders, touch stagger rider, heal
+//                    cleanse rider, downed flyers re-fly on standing.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.61';
-const HEADLINE = 'The roll goes quiet: the bots decide behind the scenes (poker v3.37.174 sync).';
+const VERSION = '1.20.62';
+const HEADLINE = 'APG/UM batch A1: Ear-Piercing Scream, Frigid Touch, Stone Call, Sirocco, Cleanse (poker v3.37.175 sync).';
 module.exports = { VERSION, HEADLINE };

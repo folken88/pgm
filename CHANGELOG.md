@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.62 — 2026-09-29
+
+- **APG/UM batch A1.** Ear-Piercing Scream, Frigid Touch, Stone Call, Sirocco and Cleanse on their
+  PF1 class lists. Engine riders: no-save/no-SR area spells, fatigue and grounding riders, the
+  staggering touch, the cleansing heal; a flyer torn from the sky re-flies when it stands.
+
 ## v1.20.61 — 2026-09-25
 
 - **The roll goes quiet.** The caster bots' doctrine roll and the read-the-room call are
