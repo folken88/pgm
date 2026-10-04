@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.64 — 2026-10-04
+
+- **The imports reach the table.** Unlisted kit spells fall back by tier (attack/control, buffs,
+  then the situational copies), and a bot caster draws one random wildcard spell per spell level
+  per run from what its default loadout left out. Slots still cap the casts.
+
 ## v1.20.63 — 2026-10-04
 
 - **Stunning Fist says its save.** The line always names the Fort save: slain outright (no save

@@ -893,8 +893,11 @@
 //  1.20.63 2026-10-04 STUNNING FIST SAYS ITS SAVE (poker v3.37.176): the line always names the Fort save —
 //                    slain outright (no save needed), immune, FAILS → stunned, or shakes it off.
 //
+//  1.20.64 2026-10-04 THE IMPORTS REACH THE TABLE (poker v3.37.177): spellTier + tiered loadout fallback; bot casters
+//                    draw one random tier-0/1 wildcard spell per spell level per run from what the default left out.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.63';
-const HEADLINE = 'Stunning Fist always says its Fort save (poker v3.37.176 sync).';
+const VERSION = '1.20.64';
+const HEADLINE = 'The imports reach the table: tiered loadouts and bot wildcard spells (poker v3.37.177 sync).';
 module.exports = { VERSION, HEADLINE };
