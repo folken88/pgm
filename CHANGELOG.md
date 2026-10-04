@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.63 — 2026-10-04
+
+- **Stunning Fist says its save.** The line always names the Fort save: slain outright (no save
+  needed), immune, fails and stunned, or shakes it off.
+
 ## v1.20.62 — 2026-09-29
 
 - **APG/UM batch A1.** Ear-Piercing Scream, Frigid Touch, Stone Call, Sirocco and Cleanse on their

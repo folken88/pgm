@@ -890,8 +890,11 @@
 //                    Cleanse on their PF1 lists; aoe noSave/noSR/fatigue/ground riders, touch stagger rider, heal
 //                    cleanse rider, downed flyers re-fly on standing.
 //
+//  1.20.63 2026-10-04 STUNNING FIST SAYS ITS SAVE (poker v3.37.176): the line always names the Fort save —
+//                    slain outright (no save needed), immune, FAILS → stunned, or shakes it off.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.62';
-const HEADLINE = 'APG/UM batch A1: Ear-Piercing Scream, Frigid Touch, Stone Call, Sirocco, Cleanse (poker v3.37.175 sync).';
+const VERSION = '1.20.63';
+const HEADLINE = 'Stunning Fist always says its Fort save (poker v3.37.176 sync).';
 module.exports = { VERSION, HEADLINE };
