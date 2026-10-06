@@ -896,8 +896,11 @@
 //  1.20.64 2026-10-04 THE IMPORTS REACH THE TABLE (poker v3.37.177): spellTier + tiered loadout fallback; bot casters
 //                    draw one random tier-0/1 wildcard spell per spell level per run from what the default left out.
 //
+//  1.20.65 2026-10-06 THE UNSEEN FOE SAYS WHAT IT IS (poker v3.37.178): the invisibility line states the PF1 50%
+//                    concealment rule; a full-attack concealment miss reads 'unseen'.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.64';
-const HEADLINE = 'The imports reach the table: tiered loadouts and bot wildcard spells (poker v3.37.177 sync).';
+const VERSION = '1.20.65';
+const HEADLINE = 'The unseen foe says what it is (poker v3.37.178 sync).';
 module.exports = { VERSION, HEADLINE };

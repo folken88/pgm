@@ -19,6 +19,11 @@ PGM is made by:
 
 ---
 
+## v1.20.65 — 2026-10-06
+
+- **The unseen foe says what it is.** The invisibility line states the PF1 50% concealment rule
+  instead of "you cannot strike it"; a full-attack concealment miss reads "unseen".
+
 ## v1.20.64 — 2026-10-04
 
 - **The imports reach the table.** Unlisted kit spells fall back by tier (attack/control, buffs,
