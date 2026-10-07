@@ -1,3 +1,5 @@
+// PGM (Personal Game Master) — created and designed by Tobias Merriman; co-developed with Josh Morrison, whose testing, reports, questions and ideas shaped the dungeon, the bots and the whole play-by-ear layer; engineering by Claude Code (Anthropic).
+//
 // PGM — the ONE app version (semver). The boot log, /api/version, /api/meta and
 // the client topbar all read this. MANDATE (Tobias 2026-07-14, mirroring poker):
 //   · bump MINOR for each feature batch, PATCH for fix-only batches
@@ -899,8 +901,10 @@
 //  1.20.65 2026-10-06 THE UNSEEN FOE SAYS WHAT IT IS (poker v3.37.178): the invisibility line states the PF1 50%
 //                    concealment rule; a full-attack concealment miss reads 'unseen'.
 //
+//  1.20.66 2026-10-07 CREDITS (poker v3.37.180): Josh Morrison is co-developer — manifest contributors + this header.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.65';
-const HEADLINE = 'The unseen foe says what it is (poker v3.37.178 sync).';
+const VERSION = '1.20.66';
+const HEADLINE = 'Credits: Josh Morrison is co-developer (poker v3.37.180 sync).';
 module.exports = { VERSION, HEADLINE };

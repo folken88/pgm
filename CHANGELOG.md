@@ -19,6 +19,10 @@ PGM is made by:
 
 ---
 
+## v1.20.66 — 2026-10-07
+
+- **Credits.** Josh Morrison is co-developer: package.json contributors and the version header.
+
 ## v1.20.65 — 2026-10-06
 
 - **The unseen foe says what it is.** The invisibility line states the PF1 50% concealment rule
