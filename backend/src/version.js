@@ -911,8 +911,12 @@
 //                    makes a FULL attack instead of one cleave swing; a bot's metamagic rides its cast line instead of a
 //                    line of its own (the shim's _note folds it).
 //
+//  1.20.69 2026-11-17 JOSH'S THIRD PASS (poker v3.37.183 sync): Teleport / Dimension Door cast with no chosen passenger send
+//                    a melee ALLY, the caster last (a level-20 sorcerer used to head the by-level sort and blink himself);
+//                    an area spell with no damage type no longer logs '(46 )'. The Spellbook and V-key changes are
+//                    poker-client work and do not apply here.
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.68';
-const HEADLINE = 'Fighters and barbarians make full attacks on a held target; metamagic is one line (poker v3.37.182 sync).';
+const VERSION = '1.20.69';
+const HEADLINE = 'Teleport and Dimension Door carry a melee ally, not the caster (poker v3.37.183 sync).';
 module.exports = { VERSION, HEADLINE };

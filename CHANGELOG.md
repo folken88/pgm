@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.69 — 2026-11-17
+
+- **Josh's third pass (poker v3.37.183 sync).** Teleport and Dimension Door cast with no chosen passenger now
+  send a melee ally and the caster last; before, a high-level caster headed the by-level sort and blinked
+  himself. An area spell with no damage type no longer logs a dangling space ("(46 )").
+
 ## v1.20.68 — 2026-11-17
 
 - **Josh's second pass.** A carver (barbarian, fighter from level 9) who stays on the same foe makes a full
