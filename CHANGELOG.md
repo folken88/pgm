@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.68 — 2026-11-17
+
+- **Josh's second pass.** A carver (barbarian, fighter from level 9) who stays on the same foe makes a full
+  attack with iteratives instead of a single cleave swing; a new target is still the sweep. A bot's metamagic
+  rides its cast line ("casts an INTENSIFIED EMPOWERED Chain Lightning") instead of a line of its own.
+
 ## v1.20.67 — 2026-11-17
 
 - **Josh's caster pass.** A multi-target spell's picks lead and the rest of the field fills its reach

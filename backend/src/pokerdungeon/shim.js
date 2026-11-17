@@ -84,7 +84,7 @@ class DungeonShim {
 
   // ── Narration/IO surface: map to the PGM run log; sockets/banter are no-ops ──
   _note(text, sound, opts) {
-    const t = String(text || '').trim();
+    const t = String(((this._mmPend && typeof this._mmNoteFold === 'function') ? this._mmNoteFold(text) : text) || '').trim();   // v1.20.68: a bot's metamagic rides its cast line (poker v3.37.182)
     if (!t) return;
     this.run.log.push({ seq: ++this.run.seq, text: t, priority: 'event', sound: sound || null });
     if (this.run.log.length > 80) this.run.log.shift();

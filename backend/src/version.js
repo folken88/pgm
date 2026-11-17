@@ -907,8 +907,12 @@
 //                    reach (Mass Hold, Confusion, Fear, Scare); a mind-immune pick no longer wastes a mass spell; bots
 //                    summon in boss rooms only unless they are summoner-style.
 //
+//  1.20.68 2026-11-17 JOSH'S SECOND PASS (poker v3.37.182): a carver (barbarian, fighter from 9) who stays on the SAME foe
+//                    makes a FULL attack instead of one cleave swing; a bot's metamagic rides its cast line instead of a
+//                    line of its own (the shim's _note folds it).
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.67';
-const HEADLINE = 'Mass spells reach the field; bots summon in boss rooms only (poker v3.37.181 sync).';
+const VERSION = '1.20.68';
+const HEADLINE = 'Fighters and barbarians make full attacks on a held target; metamagic is one line (poker v3.37.182 sync).';
 module.exports = { VERSION, HEADLINE };
