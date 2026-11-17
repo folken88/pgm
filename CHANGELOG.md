@@ -19,6 +19,12 @@ PGM is made by:
 
 ---
 
+## v1.20.67 — 2026-11-17
+
+- **Josh's caster pass.** A multi-target spell's picks lead and the rest of the field fills its reach
+  (Mass Hold Person/Monster, Confusion, Fear, Scare); a mind-immune pick no longer wastes a mass spell.
+  Bots summon in boss rooms only unless they are summoner-style.
+
 ## v1.20.66 — 2026-10-07
 
 - **Credits.** Josh Morrison is co-developer: package.json contributors and the version header.

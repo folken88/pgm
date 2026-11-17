@@ -903,8 +903,12 @@
 //
 //  1.20.66 2026-10-07 CREDITS (poker v3.37.180): Josh Morrison is co-developer — manifest contributors + this header.
 //
+//  1.20.67 2026-11-17 JOSH'S CASTER PASS (poker v3.37.181): a multi-target spell's picks LEAD and the field fills its
+//                    reach (Mass Hold, Confusion, Fear, Scare); a mind-immune pick no longer wastes a mass spell; bots
+//                    summon in boss rooms only unless they are summoner-style.
+//
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.66';
-const HEADLINE = 'Credits: Josh Morrison is co-developer (poker v3.37.180 sync).';
+const VERSION = '1.20.67';
+const HEADLINE = 'Mass spells reach the field; bots summon in boss rooms only (poker v3.37.181 sync).';
 module.exports = { VERSION, HEADLINE };
