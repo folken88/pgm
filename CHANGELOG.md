@@ -19,6 +19,13 @@ PGM is made by:
 
 ---
 
+## v1.20.70 — 2026-11-17
+
+- **Josh's fourth pass (poker v3.37.184 sync).** The six buffs that cover the whole party under a
+  single-target name now end in "(Communal)": Protection from Cold / Acid / Electricity / Sonic / Fire and
+  Greater Magic Weapon. One-ally spells (Resist Energy, Stoneskin, Protection from Arrows) keep their plain
+  names. A self buff's line ends with its full stop.
+
 ## v1.20.69 — 2026-11-17
 
 - **Josh's third pass (poker v3.37.183 sync).** Teleport and Dimension Door cast with no chosen passenger now

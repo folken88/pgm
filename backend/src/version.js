@@ -915,8 +915,12 @@
 //                    a melee ALLY, the caster last (a level-20 sorcerer used to head the by-level sort and blink himself);
 //                    an area spell with no damage type no longer logs '(46 )'. The Spellbook and V-key changes are
 //                    poker-client work and do not apply here.
+//  1.20.70 2026-11-17 JOSH'S FOURTH PASS (poker v3.37.184 sync): the six buffs that cover the whole party under a single-target
+//                    name now end in '(Communal)' — Protection from Cold / Acid / Electricity / Sonic / Fire and Greater
+//                    Magic Weapon — so a cast line and a spell list say who is covered. A self buff's line ends with
+//                    its full stop. The V-key casting menu is poker-client work and does not apply here.
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.69';
-const HEADLINE = 'Teleport and Dimension Door carry a melee ally, not the caster (poker v3.37.183 sync).';
+const VERSION = '1.20.70';
+const HEADLINE = 'Party-wide wards say (Communal) in their names (poker v3.37.184 sync).';
 module.exports = { VERSION, HEADLINE };
