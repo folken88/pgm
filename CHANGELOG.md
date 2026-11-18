@@ -19,6 +19,19 @@ PGM is made by:
 
 ---
 
+## v1.20.71 — 2026-11-18
+
+- **Enemies throw at a flying party (poker v3.37.185 sync).** A grounded melee foe that can see only
+  flyers no longer claws at the air: it throws a javelin, a dagger, a sling stone, darts, or (giants) a
+  boulder. Minus 4 to hit and a lighter hit than its melee. Beasts, vermin, oozes, constructs and
+  claw-and-tooth fighters have nothing to throw.
+- **Grapple follows the book.** A grab grapples: the foe is minus 2 to attacks and AC and cannot get
+  away, but it still fights its holder or tries to break out. Grapple it again on your next turn to pin
+  it; grapple a pinned foe to crush it. A hold that is not renewed ends. A hero's hold also really holds
+  now: it used to slip the moment the foe's turn came.
+- **Bloodlines.** Corrupting Touch and Grave Touch are touch attacks with no save. Heavenly Fire burns
+  evil creatures fully, neutral ones for half, good ones not at all.
+
 ## v1.20.70 — 2026-11-17
 
 - **Josh's fourth pass (poker v3.37.184 sync).** The six buffs that cover the whole party under a

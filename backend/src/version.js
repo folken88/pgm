@@ -919,8 +919,14 @@
 //                    name now end in '(Communal)' — Protection from Cold / Acid / Electricity / Sonic / Fire and Greater
 //                    Magic Weapon — so a cast line and a spell list say who is covered. A self buff's line ends with
 //                    its full stop. The V-key casting menu is poker-client work and does not apply here.
+//  1.20.71 2026-11-18 TOBY'S RULINGS, FIRST BATCH (poker v3.37.185-186 sync). ENEMY SIDEARMS: a grounded melee foe under a flying
+//                    party throws (javelin, dagger, sling, darts, a giant's boulder) at -4 with a lighter hit; beasts and their
+//                    like still claw at the air. GRAPPLE BY THE BOOK: a grab grapples (-2 attacks, -2 AC, it fights its holder or
+//                    breaks out), Grapple again pins, again crushes. PGM's tick never passed the holder's CMD, so a hero's hold
+//                    used to slip at once; it holds now (tick.js two tiers, partyrun passes the CMD). Corrupting / Grave Touch
+//                    are touch attacks with no save; Heavenly Fire follows the Holy Smite alignment table.
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.70';
-const HEADLINE = 'Party-wide wards say (Communal) in their names (poker v3.37.184 sync).';
+const VERSION = '1.20.71';
+const HEADLINE = 'Grounded foes throw at a flying party, and grapple follows the book: grab, pin, crush (poker v3.37.186 sync).';
 module.exports = { VERSION, HEADLINE };

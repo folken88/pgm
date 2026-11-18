@@ -393,6 +393,10 @@ function nextTurn(run) {
 function tickFor(run, cb, roll) {
   const ctx = { roll };
   if (cb.side === 'hero' && cb.character) ctx.willBonus = cb.character.derived.saves.will;
+  if (cb.side === 'enemy' && cb.grappled && cb.grappledBy && cb.grappledBy !== 'tentacles') {   // v1.20.71 (poker v3.37.185): a hero's hold is real — it used to slip at once because no CMD was ever passed
+    const holder = run.shim.member(cb.grappledBy);
+    if (holder && holder.hp > 0 && !holder.down) { ctx.grapplerCMD = run.shim._heroCMD(holder); ctx.heldByHero = true; }
+  }
   const t = pf1.tick.tickTurnStart(cb, ctx);
   for (const e of t.events) {
     switch (e.kind) {
@@ -405,7 +409,9 @@ function tickFor(run, cb, roll) {
       case 'paralyzed': logEvent(run, `🖐️ ${cb.name} is paralyzed — loses its turn.`, 'event'); break;
       case 'grapple_released': logEvent(run, `${cb.name} wrenches loose — the grip releases.`, 'event'); break;
       case 'grapple_escaped': logEvent(run, `${cb.name} tears free of the grapple — but the struggle cost its turn.`, 'event'); break;
-      case 'grapple_held': logEvent(run, `${cb.name} is held fast — helpless, loses its turn.`, 'event'); break;
+      case 'grapple_held': logEvent(run, e.struggled ? (e.pinned ? `🤼 ${cb.name} is PINNED — it can only strain against the hold. Its turn is spent.` : `🤼 ${cb.name} strains to break the grapple and fails. Its turn is spent.`) : `${cb.name} is held fast — helpless, loses its turn.`, 'event'); break;
+      case 'grapple_lapsed': logEvent(run, `🤼 The hold on ${cb.name} was not renewed — it shakes loose and is free to act.`, 'event'); break;
+      case 'grapple_clinch': logEvent(run, `🤼 ${cb.name}, grappled, turns on its holder — it fights in the clinch at −2.`, 'event'); break;
       case 'lose_turn': logEvent(run, `${cb.name} is off-balance — loses a turn.`, 'event'); break;
       case 'nauseated': logEvent(run, `${cb.name} retches — nauseated, loses a turn.`, 'event'); break;
       case 'bleed': logEvent(run, `🩸 ${cb.name} bleeds for ${e.dealt}.${e.slain ? ' ☠️' : ''}`, e.slain ? 'urgent' : 'event'); break;

@@ -108,7 +108,7 @@ class DungeonShim {
       + (this._shakeItOff ? this._shakeItOff(m) : 0)   // SHAKE IT OFF (teamwork, poker v3.37.91): +1/paired ally standing, max +3
       + cavOrders.orderSaveBonus(this, m);   // Order of the Star: +saves while challenging
   }
-  _acPenalty(m) { return ((m.buffs && m.buffs.acPen) || 0) + (m.grappled ? 2 : 0); }
+  _acPenalty(m) { return ((m.buffs && m.buffs.acPen) || 0) + ((m.grappled || (typeof this._holdingFoe === 'function' && this._holdingFoe(m))) ? 2 : 0); }   // v1.20.71: the holder of a grapple is −2 AC too (PF1)
   _acBonus(m) { return pf1.buffs.buffAcMod(m) + cavOrders.orderAcBonus(this, m); }
   _acOf(m) { const base = m.character ? m.character.ac : m.ac; return { ac: (m.flatFooted && m.flatAc != null) ? m.flatAc : base, physical: 4 }; }
   _heroCMD(m) { const d = m.character ? m.character.derived : { bab: 0, mods: {} }; return 10 + (d.bab || 0) + (d.mods.str || 0) + (d.mods.dex || 0); }

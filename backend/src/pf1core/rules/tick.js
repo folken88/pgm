@@ -21,6 +21,7 @@ function dN(count, sides, roll = Math.random) { let t = 0; for (let i = 0; i < c
  *   willBonus?  — save bonus for held re-saves (default: enemySave(c,'will')),
  *   escapeBonus?— grapple-escape bonus (default c.attack||c.toHit||0),
  *   grapplerCMD?— the holder's CMD (0/undefined = grip released),
+ *   heldByHero? — the holder is a hero: PF1's two tiers apply (v1.20.71),
  *   roll?       — injectable RNG
  * }
  */
@@ -65,12 +66,34 @@ function tickTurnStart(c, ctx = {}) {
     } else ev.push({ kind: 'paralyzed' });
     out.acts = false; return out;
   }
-  // Grappled: helpless; each turn roll escape (CMB-ish vs the holder's CMD).
+  // Grappled - PF1's two tiers (poker v3.37.185, Toby: 'use the book's rules for grapple').
+  // A foe held by a HERO (ctx.heldByHero) is GRAPPLED: it still acts, at -2 and against its
+  // holder (enemyAI forces the target), or it spends its turn trying to break out. PINNED
+  // (a renewed hold) it can only struggle. The hold lasts ONE of its turns per grab; not
+  // renewed, it lapses and the foe acts freely. Any other hold keeps the one-tier escape roll.
   if (c.grappled) {
     const cmd = ctx.grapplerCMD || 0;
     if (!cmd) {
-      c.grappled = false; c.grappledBy = null; c.grappleRounds = 0;
+      c.grappled = false; c.pinned = false; c.grappledBy = null; c.grappleRounds = 0;
       ev.push({ kind: 'grapple_released' });
+    } else if (ctx.heldByHero) {
+      if ((c.grappleRounds || 0) <= 0) {
+        c.grappled = false; c.pinned = false; c.grappledBy = null; c.grappleRounds = 0;
+        ev.push({ kind: 'grapple_lapsed' });
+      } else {
+        c.grappleRounds -= 1;
+        const fights = !c.pinned && !c.ranged && !c.arcane && !c.caster && !c.healer && (1 + Math.floor(roll() * 3)) !== 1;
+        if (fights) ev.push({ kind: 'grapple_clinch' });
+        else {
+          const r = d20(roll), tot = r + (ctx.escapeBonus != null ? ctx.escapeBonus : (c.attack || c.toHit || 0));
+          if (r === 20 || (r !== 1 && tot >= cmd)) {
+            const wasPinned = !!c.pinned;
+            c.grappled = false; c.pinned = false; c.grappledBy = null; c.grappleRounds = 0;
+            ev.push({ kind: 'grapple_escaped', broke: true, pinned: wasPinned, roll: r, total: tot, cmd });
+          } else ev.push({ kind: 'grapple_held', pinned: !!c.pinned, struggled: true, roll: r, total: tot, cmd });
+          out.acts = false; return out;
+        }
+      }
     } else {
       c.grappleRounds = (c.grappleRounds || 1) - 1;
       const r = d20(roll), tot = r + (ctx.escapeBonus != null ? ctx.escapeBonus : (c.attack || c.toHit || 0));
