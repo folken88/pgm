@@ -19,6 +19,17 @@ PGM is made by:
 
 ---
 
+## v1.20.72 — 2026-11-19
+
+- **Bloodline claws are real claw attacks (poker v3.37.187 sync).** Abyssal and Draconic Claws used to be
+  a small damage bonus for the room. They are the book's power now: each use is one round of two claw
+  attacks at your full attack bonus, 1d4 plus Strength each. They count as magic from 5th level, deal
+  1d6 from 7th, and carry 1d6 of energy from 11th. You have 3 plus your Charisma modifier rounds a room.
+- **The Draconic bloodline picks a dragon.** All ten dragons of the core book. The dragon sets the energy
+  of your claws, your resistance, your breath weapon and your level-20 immunity. A cone breath reaches up
+  to four foes, a line breath two. A sorcerer's spells of that energy deal 1 more damage per die.
+- **Dragon Resistances** stop at 10, as the book has it (they reached 20 at 15th level before).
+
 ## v1.20.71 — 2026-11-18
 
 - **Enemies throw at a flying party (poker v3.37.185 sync).** A grounded melee foe that can see only

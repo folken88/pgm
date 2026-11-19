@@ -925,8 +925,13 @@
 //                    breaks out), Grapple again pins, again crushes. PGM's tick never passed the holder's CMD, so a hero's hold
 //                    used to slip at once; it holds now (tick.js two tiers, partyrun passes the CMD). Corrupting / Grave Touch
 //                    are touch attacks with no save; Heavenly Fire follows the Holy Smite alignment table.
+//  1.20.72 2026-11-19 TOBY'S RULINGS, SECOND BATCH (poker v3.37.187 sync). Bloodline CLAWS are real claw attacks: two claws a round
+//                    at full BAB (1d4 + Str, magic at 5th, 1d6 at 7th, +1d6 energy at 11th), 3 + Cha rounds a room - they were
+//                    a +2 damage buff. DRACONIC picks one of the ten CRB dragons: the type sets the claw energy, the resistance,
+//                    the breath (cone 4 foes, line 2), the level-20 immunity and the arcana (+1 per die on a sorcerer's spells of
+//                    that energy). Dragon Resistances stop at 10, as the book has it.
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.71';
-const HEADLINE = 'Grounded foes throw at a flying party, and grapple follows the book: grab, pin, crush (poker v3.37.186 sync).';
+const VERSION = '1.20.72';
+const HEADLINE = 'Bloodline claws are real claw attacks, and the Draconic bloodline picks its dragon (poker v3.37.187 sync).';
 module.exports = { VERSION, HEADLINE };
