@@ -930,8 +930,13 @@
 //                    a +2 damage buff. DRACONIC picks one of the ten CRB dragons: the type sets the claw energy, the resistance,
 //                    the breath (cone 4 foes, line 2), the level-20 immunity and the arcana (+1 per die on a sorcerer's spells of
 //                    that energy). Dragon Resistances stop at 10, as the book has it.
+//  1.20.73 2026-11-19 TOBY'S RULINGS, THIRD BATCH (poker v3.37.188 sync). BLOODRAGER BLOODLINES FROM THE ADVANCED CLASS GUIDE:
+//                    powers at 1/4/8/12/16/20, bonus spells at 7/10/13/16, working only while bloodraging (the level-20
+//                    ones always). 39 of the 60 powers are in the engine, 21 are listed as 'not yet'. Bloodline bonus
+//                    spells that live only in a class kit (Bless, Haste, Mage Armor...) are found now. The shim's own
+//                    _partySaveMod reads the bloodline save bonuses (it never did).
 // HEADLINE — a very succinct (one or two sentence) PLAYER-FACING summary of the LATEST version.
 // Rewrite it with every bump; keep it short.
-const VERSION = '1.20.72';
-const HEADLINE = 'Bloodline claws are real claw attacks, and the Draconic bloodline picks its dragon (poker v3.37.187 sync).';
+const VERSION = '1.20.73';
+const HEADLINE = 'Bloodragers get their own bloodline powers from the Advanced Class Guide (poker v3.37.188 sync).';
 module.exports = { VERSION, HEADLINE };

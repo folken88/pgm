@@ -101,7 +101,7 @@ class DungeonShim {
   _physDR(target, dmg, weapon, pierce) { return [pf1.protections.applyDR(target, dmg, weapon, pierce), '']; }
   _drDesc(dr) { return pf1.protections.drDesc(dr); }
   _partySaveMod(m, tags) {
-    return (m.level || 1) + ((m.buffs && m.buffs.save) || 0) + fighterFeats(m.cls, m.level, this._isRanged(m)).save
+    return (m.level || 1) + ((m.buffs && m.buffs.save) || 0) + (m.bloodSave || 0) + ((m.bloodSaveVs && tags && tags.some(t => m.bloodSaveVs.includes(t))) ? 4 : 0) + fighterFeats(m.cls, m.level, this._isRanged(m)).save   // v1.20.73: bloodline save bonuses (poker folds them in Dungeon.js, which is not synced)
       + this._hasteMod(m) + RACES.raceSaveBonus(m.race || (m.character && m.character.race), tags)
       - (m.sickened > 0 ? SICKENED_PENALTY : 0) - (m.slowed > 0 && tags && tags.includes('reflex') ? 1 : 0)
       + (m._domWardRounds > 0 ? 2 : 0)

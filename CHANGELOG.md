@@ -19,6 +19,21 @@ PGM is made by:
 
 ---
 
+## v1.20.73 — 2026-11-19
+
+- **Bloodragers get their own bloodline powers (poker v3.37.188 sync).** A bloodrager used to borrow the
+  sorcerer's bloodline powers. It now has the Advanced Class Guide ones: powers at levels 1, 4, 8, 12, 16
+  and 20, and bonus spells at 7, 10, 13 and 16. As in the book they work only while you bloodrage; the
+  level-20 powers are always on.
+- **What is in:** claws you can use every round, resistances, natural armor, luck bonuses, wings, a breath
+  weapon, Hellfire Strike and Elemental Strikes (a swift action, one round of extra energy on your hits),
+  Destined Strike, riders on your critical hits, and the choices you make when the rage starts (Demonic
+  Bulk, the Arcane Bloodrage spells, Fury of the Fey) as free-action buttons.
+- **What is not yet:** 21 powers that lean on something this game lacks (a charge, a grid, attacks of
+  opportunity against casters) are listed as 'not yet' on the bloodline's info entry.
+- **Fix:** a bloodline's bonus spell that the engine only had inside a class's own list (Bless, Haste,
+  Mage Armor and others) was reported as missing and never granted. Sorcerers were affected too.
+
 ## v1.20.72 — 2026-11-19
 
 - **Bloodline claws are real claw attacks (poker v3.37.187 sync).** Abyssal and Draconic Claws used to be
